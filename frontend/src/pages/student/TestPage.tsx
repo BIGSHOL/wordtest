@@ -30,11 +30,9 @@ export function TestPage() {
     isLoading,
     isSubmitting,
     error,
-    startTest,
     selectAnswer,
     submitAnswer,
     nextQuestion,
-    reset,
   } = useTestStore();
 
   const handleTimeout = () => {
