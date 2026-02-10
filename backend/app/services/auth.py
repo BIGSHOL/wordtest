@@ -5,7 +5,7 @@ from sqlalchemy import select, delete
 from app.models.user import User
 from app.models.auth_token import AuthToken
 from app.schemas.auth import RegisterRequest
-from app.core.security import get_password_hash, verify_password, create_refresh_token
+from app.core.security import get_password_hash, verify_password_async, create_refresh_token
 from app.core.config import settings
 from jose import jwt, JWTError
 
@@ -20,14 +20,18 @@ async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
     return result.scalar_one_or_none()
 
 
-async def authenticate_user(db: AsyncSession, email: str, password: str) -> User | None:
-    """Authenticate by email or username."""
-    user = await get_user_by_email(db, email)
-    if not user:
-        user = await get_user_by_username(db, email)
+async def authenticate_user(db: AsyncSession, login_id: str, password: str) -> User | None:
+    """Authenticate by email or username in a single query."""
+    from sqlalchemy import or_
+    result = await db.execute(
+        select(User).where(
+            or_(User.email == login_id, User.username == login_id)
+        )
+    )
+    user = result.scalar_one_or_none()
     if not user:
         return None
-    if not verify_password(password, user.password_hash):
+    if not await verify_password_async(password, user.password_hash):
         return None
     return user
 

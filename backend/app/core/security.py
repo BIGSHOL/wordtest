@@ -1,4 +1,5 @@
 """Security utilities for authentication."""
+import asyncio
 import uuid
 from datetime import datetime, timedelta
 from typing import Any
@@ -6,7 +7,7 @@ from jose import jwt
 from passlib.context import CryptContext
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=10)
 
 ALGORITHM = "HS256"
 
@@ -38,6 +39,12 @@ def create_refresh_token(subject: str | Any, expires_delta: timedelta | None = N
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against a hash."""
     return pwd_context.verify(plain_password, hashed_password)
+
+
+async def verify_password_async(plain_password: str, hashed_password: str) -> bool:
+    """Verify password without blocking the event loop."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, verify_password, plain_password, hashed_password)
 
 
 def get_password_hash(password: str) -> str:

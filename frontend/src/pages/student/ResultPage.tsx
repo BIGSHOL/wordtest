@@ -76,7 +76,7 @@ export function ResultPage() {
   const previewWrong = wrongItems.slice(0, 4);
 
   return (
-    <div className="min-h-screen bg-bg-cream flex flex-col md:max-w-[480px] md:mx-auto">
+    <div className="min-h-screen bg-bg-cream flex flex-col max-w-[600px] mx-auto">
       {/* Scroll Content */}
       <div className="flex-1 overflow-y-auto">
         {/* Result Header */}

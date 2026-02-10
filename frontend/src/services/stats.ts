@@ -21,9 +21,28 @@ export interface DashboardStats {
   score_trend: { date: string; avg_score: number; count: number }[];
 }
 
+export interface TestHistoryItem {
+  test_date: string;
+  accuracy: number;
+  determined_level: number | null;
+  rank_name: string | null;
+  correct_count: number;
+  total_questions: number;
+  duration_seconds: number | null;
+}
+
+export interface TestHistoryResponse {
+  history: TestHistoryItem[];
+}
+
 export const statsService = {
   async getDashboardStats(): Promise<DashboardStats> {
     const response = await api.get<DashboardStats>('/api/v1/stats/dashboard');
+    return response.data;
+  },
+
+  async getStudentHistory(studentId: string): Promise<TestHistoryResponse> {
+    const response = await api.get<TestHistoryResponse>(`/api/v1/stats/student/${studentId}/history`);
     return response.data;
   },
 };

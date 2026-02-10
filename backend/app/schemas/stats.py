@@ -22,6 +22,20 @@ class ScoreTrend(BaseModel):
     count: int
 
 
+class TestHistoryItem(BaseModel):
+    test_date: str
+    accuracy: int
+    determined_level: Optional[int] = None
+    rank_name: Optional[str] = None
+    correct_count: int
+    total_questions: int
+    duration_seconds: Optional[int] = None
+
+
+class TestHistoryResponse(BaseModel):
+    history: list[TestHistoryItem]
+
+
 class DashboardStats(BaseModel):
     total_students: int
     total_words: int

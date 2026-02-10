@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     SUPABASE_ANON_KEY: str = ""
 
     class Config:
-        env_file = ".env"
+        env_file = ("../.env", ".env")
 
 
 settings = Settings()

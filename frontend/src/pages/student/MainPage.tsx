@@ -1,6 +1,7 @@
 /**
  * Student main page - Empty state with Pencil design.
  */
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/auth';
 import { GraduationCap, BookOpen, Hash } from 'lucide-react';
@@ -8,6 +9,20 @@ import { GraduationCap, BookOpen, Hash } from 'lucide-react';
 export function StudentMainPage() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
+  const [testCode, setTestCode] = useState('');
+
+  const handleCodeChange = (value: string) => {
+    const cleaned = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    setTestCode(cleaned);
+  };
+
+  const handleStart = () => {
+    if (testCode.length === 6) {
+      navigate(`/test/start?code=${testCode}`);
+    } else {
+      navigate('/test/start');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-bg-cream flex flex-col">
@@ -41,21 +56,24 @@ export function StudentMainPage() {
             나의 영어 어휘력 레벨을 확인할 수 있습니다
           </p>
 
-          {/* Optional test code input */}
+          {/* Test code input */}
           <div className="mt-6 w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-border-subtle bg-bg-cream">
             <Hash className="w-5 h-5 text-text-tertiary flex-shrink-0" />
             <input
               type="text"
               placeholder="테스트 코드 입력"
-              className="flex-1 bg-transparent text-text-primary placeholder:text-text-tertiary outline-none text-sm font-display"
-              disabled
+              value={testCode}
+              onChange={(e) => handleCodeChange(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleStart()}
+              className="flex-1 bg-transparent text-text-primary placeholder:text-text-tertiary outline-none text-sm font-display tracking-[0.15em] font-semibold"
+              maxLength={6}
             />
           </div>
         </div>
 
         {/* Start button */}
         <button
-          onClick={() => navigate('/test/start')}
+          onClick={handleStart}
           className="mt-6 w-full py-4 rounded-xl text-white font-display font-semibold text-base shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98]"
           style={{ background: 'linear-gradient(135deg, #4F46E5, #7C3AED)' }}
         >

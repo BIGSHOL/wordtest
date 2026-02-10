@@ -10,8 +10,10 @@ from app.schemas.stats import (
     LevelDistribution,
     RecentTest,
     ScoreTrend,
+    TestHistoryItem,
+    TestHistoryResponse,
 )
-from app.core.deps import CurrentTeacher
+from app.core.deps import CurrentTeacher, CurrentUser
 from app.models.user import User
 from app.models.word import Word
 from app.models.test_session import TestSession
@@ -184,3 +186,47 @@ async def get_dashboard_stats(
         weekly_test_count=weekly_test_count,
         score_trend=score_trend,
     )
+
+
+@router.get("/student/{student_id}/history", response_model=TestHistoryResponse)
+async def get_student_history(
+    student_id: str,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Get test history for a student (for charts)."""
+    query = (
+        select(TestSession)
+        .where(
+            and_(
+                TestSession.student_id == student_id,
+                TestSession.completed_at.isnot(None),
+            )
+        )
+        .order_by(TestSession.started_at.desc())
+        .limit(10)
+    )
+    result = await db.execute(query)
+    sessions = list(result.scalars().all())
+    sessions.reverse()  # oldest first for chart display
+
+    history = []
+    for s in sessions:
+        accuracy = round((s.correct_count / s.total_questions) * 100) if s.total_questions > 0 else 0
+        test_date = s.started_at.strftime("%m/%d") if s.started_at else ""
+        duration = None
+        if s.completed_at and s.started_at:
+            duration = int((s.completed_at - s.started_at).total_seconds())
+        history.append(
+            TestHistoryItem(
+                test_date=test_date,
+                accuracy=accuracy,
+                determined_level=s.determined_level,
+                rank_name=s.rank_name,
+                correct_count=s.correct_count,
+                total_questions=s.total_questions,
+                duration_seconds=duration,
+            )
+        )
+
+    return TestHistoryResponse(history=history)

@@ -27,6 +27,8 @@ class User(Base):
     teacher_id: Mapped[Optional[str]] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+    school_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    grade: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
