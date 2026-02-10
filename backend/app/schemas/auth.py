@@ -1,5 +1,5 @@
 """Authentication schemas."""
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 
 class Token(BaseModel):
@@ -13,12 +13,12 @@ class TokenPayload(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: str  # Accepts email or username
+    username: str
     password: str
 
 
 class RegisterRequest(BaseModel):
-    email: EmailStr
+    username: str
     password: str
     name: str
 

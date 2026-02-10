@@ -34,7 +34,7 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
 
 async def create_user(db: AsyncSession, user_in: RegisterRequest) -> User:
     user = User(
-        email=user_in.email,
+        username=user_in.username,
         password_hash=get_password_hash(user_in.password),
         name=user_in.name,
         role="teacher",

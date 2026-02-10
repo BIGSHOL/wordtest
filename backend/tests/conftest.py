@@ -65,7 +65,7 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 async def teacher_user(db_session: AsyncSession) -> User:
     """Create a teacher user for testing."""
     user = User(
-        email="teacher@test.com",
+        username="teacher01",
         password_hash=get_password_hash("password123"),
         name="Test Teacher",
         role="teacher",

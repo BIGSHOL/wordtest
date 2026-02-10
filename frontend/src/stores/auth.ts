@@ -48,7 +48,7 @@ export const useAuthStore = create<AuthStore>()(
         try {
           await authService.register(data);
           // Auto-login after registration
-          await get().login({ email: data.email, password: data.password });
+          await get().login({ username: data.username, password: data.password });
         } catch (error: any) {
           const message = error.response?.data?.detail || 'Registration failed';
           set({ error: message });

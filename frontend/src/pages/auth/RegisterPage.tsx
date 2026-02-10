@@ -10,7 +10,7 @@ export function RegisterPage() {
   const { register, isLoading, error, clearError } = useAuthStore();
 
   const [formData, setFormData] = useState({
-    email: '',
+    username: '',
     password: '',
     confirmPassword: '',
     name: '',
@@ -35,7 +35,7 @@ export function RegisterPage() {
 
     try {
       await register({
-        email: formData.email,
+        username: formData.username,
         password: formData.password,
         name: formData.name,
       });
@@ -94,19 +94,19 @@ export function RegisterPage() {
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                아이디
               </label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
+                id="username"
+                name="username"
+                type="text"
+                autoComplete="username"
                 required
-                value={formData.email}
+                value={formData.username}
                 onChange={handleChange}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                placeholder="you@example.com"
+                placeholder="아이디"
               />
             </div>
 

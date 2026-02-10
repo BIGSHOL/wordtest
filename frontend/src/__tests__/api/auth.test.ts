@@ -13,7 +13,7 @@ describe('Auth API Service', () => {
   describe('login', () => {
     it('should return access token on successful login', async () => {
       const result = await authService.login({
-        email: 'teacher@test.com',
+        username: 'teacher01',
         password: 'password123',
       });
       expect(result.access_token).toBe('mock-access-token');
@@ -22,7 +22,7 @@ describe('Auth API Service', () => {
 
     it('should store token in localStorage', async () => {
       await authService.login({
-        email: 'teacher@test.com',
+        username: 'teacher01',
         password: 'password123',
       });
       expect(localStorage.getItem('access_token')).toBe('mock-access-token');
@@ -31,7 +31,7 @@ describe('Auth API Service', () => {
     it('should throw on invalid credentials', async () => {
       await expect(
         authService.login({
-          email: 'teacher@test.com',
+          username: 'teacher01',
           password: 'wrong',
         }),
       ).rejects.toThrow();
@@ -41,11 +41,11 @@ describe('Auth API Service', () => {
   describe('register', () => {
     it('should return new user on successful registration', async () => {
       const result = await authService.register({
-        email: 'new@test.com',
+        username: 'newteacher01',
         password: 'password123',
         name: 'New Teacher',
       });
-      expect(result.email).toBe('new@test.com');
+      expect(result.username).toBe('newteacher01');
       expect(result.name).toBe('New Teacher');
       expect(result.role).toBe('teacher');
     });
@@ -55,7 +55,7 @@ describe('Auth API Service', () => {
     it('should return current user when authenticated', async () => {
       authService.setToken('mock-access-token');
       const user = await authService.getCurrentUser();
-      expect(user.email).toBe('teacher@test.com');
+      expect(user.username).toBe('teacher01');
       expect(user.role).toBe('teacher');
     });
   });

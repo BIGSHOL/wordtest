@@ -2,8 +2,8 @@ import type { User } from '../../types/auth';
 
 export const mockTeacher: User = {
   id: 'teacher-001',
-  email: 'teacher@test.com',
-  username: null,
+  email: null,
+  username: 'teacher01',
   name: 'Test Teacher',
   role: 'teacher',
   teacher_id: null,

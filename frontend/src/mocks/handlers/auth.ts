@@ -7,7 +7,7 @@ export const authHandlers = [
   // POST /api/v1/auth/register
   http.post(`${BASE_URL}/api/v1/auth/register`, async ({ request }) => {
     const body = await request.json() as Record<string, string>;
-    if (!body.email || !body.password || !body.name) {
+    if (!body.username || !body.password || !body.name) {
       return HttpResponse.json(
         { detail: 'Validation error' },
         { status: 422 },
@@ -17,7 +17,7 @@ export const authHandlers = [
       {
         ...mockTeacher,
         id: 'new-teacher-001',
-        email: body.email,
+        username: body.username,
         name: body.name,
       },
       { status: 201 },
@@ -27,7 +27,7 @@ export const authHandlers = [
   // POST /api/v1/auth/login/json
   http.post(`${BASE_URL}/api/v1/auth/login/json`, async ({ request }) => {
     const body = await request.json() as Record<string, string>;
-    if (body.email === 'teacher@test.com' && body.password === 'password123') {
+    if (body.username === 'teacher01' && body.password === 'password123') {
       return HttpResponse.json({
         access_token: 'mock-access-token',
         refresh_token: 'mock-refresh-token',
@@ -35,7 +35,7 @@ export const authHandlers = [
       });
     }
     return HttpResponse.json(
-      { detail: 'Incorrect email or password' },
+      { detail: '아이디 또는 비밀번호가 틀렸습니다' },
       { status: 401 },
     );
   }),

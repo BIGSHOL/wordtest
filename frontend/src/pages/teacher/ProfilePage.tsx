@@ -160,8 +160,8 @@ export function ProfilePage() {
           ) : (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-500">Email</label>
-                <p className="mt-1 text-gray-900">{user.email}</p>
+                <label className="block text-sm font-medium text-gray-500">아이디</label>
+                <p className="mt-1 text-gray-900">{user.username}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-500">Name</label>

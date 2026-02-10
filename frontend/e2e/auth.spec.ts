@@ -10,7 +10,7 @@ test.describe('Authentication', () => {
     await page.goto('/register');
 
     await page.fill('#name', `E2E ${suffix}`);
-    await page.fill('#email', `e2e_${suffix}@test.com`);
+    await page.fill('#username', `e2e_${suffix}`);
     await page.fill('#password', 'Test1234!');
     await page.fill('#confirmPassword', 'Test1234!');
     await page.click('button[type="submit"]');
@@ -23,11 +23,11 @@ test.describe('Authentication', () => {
   test('teacher can login and logout', async ({ page }) => {
     // First register
     const suffix = unique();
-    const email = `e2e_${suffix}@test.com`;
+    const username = `e2e_${suffix}`;
     const password = 'Test1234!';
     await page.goto('/register');
     await page.fill('#name', `E2E ${suffix}`);
-    await page.fill('#email', email);
+    await page.fill('#username', username);
     await page.fill('#password', password);
     await page.fill('#confirmPassword', password);
     await page.click('button[type="submit"]');
@@ -38,24 +38,24 @@ test.describe('Authentication', () => {
     await expect(page).toHaveURL(/\/login/);
 
     // Login again
-    await loginViaUI(page, email, password);
+    await loginViaUI(page, username, password);
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 });
   });
 
   test('student can login with username', async ({ page }) => {
     // Setup via API: register teacher, create student
     const suffix = unique();
-    const teacherEmail = `e2e_t_${suffix}@test.com`;
+    const teacherUsername = `e2e_t_${suffix}`;
     const teacherPw = 'Test1234!';
 
     // Register teacher via API
     await page.request.post('http://localhost:8000/api/v1/auth/register', {
-      data: { email: teacherEmail, password: teacherPw, name: `T ${suffix}` },
+      data: { username: teacherUsername, password: teacherPw, name: `T ${suffix}` },
     });
 
     // Login teacher to get token
     const loginRes = await page.request.post('http://localhost:8000/api/v1/auth/login/json', {
-      data: { email: teacherEmail, password: teacherPw },
+      data: { username: teacherUsername, password: teacherPw },
     });
     const { access_token } = await loginRes.json();
 

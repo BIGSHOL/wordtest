@@ -7,7 +7,7 @@ from app.db.session import get_db
 from app.schemas.auth import Token, LoginRequest, RegisterRequest, RefreshRequest, PasswordChangeRequest
 from app.schemas.user import UserResponse
 from app.services.auth import (
-    authenticate_user, create_user, get_user_by_email, update_password,
+    authenticate_user, create_user, get_user_by_username, update_password,
     create_auth_token, validate_refresh_token, revoke_refresh_token,
 )
 from app.core.security import create_access_token, verify_password
@@ -22,11 +22,11 @@ async def register(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Register a new user."""
-    existing_user = await get_user_by_email(db, user_in.email)
+    existing_user = await get_user_by_username(db, user_in.username)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+            detail="이미 사용 중인 아이디입니다"
         )
 
     user = await create_user(db, user_in)
@@ -43,7 +43,7 @@ async def login(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="아이디 또는 비밀번호가 틀렸습니다",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -58,11 +58,11 @@ async def login_json(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Login with JSON body and get access token + refresh token."""
-    user = await authenticate_user(db, login_data.email, login_data.password)
+    user = await authenticate_user(db, login_data.username, login_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="아이디 또는 비밀번호가 틀렸습니다",
         )
 
     access_token = create_access_token(subject=user.id)
