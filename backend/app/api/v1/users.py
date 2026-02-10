@@ -37,7 +37,7 @@ async def delete_current_user(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Delete current user's account (soft delete by deactivating)."""
-    current_user.is_active = False
+    """Delete current user's account."""
+    await db.delete(current_user)
     await db.commit()
     return None

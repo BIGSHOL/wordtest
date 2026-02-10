@@ -1,13 +1,17 @@
 /**
  * Authentication type definitions.
+ * Synced with contracts/types.ts and contracts/auth.contract.ts
  */
 
 export interface User {
   id: string;
-  email: string;
-  name: string | null;
-  is_active: boolean;
+  email: string | null;
+  username: string | null;
+  name: string;
+  role: 'teacher' | 'student';
+  teacher_id: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export interface LoginRequest {
@@ -18,12 +22,16 @@ export interface LoginRequest {
 export interface RegisterRequest {
   email: string;
   password: string;
-  name?: string;
+  name: string;
 }
 
 export interface AuthResponse {
   access_token: string;
   token_type: string;
+}
+
+export interface RefreshRequest {
+  refresh_token: string;
 }
 
 export interface PasswordChangeRequest {

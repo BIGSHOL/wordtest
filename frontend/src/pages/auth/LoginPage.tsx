@@ -3,7 +3,7 @@
  */
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../stores/auth';
+import { useAuthStore } from '../../stores/auth';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ export function LoginPage() {
     password: '',
   });
 
-  const from = (location.state as any)?.from?.pathname || '/';
+  const from = (location.state as any)?.from?.pathname;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +23,10 @@ export function LoginPage() {
 
     try {
       await login(formData);
-      navigate(from, { replace: true });
+      // Redirect based on role if no specific 'from' path
+      const user = useAuthStore.getState().user;
+      const target = from || (user?.role === 'student' ? '/student' : '/dashboard');
+      navigate(target, { replace: true });
     } catch {
       // Error is handled by store
     }
@@ -66,13 +69,13 @@ export function LoginPage() {
               <input
                 id="email"
                 name="email"
-                type="email"
-                autoComplete="email"
+                type="text"
+                autoComplete="username"
                 required
                 value={formData.email}
                 onChange={handleChange}
                 className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
+                placeholder="이메일 또는 아이디"
               />
             </div>
             <div>

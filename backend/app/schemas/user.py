@@ -4,24 +4,13 @@ from typing import Optional
 from pydantic import BaseModel, EmailStr
 
 
-class UserBase(BaseModel):
-    email: EmailStr
-    nickname: str
-    profile_image: Optional[str] = None
-
-
-class UserCreate(UserBase):
-    password: str
-
-
-class UserUpdate(BaseModel):
-    nickname: Optional[str] = None
-    profile_image: Optional[str] = None
-
-
-class UserResponse(UserBase):
+class UserResponse(BaseModel):
     id: str
-    is_active: bool
+    email: Optional[str] = None
+    username: Optional[str] = None
+    name: str
+    role: str
+    teacher_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -29,5 +18,5 @@ class UserResponse(UserBase):
         from_attributes = True
 
 
-class UserInDB(UserResponse):
-    hashed_password: str
+class UserUpdate(BaseModel):
+    name: Optional[str] = None

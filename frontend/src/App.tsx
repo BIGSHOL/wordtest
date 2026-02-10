@@ -1,35 +1,91 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { LoginPage } from './pages/auth/LoginPage';
+import { RegisterPage } from './pages/auth/RegisterPage';
+import { ProfilePage } from './pages/teacher/ProfilePage';
+import { DashboardPage } from './pages/teacher/DashboardPage';
+import { StudentManagePage } from './pages/teacher/StudentManagePage';
+import { StudentMainPage } from './pages/student/MainPage';
+import { TestPage } from './pages/student/TestPage';
+import { ResultPage } from './pages/student/ResultPage';
+import { StudentResultPage } from './pages/teacher/StudentResultPage';
+import { RouteGuard } from './components/auth/RouteGuard';
+import './index.css';
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <BrowserRouter>
+      <div className="min-h-screen bg-background">
+        <Routes>
+          {/* Auth */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+
+          {/* Teacher */}
+          <Route
+            path="/dashboard"
+            element={
+              <RouteGuard roles={['teacher']}>
+                <DashboardPage />
+              </RouteGuard>
+            }
+          />
+          <Route
+            path="/students"
+            element={
+              <RouteGuard roles={['teacher']}>
+                <StudentManagePage />
+              </RouteGuard>
+            }
+          />
+          <Route
+            path="/students/:studentId/results"
+            element={
+              <RouteGuard roles={['teacher']}>
+                <StudentResultPage />
+              </RouteGuard>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <RouteGuard>
+                <ProfilePage />
+              </RouteGuard>
+            }
+          />
+
+          {/* Student */}
+          <Route
+            path="/student"
+            element={
+              <RouteGuard roles={['student']}>
+                <StudentMainPage />
+              </RouteGuard>
+            }
+          />
+          <Route
+            path="/test"
+            element={
+              <RouteGuard roles={['student']}>
+                <TestPage />
+              </RouteGuard>
+            }
+          />
+          <Route
+            path="/result/:testId"
+            element={
+              <RouteGuard roles={['student']}>
+                <ResultPage />
+              </RouteGuard>
+            }
+          />
+
+          {/* Default redirect */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+        </Routes>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;

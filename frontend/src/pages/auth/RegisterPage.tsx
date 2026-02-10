@@ -3,7 +3,7 @@
  */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/auth';
+import { useAuthStore } from '../../stores/auth';
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -37,9 +37,9 @@ export function RegisterPage() {
       await register({
         email: formData.email,
         password: formData.password,
-        name: formData.name || undefined,
+        name: formData.name,
       });
-      navigate('/', { replace: true });
+      navigate('/dashboard', { replace: true });
     } catch {
       // Error is handled by store
     }

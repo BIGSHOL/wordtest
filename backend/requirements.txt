@@ -9,3 +9,12 @@ alembic
 pgvector
 python-jose[cryptography]
 passlib[bcrypt]
+bcrypt<5
+email-validator
+python-multipart
+xlrd
+pytest
+pytest-asyncio
+httpx
+factory-boy
+aiosqlite

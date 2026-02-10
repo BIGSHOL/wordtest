@@ -3,8 +3,8 @@
  */
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/auth';
-import authService from '../services/auth';
+import { useAuthStore } from '../../stores/auth';
+import authService from '../../services/auth';
 
 export function ProfilePage() {
   const navigate = useNavigate();

@@ -1,10 +1,12 @@
-"""User model for authentication."""
+"""User model - FEAT-0: 사용자 관리."""
+import uuid
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Boolean, DateTime
-from sqlalchemy.orm import Mapped, mapped_column
+
+from sqlalchemy import String, DateTime, ForeignKey, Index
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.db.base import Base
-import uuid
 
 
 class User(Base):
@@ -13,15 +15,34 @@ class User(Base):
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    nickname: Mapped[str] = mapped_column(String(50), nullable=False)
-    profile_image: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    is_superuser: Mapped[bool] = mapped_column(Boolean, default=False)
+    email: Mapped[Optional[str]] = mapped_column(
+        String(255), unique=True, nullable=True
+    )
+    username: Mapped[Optional[str]] = mapped_column(
+        String(50), unique=True, nullable=True
+    )
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    name: Mapped[str] = mapped_column(String(50), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), nullable=False)  # teacher / student
+    teacher_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+    # Relationships
+    teacher: Mapped[Optional["User"]] = relationship(
+        "User", remote_side=[id], back_populates="students"
+    )
+    students: Mapped[list["User"]] = relationship(
+        "User", back_populates="teacher"
+    )
+
+    __table_args__ = (
+        Index("idx_user_teacher_id", "teacher_id"),
+        Index("idx_user_role", "role"),
     )

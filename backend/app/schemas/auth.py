@@ -12,14 +12,18 @@ class TokenPayload(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str  # Accepts email or username
     password: str
 
 
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
-    nickname: str
+    name: str
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
 
 
 class PasswordChangeRequest(BaseModel):

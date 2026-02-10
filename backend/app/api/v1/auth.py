@@ -4,10 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
-from app.schemas.auth import Token, LoginRequest, RegisterRequest, PasswordChangeRequest
+from jose import jwt, JWTError
+from app.schemas.auth import Token, LoginRequest, RegisterRequest, RefreshRequest, PasswordChangeRequest
 from app.schemas.user import UserResponse
 from app.services.auth import authenticate_user, create_user, get_user_by_email, update_password
-from app.core.security import create_access_token, verify_password
+from app.core.security import create_access_token, verify_password, ALGORITHM
+from app.core.config import settings
 from app.core.deps import CurrentUser
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -65,6 +67,43 @@ async def login_json(
     return Token(access_token=access_token)
 
 
+@router.post("/refresh", response_model=Token)
+async def refresh_token(
+    refresh_data: RefreshRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Refresh access token using a refresh token."""
+    try:
+        payload = jwt.decode(
+            refresh_data.refresh_token, settings.SECRET_KEY, algorithms=[ALGORITHM]
+        )
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid refresh token",
+            )
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token",
+        )
+
+    from sqlalchemy import select
+    from app.models.user import User
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+
+    access_token = create_access_token(subject=user.id)
+    return Token(access_token=access_token)
+
+
 @router.post("/logout")
 async def logout(current_user: CurrentUser):
     """Logout current user.
@@ -82,7 +121,7 @@ async def change_password(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Change current user's password."""
-    if not verify_password(password_data.current_password, current_user.hashed_password):
+    if not verify_password(password_data.current_password, current_user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Incorrect current password"

@@ -18,7 +18,6 @@ async def get_current_user(
     db: Annotated[AsyncSession, Depends(get_db)],
     token: Annotated[str, Depends(oauth2_scheme)],
 ) -> User:
-    """Get current authenticated user from JWT token."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -39,13 +38,25 @@ async def get_current_user(
 
     if user is None:
         raise credentials_exception
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user"
-        )
 
     return user
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def require_role(*roles: str):
+    """Dependency that checks user has one of the required roles."""
+
+    async def role_checker(current_user: CurrentUser) -> User:
+        if current_user.role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+        return current_user
+
+    return role_checker
+
+
+CurrentTeacher = Annotated[User, Depends(require_role("teacher"))]

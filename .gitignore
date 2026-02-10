@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 backend/venv/
+backend/.venv/
 __pycache__/
 *.pyc
 
@@ -28,6 +29,9 @@ docker-compose.override.yml
 
 # Alembic
 alembic/versions/*.pyc
+
+# Test results
+frontend/test-results/
 
 # Claude
 .claude/settings.local.json
