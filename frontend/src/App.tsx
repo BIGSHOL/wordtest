@@ -15,6 +15,7 @@ function lazyRetry<T extends { default: React.ComponentType }>(
       if (!reloaded) {
         sessionStorage.setItem('chunk_reload', '1');
         window.location.reload();
+        return new Promise<T>(() => {}); // hang until page reloads
       }
       sessionStorage.removeItem('chunk_reload');
       return factory();
