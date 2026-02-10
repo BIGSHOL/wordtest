@@ -406,7 +406,7 @@ function WrongAnalysis({ answers }: { answers: AnswerDetail[] }) {
           </span>
           <span className="flex-1 text-xs font-semibold text-text-tertiary">학생 답변</span>
         </div>
-        {wrong.map((a, i) => (
+        {wrong.map((a) => (
           <div
             key={a.question_order}
             className="flex items-center h-12 px-6 border-b border-border-subtle last:border-b-0"
@@ -518,7 +518,7 @@ export function StudentResultPage() {
   const [selectedResult, setSelectedResult] = useState<TestResultResponse | null>(null);
   const [history, setHistory] = useState<TestHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingResult, setIsLoadingResult] = useState(false);
+  const [, setIsLoadingResult] = useState(false);
 
   useEffect(() => {
     if (!studentId) return;
