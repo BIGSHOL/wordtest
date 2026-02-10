@@ -5,6 +5,7 @@ import api from './api';
 import type { AuthResponse, LoginRequest, RegisterRequest, User, PasswordChangeRequest } from '../types/auth';
 
 const TOKEN_KEY = 'access_token';
+const REFRESH_TOKEN_KEY = 'refresh_token';
 
 export const authService = {
   /**
@@ -16,24 +17,50 @@ export const authService = {
   },
 
   /**
-   * Login and get access token.
+   * Login and get access + refresh tokens.
    */
   async login(data: LoginRequest): Promise<AuthResponse> {
     const response = await api.post<AuthResponse>('/api/v1/auth/login/json', data);
     if (response.data.access_token) {
       this.setToken(response.data.access_token);
     }
+    if (response.data.refresh_token) {
+      this.setRefreshToken(response.data.refresh_token);
+    }
     return response.data;
   },
 
   /**
-   * Logout current user.
+   * Logout current user and revoke refresh token.
    */
   async logout(): Promise<void> {
     try {
-      await api.post('/api/v1/auth/logout');
+      const refreshToken = this.getRefreshToken();
+      await api.post('/api/v1/auth/logout', refreshToken ? { refresh_token: refreshToken } : undefined);
     } finally {
       this.removeToken();
+      this.removeRefreshToken();
+    }
+  },
+
+  /**
+   * Refresh access token using refresh token.
+   */
+  async refreshAccessToken(): Promise<string | null> {
+    const refreshToken = this.getRefreshToken();
+    if (!refreshToken) return null;
+
+    try {
+      const response = await api.post<AuthResponse>('/api/v1/auth/refresh', {
+        refresh_token: refreshToken,
+      });
+      this.setToken(response.data.access_token);
+      this.setRefreshToken(response.data.refresh_token);
+      return response.data.access_token;
+    } catch {
+      this.removeToken();
+      this.removeRefreshToken();
+      return null;
     }
   },
 
@@ -66,32 +93,33 @@ export const authService = {
   async deleteAccount(): Promise<void> {
     await api.delete('/api/v1/users/me');
     this.removeToken();
+    this.removeRefreshToken();
   },
 
-  /**
-   * Get stored token.
-   */
   getToken(): string | null {
     return localStorage.getItem(TOKEN_KEY);
   },
 
-  /**
-   * Store token.
-   */
   setToken(token: string): void {
     localStorage.setItem(TOKEN_KEY, token);
   },
 
-  /**
-   * Remove stored token.
-   */
   removeToken(): void {
     localStorage.removeItem(TOKEN_KEY);
   },
 
-  /**
-   * Check if user is authenticated.
-   */
+  getRefreshToken(): string | null {
+    return localStorage.getItem(REFRESH_TOKEN_KEY);
+  },
+
+  setRefreshToken(token: string): void {
+    localStorage.setItem(REFRESH_TOKEN_KEY, token);
+  },
+
+  removeRefreshToken(): void {
+    localStorage.removeItem(REFRESH_TOKEN_KEY);
+  },
+
   isAuthenticated(): boolean {
     return !!this.getToken();
   },

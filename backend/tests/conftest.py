@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 
 from app.db.base import Base
 from app.db.session import get_db
-from app.core.security import create_access_token, get_password_hash
+from app.core.security import create_access_token, create_refresh_token, get_password_hash
 from app.main import app
 from app.models.user import User
 from app.models.word import Word
@@ -80,6 +80,21 @@ async def teacher_user(db_session: AsyncSession) -> User:
 async def teacher_token(teacher_user: User) -> str:
     """Create a JWT token for the teacher."""
     return create_access_token(subject=teacher_user.id)
+
+
+@pytest_asyncio.fixture
+async def teacher_refresh_token(db_session: AsyncSession, teacher_user: User) -> str:
+    """Create a DB-backed refresh token for the teacher."""
+    from datetime import datetime, timedelta
+    token = create_refresh_token(subject=teacher_user.id)
+    auth_token = AuthToken(
+        user_id=teacher_user.id,
+        refresh_token=token,
+        expires_at=datetime.utcnow() + timedelta(days=7),
+    )
+    db_session.add(auth_token)
+    await db_session.commit()
+    return token
 
 
 @pytest_asyncio.fixture

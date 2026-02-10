@@ -30,11 +30,28 @@ export const authHandlers = [
     if (body.email === 'teacher@test.com' && body.password === 'password123') {
       return HttpResponse.json({
         access_token: 'mock-access-token',
+        refresh_token: 'mock-refresh-token',
         token_type: 'bearer',
       });
     }
     return HttpResponse.json(
       { detail: 'Incorrect email or password' },
+      { status: 401 },
+    );
+  }),
+
+  // POST /api/v1/auth/refresh
+  http.post(`${BASE_URL}/api/v1/auth/refresh`, async ({ request }) => {
+    const body = await request.json() as Record<string, string>;
+    if (body.refresh_token === 'mock-refresh-token') {
+      return HttpResponse.json({
+        access_token: 'mock-refreshed-access-token',
+        refresh_token: 'mock-refreshed-refresh-token',
+        token_type: 'bearer',
+      });
+    }
+    return HttpResponse.json(
+      { detail: 'Invalid refresh token' },
       { status: 401 },
     );
   }),

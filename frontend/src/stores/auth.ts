@@ -64,6 +64,7 @@ export const useAuthStore = create<AuthStore>()(
           await authService.logout();
         } finally {
           set({ user: null, token: null, isLoading: false });
+          authService.removeRefreshToken();
         }
       },
 

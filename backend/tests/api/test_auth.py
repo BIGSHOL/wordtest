@@ -54,6 +54,7 @@ class TestLogin:
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
+        assert "refresh_token" in data
         assert data["token_type"] == "bearer"
 
     async def test_login_wrong_password(self, client, teacher_user):
@@ -77,14 +78,16 @@ class TestLogin:
 class TestRefreshToken:
     """POST /api/v1/auth/refresh - token refresh."""
 
-    async def test_refresh_token_success(self, client, teacher_user, teacher_token):
-        """Valid refresh token returns new access token."""
+    async def test_refresh_token_success(self, client, teacher_user, teacher_refresh_token):
+        """Valid refresh token returns new access + refresh token (rotation)."""
         response = await client.post("/api/v1/auth/refresh", json={
-            "refresh_token": teacher_token,
+            "refresh_token": teacher_refresh_token,
         })
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
+        assert "refresh_token" in data
+        assert data["refresh_token"] != teacher_refresh_token  # rotated
         assert data["token_type"] == "bearer"
 
 
