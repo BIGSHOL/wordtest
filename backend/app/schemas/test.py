@@ -22,6 +22,7 @@ class SubmitAnswerResponse(BaseModel):
 class TestQuestionWord(BaseModel):
     id: str
     english: str
+    example_en: Optional[str] = None
 
 
 class TestQuestion(BaseModel):

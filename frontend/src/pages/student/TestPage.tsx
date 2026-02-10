@@ -21,19 +21,17 @@ export function TestPage() {
   const navigate = useNavigate();
   const timerSoundPlayed = useRef(false);
   const twoSoundPlayed = useRef(false);
-  const {
-    session,
-    questions,
-    currentIndex,
-    selectedAnswer,
-    answerResult,
-    isLoading,
-    isSubmitting,
-    error,
-    selectAnswer,
-    submitAnswer,
-    nextQuestion,
-  } = useTestStore();
+  const session = useTestStore((s) => s.session);
+  const questions = useTestStore((s) => s.questions);
+  const currentIndex = useTestStore((s) => s.currentIndex);
+  const selectedAnswer = useTestStore((s) => s.selectedAnswer);
+  const answerResult = useTestStore((s) => s.answerResult);
+  const isLoading = useTestStore((s) => s.isLoading);
+  const isSubmitting = useTestStore((s) => s.isSubmitting);
+  const error = useTestStore((s) => s.error);
+  const selectAnswer = useTestStore((s) => s.selectAnswer);
+  const submitAnswer = useTestStore((s) => s.submitAnswer);
+  const nextQuestion = useTestStore((s) => s.nextQuestion);
 
   const handleTimeout = () => {
     if (!answerResult && !isSubmitting) {
@@ -175,11 +173,10 @@ export function TestPage() {
         )}
 
         {/* Word Card or Sentence Card */}
-        {isSentenceQuestion ? (
+        {isSentenceQuestion && currentQuestion.word.example_en ? (
           <SentenceCard
-            sentenceBefore="The meaning of '"
-            sentenceAfter="' is:"
-            blankText={currentQuestion.word.english}
+            sentence={currentQuestion.word.example_en}
+            word={currentQuestion.word.english}
           />
         ) : (
           <WordCard word={currentQuestion.word.english} />

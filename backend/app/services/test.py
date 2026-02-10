@@ -230,5 +230,6 @@ async def list_tests_by_student(
         select(TestSession)
         .where(TestSession.student_id == student_id)
         .order_by(TestSession.started_at.desc())
+        .limit(50)
     )
     return list(result.scalars().all())

@@ -36,7 +36,7 @@ class TestAnswer(Base):
     word: Mapped["Word"] = relationship("Word", lazy="selectin")
 
     __table_args__ = (
+        Index("idx_answer_session_word_order", "test_session_id", "word_id", "question_order"),
         Index("idx_answer_session_id", "test_session_id"),
         Index("idx_answer_word_id", "word_id"),
-        Index("idx_answer_is_correct", "is_correct"),
     )

@@ -68,7 +68,7 @@ async def start_test_endpoint(
         questions=[
             TestQuestion(
                 question_order=q["question_order"],
-                word=TestQuestionWord(id=q["word"].id, english=q["word"].english),
+                word=TestQuestionWord(id=q["word"].id, english=q["word"].english, example_en=q["word"].example_en),
                 choices=q["choices"],
             )
             for q in questions

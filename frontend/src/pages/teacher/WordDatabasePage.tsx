@@ -31,6 +31,7 @@ export function WordDatabasePage() {
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [levelFilter, setLevelFilter] = useState<number | undefined>();
   const [bookFilter, setBookFilter] = useState<string>('');
   const [page, setPage] = useState(0);
@@ -52,7 +53,7 @@ export function WordDatabasePage() {
         skip: page * ITEMS_PER_PAGE,
         limit: ITEMS_PER_PAGE,
       };
-      if (search) params.search = search;
+      if (debouncedSearch) params.search = debouncedSearch;
       if (levelFilter) params.level = levelFilter;
       if (bookFilter) params.book_name = bookFilter;
 
@@ -66,9 +67,18 @@ export function WordDatabasePage() {
     }
   };
 
+  // Debounce search input (300ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   useEffect(() => {
     fetchWords();
-  }, [page, search, levelFilter, bookFilter]);
+  }, [page, debouncedSearch, levelFilter, bookFilter]);
 
   const handleOpenForm = (word?: Word) => {
     if (word) {
@@ -174,10 +184,7 @@ export function WordDatabasePage() {
               type="text"
               placeholder="영단어 또는 뜻 검색..."
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(0);
-              }}
+              onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 border border-border-subtle rounded-lg text-sm focus:outline-none focus:border-teal"
             />
           </div>

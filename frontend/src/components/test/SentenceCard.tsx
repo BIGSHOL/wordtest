@@ -1,17 +1,30 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { Volume2 } from 'lucide-react';
 import { speak } from '../../utils/tts';
 
 interface SentenceCardProps {
-  sentenceBefore: string;
-  sentenceAfter: string;
-  blankText?: string;
+  sentence: string;
+  word: string;
 }
 
-export const SentenceCard = memo(function SentenceCard({ sentenceBefore, sentenceAfter, blankText }: SentenceCardProps) {
+function splitSentence(sentence: string, word: string): { before: string; after: string } {
+  const regex = new RegExp(`\\b(${word})\\b`, 'i');
+  const match = sentence.match(regex);
+  if (match && match.index !== undefined) {
+    return {
+      before: sentence.slice(0, match.index),
+      after: sentence.slice(match.index + match[0].length),
+    };
+  }
+  // Fallback: word not found literally in sentence
+  return { before: sentence + ' (', after: ')' };
+}
+
+export const SentenceCard = memo(function SentenceCard({ sentence, word }: SentenceCardProps) {
+  const { before, after } = useMemo(() => splitSentence(sentence, word), [sentence, word]);
+
   const handleSpeak = () => {
-    const text = sentenceBefore + (blankText || '___') + sentenceAfter;
-    speak(text);
+    speak(sentence);
   };
 
   return (
@@ -23,21 +36,21 @@ export const SentenceCard = memo(function SentenceCard({ sentenceBefore, sentenc
       }}
     >
       <p className="font-display text-sm font-medium text-text-tertiary">
-        빈칸에 알맞은 단어를 고르세요
+        빈칸에 알맞은 뜻을 고르세요
       </p>
       <div className="flex items-center justify-center flex-wrap w-full">
         <span className="font-word text-[22px] font-medium text-text-primary" style={{ lineHeight: 1.6 }}>
-          {sentenceBefore}
+          {before}
         </span>
         <span
-          className="inline-flex items-center justify-center h-9 min-w-[100px] rounded-lg bg-accent-indigo-light border-2 border-accent-indigo mx-1"
+          className="inline-flex items-center justify-center h-9 min-w-[80px] rounded-lg bg-accent-indigo-light border-2 border-accent-indigo mx-1"
         >
           <span className="font-word text-sm font-bold text-accent-indigo">
-            {blankText || '?'}
+            {word}
           </span>
         </span>
         <span className="font-word text-[22px] font-medium text-text-primary" style={{ lineHeight: 1.6 }}>
-          {sentenceAfter}
+          {after}
         </span>
       </div>
       <button

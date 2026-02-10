@@ -82,7 +82,7 @@ async def generate_questions(
     )
     if book_name:
         query = query.where(Word.book_name == book_name)
-    query = query.order_by(Word.level.asc(), Word.lesson.asc())
+    query = query.order_by(Word.level.asc(), Word.lesson.asc()).limit(1000)
 
     result = await db.execute(query)
     all_words = list(result.scalars().all())
