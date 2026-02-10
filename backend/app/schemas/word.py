@@ -17,3 +17,32 @@ class WordResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class CreateWordRequest(BaseModel):
+    english: str
+    korean: str
+    level: int
+    category: Optional[str] = None
+    book_name: Optional[str] = ""
+    lesson: Optional[str] = ""
+    part_of_speech: Optional[str] = None
+    example_en: Optional[str] = None
+    example_ko: Optional[str] = None
+
+
+class UpdateWordRequest(BaseModel):
+    english: Optional[str] = None
+    korean: Optional[str] = None
+    level: Optional[int] = None
+    category: Optional[str] = None
+    book_name: Optional[str] = None
+    lesson: Optional[str] = None
+    part_of_speech: Optional[str] = None
+    example_en: Optional[str] = None
+    example_ko: Optional[str] = None
+
+
+class WordListResponse(BaseModel):
+    words: list[WordResponse]
+    total: int

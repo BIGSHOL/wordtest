@@ -16,6 +16,31 @@ from app.schemas.test import (
 )
 from app.core.deps import CurrentUser
 from app.services.test import start_test, submit_answer, get_test_result, list_tests_by_student
+from app.services.level_engine import format_rank_label
+
+
+def _session_response(session) -> TestSessionResponse:
+    """Build a TestSessionResponse with rank_label from a TestSession ORM object."""
+    rank_label = None
+    if session.determined_level and session.determined_sublevel:
+        rank_label = format_rank_label(
+            session.determined_level, session.determined_sublevel
+        )
+    return TestSessionResponse(
+        id=session.id,
+        student_id=session.student_id,
+        test_type=session.test_type,
+        total_questions=session.total_questions,
+        correct_count=session.correct_count,
+        determined_level=session.determined_level,
+        determined_sublevel=session.determined_sublevel,
+        rank_name=session.rank_name,
+        rank_label=rank_label,
+        score=session.score,
+        test_config_id=session.test_config_id,
+        started_at=str(session.started_at),
+        completed_at=str(session.completed_at) if session.completed_at else None,
+    )
 
 router = APIRouter(prefix="/tests", tags=["tests"])
 
@@ -27,20 +52,18 @@ async def start_test_endpoint(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Start a new level test."""
-    session, questions = await start_test(db, current_user.id, test_in.test_type)
+    try:
+        session, questions = await start_test(
+            db, current_user.id, test_in.test_type, test_in.test_code
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
 
     return StartTestResponse(
-        test_session=TestSessionResponse(
-            id=session.id,
-            student_id=session.student_id,
-            test_type=session.test_type,
-            total_questions=session.total_questions,
-            correct_count=session.correct_count,
-            determined_level=session.determined_level,
-            score=session.score,
-            started_at=str(session.started_at),
-            completed_at=str(session.completed_at) if session.completed_at else None,
-        ),
+        test_session=_session_response(session),
         questions=[
             TestQuestion(
                 question_order=q["question_order"],
@@ -95,20 +118,8 @@ async def get_test_result_endpoint(
 
     session, answers = result
     return TestResultResponse(
-        test_session=TestSessionResponse(
-            id=session.id,
-            student_id=session.student_id,
-            test_type=session.test_type,
-            total_questions=session.total_questions,
-            correct_count=session.correct_count,
-            determined_level=session.determined_level,
-            score=session.score,
-            started_at=str(session.started_at),
-            completed_at=str(session.completed_at) if session.completed_at else None,
-        ),
-        answers=[
-            AnswerDetail(**a) for a in answers
-        ],
+        test_session=_session_response(session),
+        answers=[AnswerDetail(**a) for a in answers],
     )
 
 
@@ -123,18 +134,5 @@ async def list_tests_endpoint(
     sessions = await list_tests_by_student(db, target_student_id)
 
     return {
-        "tests": [
-            TestSessionResponse(
-                id=s.id,
-                student_id=s.student_id,
-                test_type=s.test_type,
-                total_questions=s.total_questions,
-                correct_count=s.correct_count,
-                determined_level=s.determined_level,
-                score=s.score,
-                started_at=str(s.started_at),
-                completed_at=str(s.completed_at) if s.completed_at else None,
-            )
-            for s in sessions
-        ]
+        "tests": [_session_response(s) for s in sessions]
     }

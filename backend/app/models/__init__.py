@@ -4,5 +4,6 @@ from app.models.word import Word
 from app.models.test_session import TestSession
 from app.models.test_answer import TestAnswer
 from app.models.auth_token import AuthToken
+from app.models.test_config import TestConfig
 
-__all__ = ["User", "Word", "TestSession", "TestAnswer", "AuthToken"]
+__all__ = ["User", "Word", "TestSession", "TestAnswer", "AuthToken", "TestConfig"]

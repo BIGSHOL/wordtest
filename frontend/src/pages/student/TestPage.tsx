@@ -7,6 +7,7 @@ import { QuizHeader } from '../../components/test/QuizHeader';
 import { GradientProgressBar } from '../../components/test/GradientProgressBar';
 import { TimerBar } from '../../components/test/TimerBar';
 import { WordCard } from '../../components/test/WordCard';
+import { SentenceCard } from '../../components/test/SentenceCard';
 import { ChoiceButton } from '../../components/test/ChoiceButton';
 import { FeedbackBanner } from '../../components/test/FeedbackBanner';
 import { useTestStore } from '../../stores/testStore';
@@ -42,8 +43,12 @@ export function TestPage() {
   const { secondsLeft, fraction, urgency, reset: resetTimer } = useTimer(TIMER_SECONDS, handleTimeout);
 
   useEffect(() => {
-    reset();
-    startTest('placement').catch(() => {});
+    // TestStartPage에서 이미 세션이 시작된 경우 재시작하지 않음
+    const { session: existingSession, questions: existingQuestions } = useTestStore.getState();
+    if (!existingSession || existingQuestions.length === 0) {
+      reset();
+      startTest('placement').catch(() => {});
+    }
     return () => reset();
   }, []);
 
@@ -56,6 +61,9 @@ export function TestPage() {
   const isLastQuestion = currentIndex >= questions.length - 1;
   const isFinished = answerResult && isLastQuestion;
   const currentLevel = session?.determined_level || 1;
+
+  // Every 5th question (5, 10, 15, 20) uses sentence format
+  const isSentenceQuestion = (currentIndex + 1) % 5 === 0;
 
   const handleChoiceClick = (choice: string) => {
     if (answerResult) return;
@@ -136,8 +144,16 @@ export function TestPage() {
           />
         )}
 
-        {/* Word Card */}
-        <WordCard word={currentQuestion.word.english} />
+        {/* Word Card or Sentence Card */}
+        {isSentenceQuestion ? (
+          <SentenceCard
+            sentenceBefore="The meaning of '"
+            sentenceAfter="' is:"
+            blankText={currentQuestion.word.english}
+          />
+        ) : (
+          <WordCard word={currentQuestion.word.english} />
+        )}
 
         {/* Choices */}
         <div className="flex flex-col gap-3 w-full">

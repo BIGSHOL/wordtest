@@ -16,6 +16,7 @@ from app.models.word import Word
 from app.models.test_session import TestSession
 from app.models.test_answer import TestAnswer
 from app.models.auth_token import AuthToken
+from app.models.test_config import TestConfig
 
 # SQLite for tests (in-memory)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"

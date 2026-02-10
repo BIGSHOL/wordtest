@@ -2,7 +2,8 @@
  * Student management page for teachers.
  */
 import { useEffect, useState } from 'react';
-import { Layout } from '../../components/layout/Layout';
+import { TeacherLayout } from '../../components/layout/TeacherLayout';
+import { Link } from 'react-router-dom';
 import type { User } from '../../types/auth';
 import { studentService } from '../../services/student';
 
@@ -73,13 +74,13 @@ export function StudentManagePage() {
   };
 
   return (
-    <Layout>
+    <TeacherLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-text-primary">학생 관리</h1>
+          <h1 className="text-xl font-bold font-display text-text-primary">학생 관리</h1>
           <button
             onClick={() => setShowAddForm(!showAddForm)}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-sm font-medium"
+            className="px-4 py-2 bg-teal text-white rounded-lg hover:bg-teal-dark transition-colors text-sm font-medium"
           >
             {showAddForm ? '취소' : '+ 학생 추가'}
           </button>
@@ -93,7 +94,7 @@ export function StudentManagePage() {
 
         {/* Add Form */}
         {showAddForm && (
-          <form onSubmit={handleAdd} className="bg-surface border border-[#E2E8F0] rounded-xl p-5 space-y-4">
+          <form onSubmit={handleAdd} className="bg-surface border border-border-subtle rounded-xl p-5 space-y-4">
             <h2 className="text-lg font-semibold text-text-primary">새 학생 등록</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <input
@@ -102,7 +103,7 @@ export function StudentManagePage() {
                 value={newStudent.username}
                 onChange={(e) => setNewStudent({ ...newStudent, username: e.target.value })}
                 required
-                className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="px-3 py-2 border border-border-subtle rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
               <input
                 type="password"
@@ -110,7 +111,7 @@ export function StudentManagePage() {
                 value={newStudent.password}
                 onChange={(e) => setNewStudent({ ...newStudent, password: e.target.value })}
                 required
-                className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="px-3 py-2 border border-border-subtle rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
               <input
                 type="text"
@@ -118,12 +119,12 @@ export function StudentManagePage() {
                 value={newStudent.name}
                 onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
                 required
-                className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                className="px-3 py-2 border border-border-subtle rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
             <button
               type="submit"
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm font-medium"
+              className="px-4 py-2 bg-teal text-white rounded-lg hover:bg-teal/90 text-sm font-medium"
             >
               등록
             </button>
@@ -131,7 +132,7 @@ export function StudentManagePage() {
         )}
 
         {/* Student List */}
-        <div className="bg-surface border border-[#E2E8F0] rounded-xl">
+        <div className="bg-surface border border-border-subtle rounded-xl">
           {isLoading ? (
             <div className="p-8 text-center text-text-secondary">로딩 중...</div>
           ) : students.length === 0 ? (
@@ -148,20 +149,20 @@ export function StudentManagePage() {
                           placeholder="새 이름"
                           value={editData.name}
                           onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                          className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          className="px-3 py-2 border border-border-subtle rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                         />
                         <input
                           type="password"
                           placeholder="새 비밀번호 (선택)"
                           value={editData.password}
                           onChange={(e) => setEditData({ ...editData, password: e.target.value })}
-                          className="px-3 py-2 border border-[#E2E8F0] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                          className="px-3 py-2 border border-border-subtle rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                         />
                       </div>
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleUpdate(student.id)}
-                          className="px-3 py-1.5 bg-primary text-white rounded-lg text-sm"
+                          className="px-3 py-1.5 bg-teal text-white rounded-lg text-sm"
                         >
                           저장
                         </button>
@@ -180,15 +181,21 @@ export function StudentManagePage() {
                         <p className="text-sm text-text-secondary">@{student.username}</p>
                       </div>
                       <div className="flex gap-2">
+                        <Link
+                          to={`/students/${student.id}/results`}
+                          className="px-3 py-1.5 text-sm text-teal bg-teal-light rounded-lg hover:bg-teal-light/80"
+                        >
+                          결과
+                        </Link>
                         <button
                           onClick={() => { setEditingId(student.id); setEditData({ name: student.name, password: '' }); }}
-                          className="px-3 py-1.5 text-sm text-primary bg-[#EEF2FF] rounded-lg hover:bg-[#E0E7FF]"
+                          className="px-3 py-1.5 text-sm text-text-secondary bg-bg-muted rounded-lg hover:bg-bg-muted/80"
                         >
                           수정
                         </button>
                         <button
                           onClick={() => handleDelete(student.id, student.name)}
-                          className="px-3 py-1.5 text-sm text-feedback-error bg-feedback-error/10 rounded-lg hover:bg-feedback-error/20"
+                          className="px-3 py-1.5 text-sm text-wrong bg-wrong-light rounded-lg hover:bg-wrong-light/80"
                         >
                           삭제
                         </button>
@@ -201,7 +208,7 @@ export function StudentManagePage() {
           )}
         </div>
       </div>
-    </Layout>
+    </TeacherLayout>
   );
 }
 

@@ -4,6 +4,9 @@ import { RegisterPage } from './pages/auth/RegisterPage';
 import { ProfilePage } from './pages/teacher/ProfilePage';
 import { DashboardPage } from './pages/teacher/DashboardPage';
 import { StudentManagePage } from './pages/teacher/StudentManagePage';
+import { WordDatabasePage } from './pages/teacher/WordDatabasePage';
+import { TestSettingsPage } from './pages/teacher/TestSettingsPage';
+import { StatisticsPage } from './pages/teacher/StatisticsPage';
 import { StudentMainPage } from './pages/student/MainPage';
 import { TestStartPage } from './pages/student/TestStartPage';
 import { TestPage } from './pages/student/TestPage';
@@ -44,6 +47,30 @@ function App() {
             element={
               <RouteGuard roles={['teacher']}>
                 <StudentResultPage />
+              </RouteGuard>
+            }
+          />
+          <Route
+            path="/words"
+            element={
+              <RouteGuard roles={['teacher']}>
+                <WordDatabasePage />
+              </RouteGuard>
+            }
+          />
+          <Route
+            path="/test-settings"
+            element={
+              <RouteGuard roles={['teacher']}>
+                <TestSettingsPage />
+              </RouteGuard>
+            }
+          />
+          <Route
+            path="/statistics"
+            element={
+              <RouteGuard roles={['teacher']}>
+                <StatisticsPage />
               </RouteGuard>
             }
           />

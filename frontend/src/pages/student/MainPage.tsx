@@ -1,38 +1,68 @@
 /**
- * Student main page.
+ * Student main page - Empty state with Pencil design.
  */
 import { useNavigate } from 'react-router-dom';
-import { Layout } from '../../components/layout/Layout';
 import { useAuthStore } from '../../stores/auth';
+import { GraduationCap, BookOpen, Hash } from 'lucide-react';
 
 export function StudentMainPage() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-text-primary">
-          안녕하세요, {user?.name}님!
-        </h1>
-
-        <div className="bg-surface border border-[#E2E8F0] rounded-xl p-6 text-center space-y-4">
-          <div className="text-5xl">📝</div>
-          <h2 className="text-xl font-semibold text-text-primary">
-            영어 단어 레벨 테스트
-          </h2>
-          <p className="text-text-secondary">
-            나의 영어 단어 실력을 테스트해보세요!
-          </p>
-          <button
-            onClick={() => navigate('/test')}
-            className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary/90 transition-colors font-medium"
+    <div className="min-h-screen bg-bg-cream flex flex-col">
+      <div className="flex-1 flex flex-col items-center px-6 md:max-w-[480px] md:mx-auto w-full">
+        {/* Top section */}
+        <div className="pt-16 flex flex-col items-center text-center">
+          <div
+            className="w-16 h-16 rounded-2xl flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #4F46E5, #7C3AED)' }}
           >
-            테스트 시작
-          </button>
+            <GraduationCap className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="mt-4 text-xl font-bold font-display text-text-primary">
+            영단어 레벨테스트
+          </h1>
+          <p className="mt-1 text-sm text-text-secondary">
+            안녕하세요, {user?.name}님!
+          </p>
         </div>
+
+        {/* Main card */}
+        <div className="mt-8 w-full bg-surface rounded-2xl border border-border-subtle p-8 flex flex-col items-center text-center">
+          <div className="w-20 h-20 rounded-full bg-bg-muted flex items-center justify-center">
+            <BookOpen className="w-10 h-10 text-text-tertiary" />
+          </div>
+          <h2 className="mt-4 text-lg font-semibold text-text-primary">
+            테스트를 시작해보세요
+          </h2>
+          <p className="mt-2 text-sm text-text-secondary leading-relaxed">
+            선생님이 배정한 테스트를 진행하고<br />
+            나의 영어 어휘력 레벨을 확인할 수 있습니다
+          </p>
+
+          {/* Optional test code input */}
+          <div className="mt-6 w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-border-subtle bg-bg-cream">
+            <Hash className="w-5 h-5 text-text-tertiary flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="테스트 코드 입력"
+              className="flex-1 bg-transparent text-text-primary placeholder:text-text-tertiary outline-none text-sm font-display"
+              disabled
+            />
+          </div>
+        </div>
+
+        {/* Start button */}
+        <button
+          onClick={() => navigate('/test/start')}
+          className="mt-6 w-full py-4 rounded-xl text-white font-display font-semibold text-base shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98]"
+          style={{ background: 'linear-gradient(135deg, #4F46E5, #7C3AED)' }}
+        >
+          레벨 테스트 시작
+        </button>
       </div>
-    </Layout>
+    </div>
   );
 }
 

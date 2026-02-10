@@ -25,7 +25,7 @@ interface TestStore {
   isSubmitting: boolean;
   error: string | null;
 
-  startTest: (testType: 'placement' | 'periodic') => Promise<void>;
+  startTest: (testType: 'placement' | 'periodic', testCode?: string) => Promise<void>;
   selectAnswer: (answer: string) => void;
   submitAnswer: () => Promise<void>;
   nextQuestion: () => void;
@@ -43,10 +43,12 @@ export const useTestStore = create<TestStore>()((set, get) => ({
   isSubmitting: false,
   error: null,
 
-  startTest: async (testType) => {
+  startTest: async (testType, testCode?) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await testService.startTest({ test_type: testType });
+      const req: { test_type: typeof testType; test_code?: string } = { test_type: testType };
+      if (testCode) req.test_code = testCode;
+      const response = await testService.startTest(req);
       set({
         session: response.test_session,
         questions: response.questions,

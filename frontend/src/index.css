@@ -33,6 +33,11 @@
   --color-accent-indigo: #4F46E5;
   --color-accent-indigo-light: #EEF2FF;
 
+  /* Teacher Dashboard */
+  --color-teal: #2D9CAE;
+  --color-teal-light: #EBF8FA;
+  --color-teal-dark: #247F8E;
+
   /* Level Colors */
   --color-level-1: #86EFAC;
   --color-level-2: #22C55E;

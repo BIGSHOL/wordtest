@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 class StartTestRequest(BaseModel):
     test_type: str = "placement"  # placement / periodic
+    test_code: Optional[str] = None
 
 
 class SubmitAnswerRequest(BaseModel):
@@ -36,7 +37,11 @@ class TestSessionResponse(BaseModel):
     total_questions: int
     correct_count: int
     determined_level: Optional[int] = None
+    determined_sublevel: Optional[int] = None
+    rank_name: Optional[str] = None
+    rank_label: Optional[str] = None  # e.g. "Iron 1-5" or "Iron 1-MAX"
     score: Optional[int] = None
+    test_config_id: Optional[str] = None
     started_at: str
     completed_at: Optional[str] = None
 

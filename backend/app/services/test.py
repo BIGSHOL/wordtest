@@ -1,23 +1,51 @@
 """Test session service."""
 from datetime import datetime
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.models.test_session import TestSession
 from app.models.test_answer import TestAnswer
 from app.models.word import Word
-from app.services.level_engine import generate_questions, determine_level, calculate_score
+from app.services.level_engine import (
+    generate_questions, determine_level, calculate_score,
+    RANK_NAMES, format_rank_label,
+)
+from app.services.test_config import get_config_by_code
 
 
 async def start_test(
-    db: AsyncSession, student_id: str, test_type: str = "placement"
+    db: AsyncSession,
+    student_id: str,
+    test_type: str = "placement",
+    test_code: Optional[str] = None,
 ) -> tuple[TestSession, list[dict]]:
-    """Start a new test session and generate questions."""
-    questions = await generate_questions(db)
+    """Start a new test session and generate questions.
+
+    If test_code is provided, looks up the TestConfig and uses its settings.
+    """
+    test_config_id = None
+
+    if test_code:
+        config = await get_config_by_code(db, test_code)
+        if not config:
+            raise ValueError("Invalid or inactive test code")
+        questions = await generate_questions(
+            db,
+            num_questions=config.question_count,
+            level_min=config.level_range_min,
+            level_max=config.level_range_max,
+            book_name=config.book_name,
+        )
+        test_type = config.test_type
+        test_config_id = config.id
+    else:
+        questions = await generate_questions(db)
 
     session = TestSession(
         student_id=student_id,
         test_type=test_type,
+        test_config_id=test_config_id,
         total_questions=len(questions),
         correct_count=0,
     )
@@ -90,7 +118,22 @@ async def submit_answer(
         correct_total = sum(1 for a in all_answers if a.is_correct)
         session.correct_count = correct_total
         session.completed_at = datetime.utcnow()
-        session.determined_level = determine_level(correct_total, session.total_questions)
+
+        # Build (word_level, lesson, is_correct) list ordered by question_order
+        sorted_answers = sorted(all_answers, key=lambda a: a.question_order)
+        answers_with_details: list[tuple[int, str, bool]] = []
+        for a in sorted_answers:
+            word_result = await db.execute(
+                select(Word).where(Word.id == a.word_id)
+            )
+            word = word_result.scalar_one_or_none()
+            if word:
+                answers_with_details.append((word.level, word.lesson, a.is_correct))
+
+        rank, sublevel = determine_level(answers_with_details)
+        session.determined_level = rank
+        session.determined_sublevel = sublevel
+        session.rank_name = RANK_NAMES.get(rank, f"Rank {rank}")
         session.score = calculate_score(correct_total, session.total_questions)
 
     await db.commit()

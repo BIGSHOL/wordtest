@@ -18,12 +18,17 @@ class TestSession(Base):
     student_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
+    test_config_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("test_configs.id", ondelete="SET NULL"), nullable=True
+    )
     test_type: Mapped[str] = mapped_column(
         String(20), nullable=False
     )  # placement / periodic
     total_questions: Mapped[int] = mapped_column(Integer, nullable=False)
     correct_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     determined_level: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    determined_sublevel: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    rank_name: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     started_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, nullable=False

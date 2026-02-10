@@ -5,6 +5,7 @@ import api from './api';
 
 export interface StartTestRequest {
   test_type: 'placement' | 'periodic';
+  test_code?: string;
 }
 
 export interface SubmitAnswerRequest {
@@ -26,7 +27,11 @@ export interface TestSessionData {
   total_questions: number;
   correct_count: number;
   determined_level: number | null;
+  determined_sublevel: number | null;
+  rank_name: string | null;
+  rank_label: string | null;
   score: number | null;
+  test_config_id: string | null;
   started_at: string;
   completed_at: string | null;
 }
