@@ -5,8 +5,10 @@ import { ProfilePage } from './pages/teacher/ProfilePage';
 import { DashboardPage } from './pages/teacher/DashboardPage';
 import { StudentManagePage } from './pages/teacher/StudentManagePage';
 import { StudentMainPage } from './pages/student/MainPage';
+import { TestStartPage } from './pages/student/TestStartPage';
 import { TestPage } from './pages/student/TestPage';
 import { ResultPage } from './pages/student/ResultPage';
+import { WrongWordsPage } from './pages/student/WrongWordsPage';
 import { StudentResultPage } from './pages/teacher/StudentResultPage';
 import { RouteGuard } from './components/auth/RouteGuard';
 import './index.css';
@@ -64,6 +66,14 @@ function App() {
             }
           />
           <Route
+            path="/test/start"
+            element={
+              <RouteGuard roles={['student']}>
+                <TestStartPage />
+              </RouteGuard>
+            }
+          />
+          <Route
             path="/test"
             element={
               <RouteGuard roles={['student']}>
@@ -76,6 +86,14 @@ function App() {
             element={
               <RouteGuard roles={['student']}>
                 <ResultPage />
+              </RouteGuard>
+            }
+          />
+          <Route
+            path="/result/:testId/wrong"
+            element={
+              <RouteGuard roles={['student']}>
+                <WrongWordsPage />
               </RouteGuard>
             }
           />

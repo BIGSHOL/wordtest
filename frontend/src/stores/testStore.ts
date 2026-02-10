@@ -8,12 +8,19 @@ import testService, {
   type SubmitAnswerResponse,
 } from '../services/test';
 
+export interface WrongAnswer {
+  english: string;
+  correctAnswer: string;
+  selectedAnswer: string;
+}
+
 interface TestStore {
   session: TestSessionData | null;
   questions: TestQuestion[];
   currentIndex: number;
   selectedAnswer: string | null;
   answerResult: SubmitAnswerResponse | null;
+  wrongAnswers: WrongAnswer[];
   isLoading: boolean;
   isSubmitting: boolean;
   error: string | null;
@@ -31,6 +38,7 @@ export const useTestStore = create<TestStore>()((set, get) => ({
   currentIndex: 0,
   selectedAnswer: null,
   answerResult: null,
+  wrongAnswers: [],
   isLoading: false,
   isSubmitting: false,
   error: null,
@@ -45,6 +53,7 @@ export const useTestStore = create<TestStore>()((set, get) => ({
         currentIndex: 0,
         selectedAnswer: null,
         answerResult: null,
+        wrongAnswers: [],
       });
     } catch (error: any) {
       const message = error.response?.data?.detail || '테스트를 시작할 수 없습니다.';
@@ -72,13 +81,23 @@ export const useTestStore = create<TestStore>()((set, get) => ({
         selected_answer: selectedAnswer,
         question_order: question.question_order,
       });
-      set({
+      set((state) => ({
         answerResult: result,
         session: {
           ...session,
           correct_count: session.correct_count + (result.is_correct ? 1 : 0),
         },
-      });
+        wrongAnswers: result.is_correct
+          ? state.wrongAnswers
+          : [
+              ...state.wrongAnswers,
+              {
+                english: question.word.english,
+                correctAnswer: result.correct_answer,
+                selectedAnswer,
+              },
+            ],
+      }));
     } catch (error: any) {
       const message = error.response?.data?.detail || '답변을 제출할 수 없습니다.';
       set({ error: message });
@@ -102,6 +121,7 @@ export const useTestStore = create<TestStore>()((set, get) => ({
       currentIndex: 0,
       selectedAnswer: null,
       answerResult: null,
+      wrongAnswers: [],
       isLoading: false,
       isSubmitting: false,
       error: null,

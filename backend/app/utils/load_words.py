@@ -39,9 +39,12 @@ def parse_xls() -> list[dict]:
     words = []
     for r in range(sheet.nrows):
         book = str(sheet.cell_value(r, 0)).strip()
+        lesson = str(sheet.cell_value(r, 1)).strip() if sheet.ncols > 1 else ""
         english = str(sheet.cell_value(r, 2)).strip()
         korean = str(sheet.cell_value(r, 3)).strip()
-        category = str(sheet.cell_value(r, 4)).strip() or None
+        part_of_speech = str(sheet.cell_value(r, 4)).strip() or None if sheet.ncols > 4 else None
+        example_en = str(sheet.cell_value(r, 5)).strip() or None if sheet.ncols > 5 else None
+        example_ko = str(sheet.cell_value(r, 6)).strip() or None if sheet.ncols > 6 else None
 
         level = BOOK_LEVEL_MAP.get(book)
         if level is None:
@@ -56,7 +59,12 @@ def parse_xls() -> list[dict]:
             "english": english,
             "korean": korean,
             "level": level,
-            "category": category,
+            "category": part_of_speech,  # Keep for backward compatibility
+            "book_name": book,
+            "lesson": lesson,
+            "part_of_speech": part_of_speech,
+            "example_en": example_en,
+            "example_ko": example_ko,
         })
 
     return words
@@ -89,8 +97,8 @@ async def load_words():
             batch = words[i : i + batch_size]
             await session.execute(
                 text(
-                    "INSERT INTO words (id, english, korean, level, category, created_at) "
-                    "VALUES (:id, :english, :korean, :level, :category, NOW())"
+                    "INSERT INTO words (id, english, korean, level, category, book_name, lesson, part_of_speech, example_en, example_ko, created_at) "
+                    "VALUES (:id, :english, :korean, :level, :category, :book_name, :lesson, :part_of_speech, :example_en, :example_ko, NOW())"
                 ),
                 batch,
             )

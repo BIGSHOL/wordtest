@@ -1,13 +1,18 @@
 /**
- * Level test taking page.
+ * Quiz page - matches pencil design screens HyfQX (Type1) and DAXeO (Type2).
  */
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layout } from '../../components/layout/Layout';
-import { ProgressBar } from '../../components/test/ProgressBar';
-import { TTSButton } from '../../components/test/TTSButton';
-import { AnswerCard } from '../../components/test/AnswerCard';
+import { QuizHeader } from '../../components/test/QuizHeader';
+import { GradientProgressBar } from '../../components/test/GradientProgressBar';
+import { TimerBar } from '../../components/test/TimerBar';
+import { WordCard } from '../../components/test/WordCard';
+import { ChoiceButton } from '../../components/test/ChoiceButton';
+import { FeedbackBanner } from '../../components/test/FeedbackBanner';
 import { useTestStore } from '../../stores/testStore';
+import { useTimer } from '../../hooks/useTimer';
+
+const TIMER_SECONDS = 15;
 
 export function TestPage() {
   const navigate = useNavigate();
@@ -27,19 +32,39 @@ export function TestPage() {
     reset,
   } = useTestStore();
 
+  const handleTimeout = () => {
+    if (!answerResult && !isSubmitting) {
+      // Auto-submit with no answer on timeout
+      submitAnswer();
+    }
+  };
+
+  const { secondsLeft, fraction, urgency, reset: resetTimer } = useTimer(TIMER_SECONDS, handleTimeout);
+
   useEffect(() => {
     reset();
     startTest('placement').catch(() => {});
     return () => reset();
   }, []);
 
+  // Reset timer on new question
+  useEffect(() => {
+    resetTimer();
+  }, [currentIndex, resetTimer]);
+
   const currentQuestion = questions[currentIndex];
   const isLastQuestion = currentIndex >= questions.length - 1;
   const isFinished = answerResult && isLastQuestion;
+  const currentLevel = session?.determined_level || 1;
 
-  const handleSubmit = async () => {
-    if (!selectedAnswer || answerResult) return;
-    await submitAnswer();
+  const handleChoiceClick = (choice: string) => {
+    if (answerResult) return;
+    selectAnswer(choice);
+    // Auto-submit on selection
+    setTimeout(() => {
+      const { selectedAnswer: sel, answerResult: res } = useTestStore.getState();
+      if (sel && !res) submitAnswer();
+    }, 0);
   };
 
   const handleNext = () => {
@@ -50,102 +75,96 @@ export function TestPage() {
     }
   };
 
+  const getChoiceState = (choice: string) => {
+    if (!answerResult) {
+      return selectedAnswer === choice ? 'selected' : 'default';
+    }
+    if (choice === answerResult.correct_answer) return 'correct';
+    if (selectedAnswer === choice) return 'wrong';
+    return 'disabled';
+  };
+
   if (isLoading) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center space-y-3">
-            <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-text-secondary">테스트를 준비하고 있습니다...</p>
-          </div>
+      <div className="min-h-screen bg-bg-cream flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-4 border-accent-indigo border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="font-display text-sm text-text-secondary">테스트를 준비하고 있습니다...</p>
         </div>
-      </Layout>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Layout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center space-y-4">
-            <p className="text-wrong font-medium">{error}</p>
-            <button
-              onClick={() => navigate('/student')}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-            >
-              돌아가기
-            </button>
-          </div>
+      <div className="min-h-screen bg-bg-cream flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-wrong font-display font-medium">{error}</p>
+          <button
+            onClick={() => navigate('/student')}
+            className="px-4 py-2 bg-accent-indigo text-white rounded-lg font-display hover:opacity-90 transition-colors"
+          >
+            돌아가기
+          </button>
         </div>
-      </Layout>
+      </div>
     );
   }
 
   if (!currentQuestion || !session) return null;
 
   return (
-    <Layout>
-      <div className="max-w-2xl mx-auto space-y-6">
-        {/* Progress */}
-        <ProgressBar current={currentIndex + 1} total={questions.length} />
+    <div className="min-h-screen bg-bg-cream flex flex-col md:max-w-[640px] md:mx-auto">
+      {/* Header */}
+      <QuizHeader
+        level={currentLevel}
+        currentIndex={currentIndex}
+        totalQuestions={questions.length}
+      />
 
-        {/* Question */}
-        <div className="bg-surface border border-[#E2E8F0] rounded-xl p-6 space-y-6">
-          <div className="text-center space-y-2">
-            <p className="text-sm text-text-secondary">다음 단어의 뜻을 고르세요</p>
-            <div className="flex items-center justify-center gap-2">
-              <h2 className="text-3xl font-bold text-text-primary">
-                {currentQuestion.word.english}
-              </h2>
-              <TTSButton word={currentQuestion.word.english} />
-            </div>
-          </div>
+      {/* Progress Bar */}
+      <GradientProgressBar current={currentIndex + 1} total={questions.length} />
 
-          {/* Choices */}
-          <div className="space-y-3">
-            {currentQuestion.choices.map((choice, i) => (
-              <AnswerCard
-                key={i}
-                text={choice}
-                index={i}
-                selected={selectedAnswer === choice}
-                correct={
-                  answerResult
-                    ? choice === answerResult.correct_answer
-                      ? true
-                      : selectedAnswer === choice
-                        ? false
-                        : null
-                    : null
-                }
-                disabled={!!answerResult}
-                onClick={() => selectAnswer(choice)}
-              />
-            ))}
-          </div>
+      {/* Content Area */}
+      <div className="flex-1 flex flex-col justify-center gap-6 px-5 py-6">
+        {/* Timer */}
+        {!answerResult && (
+          <TimerBar
+            secondsLeft={secondsLeft}
+            fraction={fraction}
+            urgency={urgency}
+          />
+        )}
 
-          {/* Action buttons */}
-          <div className="flex justify-center">
-            {!answerResult ? (
-              <button
-                onClick={handleSubmit}
-                disabled={!selectedAnswer || isSubmitting}
-                className="px-8 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-default"
-              >
-                {isSubmitting ? '확인 중...' : '정답 확인'}
-              </button>
-            ) : (
-              <button
-                onClick={handleNext}
-                className="px-8 py-3 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors"
-              >
-                {isFinished ? '결과 보기' : '다음 문제'}
-              </button>
-            )}
-          </div>
+        {/* Word Card */}
+        <WordCard word={currentQuestion.word.english} />
+
+        {/* Choices */}
+        <div className="flex flex-col gap-3 w-full">
+          {currentQuestion.choices.map((choice, i) => (
+            <ChoiceButton
+              key={i}
+              index={i}
+              text={choice}
+              state={getChoiceState(choice)}
+              onClick={() => handleChoiceClick(choice)}
+            />
+          ))}
         </div>
       </div>
-    </Layout>
+
+      {/* Footer Area */}
+      <div className="h-[70px] px-5 flex items-center" onClick={answerResult ? handleNext : undefined}>
+        {answerResult ? (
+          <button onClick={handleNext} className="w-full">
+            <FeedbackBanner
+              isCorrect={answerResult.is_correct}
+              correctAnswer={answerResult.correct_answer}
+            />
+          </button>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
