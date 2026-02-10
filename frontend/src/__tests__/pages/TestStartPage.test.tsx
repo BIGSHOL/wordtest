@@ -52,7 +52,7 @@ describe('TestStartPage', () => {
           await new Promise((r) => setTimeout(r, 500));
           return HttpResponse.json({
             id: 'config-001',
-            teacher_id: 'teacher-001',
+            teacher_id: '355c2ee6-cdab-41cf-8b76-a703f8b00ea0',
             name: 'Test Config',
             test_code: 'A3X7K2',
             test_type: 'placement',
@@ -77,7 +77,7 @@ describe('TestStartPage', () => {
         http.get(`${BASE_URL}/api/v1/test-configs/code/:code`, () => {
           return HttpResponse.json({
             id: 'config-001',
-            teacher_id: 'teacher-001',
+            teacher_id: '355c2ee6-cdab-41cf-8b76-a703f8b00ea0',
             name: 'Test Config',
             test_code: 'A3X7K2',
             test_type: 'placement',

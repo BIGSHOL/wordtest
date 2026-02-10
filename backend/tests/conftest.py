@@ -66,9 +66,9 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 async def teacher_user(db_session: AsyncSession) -> User:
     """Create a teacher user for testing."""
     user = User(
-        username="teacher01",
+        username="st2000423",
         password_hash=get_password_hash("password123"),
-        name="Test Teacher",
+        name="PSS",
         role="teacher",
     )
     db_session.add(user)
@@ -108,9 +108,9 @@ async def teacher_headers(teacher_token: str) -> dict:
 async def student_user(db_session: AsyncSession, teacher_user: User) -> User:
     """Create a student user for testing."""
     user = User(
-        username="student01",
+        username="test01",
         password_hash=get_password_hash("password123"),
-        name="Test Student",
+        name="테스트01",
         role="student",
         teacher_id=teacher_user.id,
     )

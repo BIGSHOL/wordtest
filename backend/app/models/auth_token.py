@@ -1,6 +1,6 @@
 """AuthToken model - FEAT-0: 인증."""
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import String, DateTime, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -20,7 +20,7 @@ class AuthToken(Base):
     refresh_token: Mapped[str] = mapped_column(String(500), unique=True, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
 
     # Relationships

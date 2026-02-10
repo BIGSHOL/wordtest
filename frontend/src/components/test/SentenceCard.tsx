@@ -1,4 +1,5 @@
 import { Volume2 } from 'lucide-react';
+import { speak } from '../../utils/tts';
 
 interface SentenceCardProps {
   sentenceBefore: string;
@@ -7,11 +8,9 @@ interface SentenceCardProps {
 }
 
 export function SentenceCard({ sentenceBefore, sentenceAfter, blankText }: SentenceCardProps) {
-  const speak = () => {
+  const handleSpeak = () => {
     const text = sentenceBefore + (blankText || '___') + sentenceAfter;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'en-US';
-    speechSynthesis.speak(utterance);
+    speak(text);
   };
 
   return (
@@ -41,7 +40,7 @@ export function SentenceCard({ sentenceBefore, sentenceAfter, blankText }: Sente
         </span>
       </div>
       <button
-        onClick={speak}
+        onClick={handleSpeak}
         className="flex items-center gap-2 rounded-full bg-accent-indigo-light px-5 py-2.5"
       >
         <Volume2 className="w-[18px] h-[18px] text-accent-indigo" />

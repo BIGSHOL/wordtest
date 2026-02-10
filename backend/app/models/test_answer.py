@@ -19,7 +19,7 @@ class TestAnswer(Base):
         String(36), ForeignKey("test_sessions.id", ondelete="CASCADE"), nullable=False
     )
     word_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("words.id", ondelete="CASCADE"), nullable=False
+        String(36), ForeignKey("words.id", ondelete="RESTRICT"), nullable=False
     )
     selected_answer: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     correct_answer: Mapped[str] = mapped_column(String(200), nullable=False)

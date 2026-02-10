@@ -1,5 +1,5 @@
 """Authentication service."""
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from app.models.user import User
@@ -60,7 +60,7 @@ async def create_auth_token(db: AsyncSession, user_id: str) -> str:
     """Create and store a refresh token in the database."""
     from datetime import timedelta
     token = create_refresh_token(subject=user_id)
-    expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     auth_token = AuthToken(
         user_id=user_id,
         refresh_token=token,
@@ -92,7 +92,7 @@ async def validate_refresh_token(db: AsyncSession, token: str) -> str | None:
     db_token = result.scalar_one_or_none()
     if not db_token:
         return None
-    if db_token.expires_at < datetime.utcnow():
+    if db_token.expires_at < datetime.now(timezone.utc):
         await db.delete(db_token)
         await db.commit()
         return None

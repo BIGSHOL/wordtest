@@ -23,7 +23,7 @@ interface MockTestQuestion {
 
 export const mockTestSession: MockTestSession = {
   id: 'test-001',
-  student_id: 'student-001',
+  student_id: '4473f20e-b8d1-4196-9f5d-731cb7cd722a',
   test_type: 'placement',
   total_questions: 20,
   correct_count: 0,

@@ -66,6 +66,11 @@ async def update_student_endpoint(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Student not found",
         )
+    if student.teacher_id != teacher.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not your student",
+        )
 
     updated = await update_student(
         db, student, name=student_in.name, password=student_in.password
@@ -85,6 +90,11 @@ async def delete_student_endpoint(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Student not found",
+        )
+    if student.teacher_id != teacher.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not your student",
         )
 
     await delete_student(db, student)

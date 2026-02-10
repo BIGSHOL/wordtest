@@ -22,15 +22,11 @@ export const RANKS: RankInfo[] = [
 ];
 
 /**
- * Map a level (1-15) to a rank (1-10).
- * Levels 1-6 map 1:1, levels 7-8 → rank 7, 9-10 → rank 8, 11-13 → rank 9, 14-15 → rank 10.
+ * Map a rank (1-10) to its RankInfo.
+ * The determined_level from the API is already a rank value (1-10),
+ * converted by the backend via word_level_to_rank().
  */
-export function getLevelRank(level: number): RankInfo {
-  let rankIndex: number;
-  if (level <= 6) rankIndex = level - 1;
-  else if (level <= 8) rankIndex = 6;
-  else if (level <= 10) rankIndex = 7;
-  else if (level <= 13) rankIndex = 8;
-  else rankIndex = 9;
-  return RANKS[Math.max(0, Math.min(rankIndex, RANKS.length - 1))];
+export function getLevelRank(rank: number): RankInfo {
+  const index = Math.max(0, Math.min(rank - 1, RANKS.length - 1));
+  return RANKS[index];
 }

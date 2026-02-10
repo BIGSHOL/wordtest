@@ -1,6 +1,6 @@
 """TestSession model - FEAT-1: 테스트 세션."""
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import String, Integer, DateTime, ForeignKey, Index
@@ -31,7 +31,7 @@ class TestSession(Base):
     rank_name: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     started_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 

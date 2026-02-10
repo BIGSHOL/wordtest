@@ -1,7 +1,7 @@
 /**
  * Quiz page - matches pencil design screens HyfQX (Type1) and DAXeO (Type2).
  */
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QuizHeader } from '../../components/test/QuizHeader';
 import { GradientProgressBar } from '../../components/test/GradientProgressBar';
@@ -12,11 +12,15 @@ import { ChoiceButton } from '../../components/test/ChoiceButton';
 import { FeedbackBanner } from '../../components/test/FeedbackBanner';
 import { useTestStore } from '../../stores/testStore';
 import { useTimer } from '../../hooks/useTimer';
+import { playSound } from '../../hooks/useSound';
 
 const TIMER_SECONDS = 15;
+const FEEDBACK_DELAY_MS = 1200;
 
 export function TestPage() {
   const navigate = useNavigate();
+  const timerSoundPlayed = useRef(false);
+  const twoSoundPlayed = useRef(false);
   const {
     session,
     questions,
@@ -35,7 +39,6 @@ export function TestPage() {
 
   const handleTimeout = () => {
     if (!answerResult && !isSubmitting) {
-      // Auto-submit with no answer on timeout
       submitAnswer();
     }
   };
@@ -43,19 +46,49 @@ export function TestPage() {
   const { secondsLeft, fraction, urgency, reset: resetTimer } = useTimer(TIMER_SECONDS, handleTimeout);
 
   useEffect(() => {
-    // TestStartPage에서 이미 세션이 시작된 경우 재시작하지 않음
-    const { session: existingSession, questions: existingQuestions } = useTestStore.getState();
-    if (!existingSession || existingQuestions.length === 0) {
-      reset();
-      startTest('placement').catch(() => {});
+    const state = useTestStore.getState();
+    if (!state.session || state.questions.length === 0) {
+      state.reset();
+      state.startTest('placement').catch(() => {});
     }
-    return () => reset();
+    return () => useTestStore.getState().reset();
   }, []);
 
   // Reset timer on new question
   useEffect(() => {
     resetTimer();
+    timerSoundPlayed.current = false;
+    twoSoundPlayed.current = false;
   }, [currentIndex, resetTimer]);
+
+  // Timer warning sounds
+  useEffect(() => {
+    if (answerResult) return;
+    if (secondsLeft === 10 && !timerSoundPlayed.current) {
+      playSound('timer');
+      timerSoundPlayed.current = true;
+    }
+    if (secondsLeft === 2 && !twoSoundPlayed.current) {
+      playSound('two');
+      twoSoundPlayed.current = true;
+    }
+  }, [secondsLeft, answerResult]);
+
+  // Play correct/wrong sound + auto-advance
+  useEffect(() => {
+    if (!answerResult) return;
+    playSound(answerResult.is_correct ? 'correct' : 'wrong');
+
+    const timer = setTimeout(() => {
+      const { session: s, currentIndex: idx, questions: qs } = useTestStore.getState();
+      if (s && idx >= qs.length - 1) {
+        navigate(`/result/${s.id}`);
+      } else {
+        nextQuestion();
+      }
+    }, FEEDBACK_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [answerResult]);
 
   const currentQuestion = questions[currentIndex];
   const isLastQuestion = currentIndex >= questions.length - 1;
@@ -66,9 +99,8 @@ export function TestPage() {
   const isSentenceQuestion = (currentIndex + 1) % 5 === 0;
 
   const handleChoiceClick = (choice: string) => {
-    if (answerResult) return;
+    if (answerResult || isSubmitting) return;
     selectAnswer(choice);
-    // Auto-submit on selection
     setTimeout(() => {
       const { selectedAnswer: sel, answerResult: res } = useTestStore.getState();
       if (sel && !res) submitAnswer();

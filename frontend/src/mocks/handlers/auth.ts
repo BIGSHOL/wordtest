@@ -16,7 +16,7 @@ export const authHandlers = [
     return HttpResponse.json(
       {
         ...mockTeacher,
-        id: 'new-teacher-001',
+        id: crypto.randomUUID(),
         username: body.username,
         name: body.name,
       },
@@ -27,7 +27,7 @@ export const authHandlers = [
   // POST /api/v1/auth/login/json
   http.post(`${BASE_URL}/api/v1/auth/login/json`, async ({ request }) => {
     const body = await request.json() as Record<string, string>;
-    if (body.username === 'teacher01' && body.password === 'password123') {
+    if (body.username === 'st2000423' && body.password === 'password123') {
       return HttpResponse.json({
         access_token: 'mock-access-token',
         refresh_token: 'mock-refresh-token',

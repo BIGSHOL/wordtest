@@ -1,5 +1,5 @@
 """Test session service."""
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -75,8 +75,25 @@ async def submit_answer(
     word_id: str,
     selected_answer: str,
     question_order: int,
+    student_id: str | None = None,
 ) -> dict:
     """Submit an answer for a test question."""
+    # Load session for authorization and completion guard
+    session_result = await db.execute(
+        select(TestSession).where(TestSession.id == test_session_id)
+    )
+    session = session_result.scalar_one_or_none()
+    if not session:
+        return None
+
+    # Authorization: verify the session belongs to the student
+    if student_id and session.student_id != student_id:
+        raise ValueError("Not authorized for this test session")
+
+    # Completion guard: reject answers for already-completed sessions
+    if session.completed_at is not None:
+        raise ValueError("Test session already completed")
+
     # Find the answer record
     result = await db.execute(
         select(TestAnswer).where(
@@ -92,14 +109,10 @@ async def submit_answer(
     is_correct = selected_answer == answer.correct_answer
     answer.selected_answer = selected_answer
     answer.is_correct = is_correct
-    answer.answered_at = datetime.utcnow()
+    answer.answered_at = datetime.now(timezone.utc)
 
     # Update session correct count if correct
     if is_correct:
-        session_result = await db.execute(
-            select(TestSession).where(TestSession.id == test_session_id)
-        )
-        session = session_result.scalar_one()
         session.correct_count += 1
 
     # Check if all questions answered
@@ -111,13 +124,9 @@ async def submit_answer(
 
     if answered_count == len(all_answers):
         # All questions answered - complete the test
-        session_result = await db.execute(
-            select(TestSession).where(TestSession.id == test_session_id)
-        )
-        session = session_result.scalar_one()
         correct_total = sum(1 for a in all_answers if a.is_correct)
         session.correct_count = correct_total
-        session.completed_at = datetime.utcnow()
+        session.completed_at = datetime.now(timezone.utc)
 
         # Build (word_level, lesson, is_correct) list ordered by question_order
         sorted_answers = sorted(all_answers, key=lambda a: a.question_order)

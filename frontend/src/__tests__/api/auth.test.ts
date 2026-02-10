@@ -13,7 +13,7 @@ describe('Auth API Service', () => {
   describe('login', () => {
     it('should return access token on successful login', async () => {
       const result = await authService.login({
-        username: 'teacher01',
+        username: 'st2000423',
         password: 'password123',
       });
       expect(result.access_token).toBe('mock-access-token');
@@ -22,7 +22,7 @@ describe('Auth API Service', () => {
 
     it('should store token in localStorage', async () => {
       await authService.login({
-        username: 'teacher01',
+        username: 'st2000423',
         password: 'password123',
       });
       expect(localStorage.getItem('access_token')).toBe('mock-access-token');
@@ -31,7 +31,7 @@ describe('Auth API Service', () => {
     it('should throw on invalid credentials', async () => {
       await expect(
         authService.login({
-          username: 'teacher01',
+          username: 'st2000423',
           password: 'wrong',
         }),
       ).rejects.toThrow();
@@ -55,7 +55,7 @@ describe('Auth API Service', () => {
     it('should return current user when authenticated', async () => {
       authService.setToken('mock-access-token');
       const user = await authService.getCurrentUser();
-      expect(user.username).toBe('teacher01');
+      expect(user.username).toBe('st2000423');
       expect(user.role).toBe('teacher');
     });
   });

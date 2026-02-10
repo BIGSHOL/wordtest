@@ -52,7 +52,7 @@ describe('Test API Service', () => {
   describe('listTests', () => {
     it('should list test history', async () => {
       const { testService } = await import('../../services/test');
-      const result = await testService.listTests('student-001');
+      const result = await testService.listTests('4473f20e-b8d1-4196-9f5d-731cb7cd722a');
       expect(result.tests).toBeDefined();
       expect(Array.isArray(result.tests)).toBe(true);
     });

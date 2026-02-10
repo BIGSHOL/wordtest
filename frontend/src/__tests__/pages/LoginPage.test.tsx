@@ -86,7 +86,7 @@ describe('LoginPage', () => {
       const passwordInput = screen.getByLabelText(/^비밀번호$/i);
       const codeInput = screen.getByLabelText(/테스트 코드/i);
 
-      await user.type(usernameInput, 'teacher01');
+      await user.type(usernameInput, 'st2000423');
       await user.type(passwordInput, 'password123');
       await user.type(codeInput, 'A3X7K2');
 
@@ -110,7 +110,7 @@ describe('LoginPage', () => {
       const usernameInput = screen.getByLabelText(/^아이디$/i);
       const passwordInput = screen.getByLabelText(/^비밀번호$/i);
 
-      await user.type(usernameInput, 'teacher01');
+      await user.type(usernameInput, 'st2000423');
       await user.type(passwordInput, 'password123');
 
       const submitButton = screen.getByRole('button', { name: /^로그인$/i });

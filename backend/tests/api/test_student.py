@@ -32,7 +32,7 @@ class TestCreateStudent:
         response = await client.post(
             "/api/v1/students",
             json={
-                "username": "student01",
+                "username": "test01",
                 "password": "studentpass123",
                 "name": "Duplicate Student",
             },

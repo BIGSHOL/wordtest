@@ -83,13 +83,20 @@ async def submit_answer_endpoint(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Submit an answer for a test question."""
-    result = await submit_answer(
-        db,
-        test_session_id=test_id,
-        word_id=answer_in.word_id,
-        selected_answer=answer_in.selected_answer,
-        question_order=answer_in.question_order,
-    )
+    try:
+        result = await submit_answer(
+            db,
+            test_session_id=test_id,
+            word_id=answer_in.word_id,
+            selected_answer=answer_in.selected_answer,
+            question_order=answer_in.question_order,
+            student_id=current_user.id,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e),
+        )
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -117,6 +124,12 @@ async def get_test_result_endpoint(
         )
 
     session, answers = result
+    # Authorization: students can only view their own results
+    if current_user.role == "student" and session.student_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view this result",
+        )
     return TestResultResponse(
         test_session=_session_response(session),
         answers=[AnswerDetail(**a) for a in answers],
@@ -130,7 +143,11 @@ async def list_tests_endpoint(
     student_id: Optional[str] = Query(None),
 ):
     """List test sessions. Teacher can filter by student_id."""
-    target_student_id = student_id if student_id else current_user.id
+    if current_user.role == "student":
+        # Students can only see their own tests
+        target_student_id = current_user.id
+    else:
+        target_student_id = student_id if student_id else current_user.id
     sessions = await list_tests_by_student(db, target_student_id)
 
     return {

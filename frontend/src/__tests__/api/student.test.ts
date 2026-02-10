@@ -41,7 +41,7 @@ describe('Student API Service', () => {
   describe('updateStudent', () => {
     it('should update student name', async () => {
       const { studentService } = await import('../../services/student');
-      const updated = await studentService.updateStudent('student-001', {
+      const updated = await studentService.updateStudent('4473f20e-b8d1-4196-9f5d-731cb7cd722a', {
         name: 'Updated Name',
       });
       expect(updated.name).toBe('Updated Name');
@@ -52,7 +52,7 @@ describe('Student API Service', () => {
     it('should delete a student', async () => {
       const { studentService } = await import('../../services/student');
       await expect(
-        studentService.deleteStudent('student-001'),
+        studentService.deleteStudent('4473f20e-b8d1-4196-9f5d-731cb7cd722a'),
       ).resolves.not.toThrow();
     });
   });

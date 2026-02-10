@@ -1,15 +1,11 @@
 import { Volume2 } from 'lucide-react';
+import { speakWord } from '../../utils/tts';
 
 interface WordCardProps {
   word: string;
 }
 
 export function WordCard({ word }: WordCardProps) {
-  const speak = () => {
-    const utterance = new SpeechSynthesisUtterance(word);
-    utterance.lang = 'en-US';
-    speechSynthesis.speak(utterance);
-  };
 
   return (
     <div
@@ -26,7 +22,7 @@ export function WordCard({ word }: WordCardProps) {
         {word}
       </h2>
       <button
-        onClick={speak}
+        onClick={() => speakWord(word)}
         className="flex items-center gap-2 rounded-full bg-accent-indigo-light px-5 py-2.5"
       >
         <Volume2 className="w-[18px] h-[18px] text-accent-indigo" />

@@ -1,7 +1,7 @@
 /**
  * Test result page - matches pencil design screen ZIBxZ.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { List, ChevronRight } from 'lucide-react';
 import { RankBadge } from '../../components/test/RankBadge';
@@ -9,6 +9,7 @@ import { StatCard } from '../../components/test/StatCard';
 import { getLevelRank } from '../../types/rank';
 import { useTestStore } from '../../stores/testStore';
 import testService, { type TestResultResponse } from '../../services/test';
+import { playSound } from '../../hooks/useSound';
 
 export function ResultPage() {
   const { testId } = useParams<{ testId: string }>();
@@ -17,6 +18,7 @@ export function ResultPage() {
   const [result, setResult] = useState<TestResultResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const soundPlayed = useRef(false);
 
   useEffect(() => {
     if (!testId) return;
@@ -29,6 +31,22 @@ export function ResultPage() {
       })
       .finally(() => setIsLoading(false));
   }, [testId]);
+
+  // Play result sound once
+  useEffect(() => {
+    if (!result || soundPlayed.current) return;
+    soundPlayed.current = true;
+    const { test_session: s } = result;
+    const total = s.total_questions;
+    const correct = s.correct_count;
+    if (total > 0 && correct === total) {
+      playSound('perfect');
+    } else if (total > 0 && correct / total >= 0.7) {
+      playSound('lvlup');
+    } else {
+      playSound('lvldown');
+    }
+  }, [result]);
 
   if (isLoading) {
     return (

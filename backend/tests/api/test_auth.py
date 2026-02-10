@@ -25,7 +25,7 @@ class TestRegister:
     async def test_register_duplicate_username(self, client, teacher_user):
         """Registration fails with duplicate username."""
         response = await client.post("/api/v1/auth/register", json={
-            "username": "teacher01",
+            "username": "st2000423",
             "password": "securepass123",
             "name": "Another Teacher",
         })
@@ -39,7 +39,7 @@ class TestLogin:
     async def test_login_success(self, client, teacher_user):
         """Teacher can login with correct credentials."""
         response = await client.post("/api/v1/auth/login/json", json={
-            "username": "teacher01",
+            "username": "st2000423",
             "password": "password123",
         })
         assert response.status_code == 200
@@ -51,7 +51,7 @@ class TestLogin:
     async def test_login_wrong_password(self, client, teacher_user):
         """Login fails with wrong password."""
         response = await client.post("/api/v1/auth/login/json", json={
-            "username": "teacher01",
+            "username": "st2000423",
             "password": "wrongpassword",
         })
         assert response.status_code == 401
@@ -131,8 +131,8 @@ class TestGetMe:
         response = await client.get("/api/v1/users/me", headers=teacher_headers)
         assert response.status_code == 200
         data = response.json()
-        assert data["username"] == "teacher01"
-        assert data["name"] == "Test Teacher"
+        assert data["username"] == "st2000423"
+        assert data["name"] == "PSS"
         assert data["role"] == "teacher"
 
     async def test_get_me_unauthenticated(self, client):

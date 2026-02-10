@@ -29,7 +29,7 @@ export const studentHandlers = [
     return HttpResponse.json(
       {
         ...mockStudent,
-        id: 'new-student-001',
+        id: crypto.randomUUID(),
         username: body.username,
         name: body.name,
       },

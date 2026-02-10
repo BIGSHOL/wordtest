@@ -1,7 +1,7 @@
 """Statistics and analytics endpoints."""
 from typing import Annotated
-from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends
+from datetime import datetime, timedelta, timezone
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
@@ -131,7 +131,7 @@ async def get_dashboard_stats(
     ]
 
     # Weekly test count (last 7 days)
-    week_ago = datetime.utcnow() - timedelta(days=7)
+    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
     weekly_tests_query = (
         select(func.count())
         .select_from(TestSession)
@@ -147,7 +147,7 @@ async def get_dashboard_stats(
     weekly_test_count = weekly_tests_result.scalar() or 0
 
     # Score trend (daily averages for last 30 days)
-    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     score_trend_query = (
         select(
             func.date(TestSession.completed_at).label("date"),
@@ -195,6 +195,24 @@ async def get_student_history(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get test history for a student (for charts)."""
+    # Authorization: students can only view own history
+    if current_user.role == "student" and current_user.id != student_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to view this student's history",
+        )
+    # Teachers can only view their own students' history
+    if current_user.role == "teacher":
+        student_check = await db.execute(
+            select(User).where(User.id == student_id)
+        )
+        student = student_check.scalar_one_or_none()
+        if not student or student.teacher_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to view this student's history",
+            )
+
     query = (
         select(TestSession)
         .where(

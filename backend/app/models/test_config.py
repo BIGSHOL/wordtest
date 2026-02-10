@@ -1,6 +1,6 @@
 """TestConfig model - test configuration management."""
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey, Index
@@ -32,10 +32,10 @@ class TestConfig(Base):
     level_range_min: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     level_range_max: Mapped[int] = mapped_column(Integer, nullable=False, default=15)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, nullable=False
+        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False
     )
 
     __table_args__ = (

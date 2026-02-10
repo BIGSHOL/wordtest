@@ -1,7 +1,7 @@
 /**
  * TTS pronunciation button.
  */
-import { speak } from '../../utils/tts';
+import { speakWord } from '../../utils/tts';
 
 interface TTSButtonProps {
   word: string;
@@ -10,7 +10,7 @@ interface TTSButtonProps {
 export function TTSButton({ word }: TTSButtonProps) {
   return (
     <button
-      onClick={() => speak(word)}
+      onClick={() => speakWord(word)}
       className="p-2 rounded-full hover:bg-primary-light transition-colors"
       title="발음 듣기"
       type="button"
