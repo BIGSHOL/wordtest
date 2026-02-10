@@ -45,7 +45,10 @@ export function TestStartPage() {
     }
   };
 
+  const composingRef = useRef(false);
+
   const handleCodeChange = (value: string) => {
+    if (composingRef.current) return; // IME 조합 중에는 무시
     // Uppercase, alphanumeric only, max 6 chars
     const cleaned = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
     setTestCode(cleaned);
@@ -157,6 +160,8 @@ export function TestStartPage() {
                 placeholder="A3X7K2"
                 value={testCode}
                 onChange={(e) => handleCodeChange(e.target.value)}
+                onCompositionStart={() => { composingRef.current = true; }}
+                onCompositionEnd={(e) => { composingRef.current = false; handleCodeChange((e.target as HTMLInputElement).value); }}
                 onKeyDown={(e) => e.key === 'Enter' && !config && handleValidate()}
                 className="font-display text-[15px] text-text-primary placeholder:text-text-tertiary bg-transparent outline-none w-full tracking-[0.2em] font-semibold"
                 maxLength={6}

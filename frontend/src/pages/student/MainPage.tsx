@@ -1,7 +1,7 @@
 /**
  * Student main page - Empty state with Pencil design.
  */
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/auth';
 import { GraduationCap, BookOpen, Hash } from 'lucide-react';
@@ -10,8 +10,10 @@ export function StudentMainPage() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [testCode, setTestCode] = useState('');
+  const composingRef = useRef(false);
 
   const handleCodeChange = (value: string) => {
+    if (composingRef.current) return; // IME 조합 중에는 무시
     const cleaned = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
     setTestCode(cleaned);
   };
@@ -64,6 +66,8 @@ export function StudentMainPage() {
               placeholder="테스트 코드 입력"
               value={testCode}
               onChange={(e) => handleCodeChange(e.target.value)}
+              onCompositionStart={() => { composingRef.current = true; }}
+              onCompositionEnd={(e) => { composingRef.current = false; handleCodeChange((e.target as HTMLInputElement).value); }}
               onKeyDown={(e) => e.key === 'Enter' && handleStart()}
               className="flex-1 bg-transparent text-text-primary placeholder:text-text-tertiary outline-none text-sm font-display tracking-[0.15em] font-semibold"
               maxLength={6}
