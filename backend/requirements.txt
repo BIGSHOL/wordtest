@@ -6,7 +6,6 @@ python-dotenv
 sqlalchemy[asyncio]
 asyncpg
 alembic
-pgvector
 python-jose[cryptography]
 passlib[bcrypt]
 bcrypt==4.0.1
@@ -16,5 +15,4 @@ xlrd
 pytest
 pytest-asyncio
 httpx
-factory-boy
 aiosqlite

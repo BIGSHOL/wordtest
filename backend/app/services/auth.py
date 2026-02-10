@@ -109,9 +109,3 @@ async def revoke_refresh_token(db: AsyncSession, token: str) -> bool:
     return False
 
 
-async def revoke_all_user_tokens(db: AsyncSession, user_id: str) -> None:
-    """Delete all refresh tokens for a user."""
-    await db.execute(
-        delete(AuthToken).where(AuthToken.user_id == user_id)
-    )
-    await db.commit()

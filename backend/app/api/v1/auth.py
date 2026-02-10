@@ -1,7 +1,6 @@
 """Authentication endpoints."""
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.schemas.auth import Token, LoginRequest, RegisterRequest, RefreshRequest, PasswordChangeRequest
@@ -32,24 +31,6 @@ async def register(
     user = await create_user(db, user_in)
     return user
 
-
-@router.post("/login", response_model=Token)
-async def login(
-    db: Annotated[AsyncSession, Depends(get_db)],
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-):
-    """Login and get access token + refresh token."""
-    user = await authenticate_user(db, form_data.username, form_data.password)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="아이디 또는 비밀번호가 틀렸습니다",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    access_token = create_access_token(subject=user.id)
-    refresh_token = await create_auth_token(db, user.id)
-    return Token(access_token=access_token, refresh_token=refresh_token)
 
 
 @router.post("/login/json", response_model=Token)

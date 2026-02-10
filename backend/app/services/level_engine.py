@@ -60,20 +60,6 @@ def format_rank_label(rank: int, sublevel: int, max_sublevel: int | None = None)
     return f"{name} {rank}-{sublevel}"
 
 
-async def get_lessons_per_rank(db: AsyncSession) -> dict[int, list[str]]:
-    """Get sorted list of distinct lessons for each rank (word level 1-10)."""
-    result = await db.execute(
-        select(Word.level, Word.lesson)
-        .where(Word.level <= MAX_RANK)
-        .distinct()
-        .order_by(Word.level.asc(), Word.lesson.asc())
-    )
-    lessons_by_rank: dict[int, list[str]] = defaultdict(list)
-    for level, lesson in result.all():
-        if lesson not in lessons_by_rank[level]:
-            lessons_by_rank[level].append(lesson)
-    return dict(lessons_by_rank)
-
 
 async def generate_questions(
     db: AsyncSession,
