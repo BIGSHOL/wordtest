@@ -27,7 +27,7 @@ export const authService = {
     if (response.data.refresh_token) {
       this.setRefreshToken(response.data.refresh_token);
     }
-    return response.data;
+    return response.data;  // now includes user field
   },
 
   /**

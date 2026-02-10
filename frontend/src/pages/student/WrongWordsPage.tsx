@@ -40,17 +40,17 @@ export function WrongWordsPage() {
   }, [testId, storeWrongAnswers]);
 
   return (
-    <div className="min-h-screen bg-bg-cream flex flex-col md:max-w-[480px] md:mx-auto">
+    <div className="min-h-screen bg-bg-cream flex flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 h-14 px-4 w-full">
+      <div className="flex items-center gap-3 h-14 px-4 lg:h-16 lg:px-12 w-full">
         <button
           onClick={() => navigate(-1)}
-          className="w-9 h-9 rounded-xl bg-bg-surface flex items-center justify-center shrink-0"
+          className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-bg-surface flex items-center justify-center shrink-0"
           style={{ border: '1px solid #E5E4E1' }}
         >
           <ArrowLeft className="w-[18px] h-[18px] text-text-primary" />
         </button>
-        <span className="font-display text-lg font-bold text-text-primary">틀린 단어 목록</span>
+        <span className="font-display text-lg lg:text-xl font-bold text-text-primary">틀린 단어 목록</span>
         <div className="rounded-full bg-wrong-light px-2.5 py-1">
           <span className="font-display text-[13px] font-bold text-wrong">
             {wrongItems.length}개
@@ -59,31 +59,35 @@ export function WrongWordsPage() {
       </div>
 
       {/* Word List */}
-      <div className="flex-1 overflow-y-auto px-4 py-2 flex flex-col gap-2.5">
-        {isLoading ? (
-          <div className="flex items-center justify-center pt-20">
-            <div className="w-8 h-8 border-4 border-accent-indigo border-t-transparent rounded-full animate-spin" />
-          </div>
-        ) : wrongItems.length === 0 ? (
-          <div className="flex items-center justify-center pt-20">
-            <p className="font-display text-text-tertiary">틀린 단어가 없습니다!</p>
-          </div>
-        ) : (
-          wrongItems.map((item, i) => (
-            <WrongWordCard
-              key={i}
-              english={item.english}
-              correctAnswer={item.correctAnswer}
-            />
-          ))
-        )}
+      <div className="flex-1 overflow-y-auto px-4 py-2 lg:px-12 flex justify-center">
+        <div className="w-full lg:w-[760px]">
+          {isLoading ? (
+            <div className="flex items-center justify-center pt-20">
+              <div className="w-8 h-8 border-4 border-accent-indigo border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : wrongItems.length === 0 ? (
+            <div className="flex items-center justify-center pt-20">
+              <p className="font-display text-text-tertiary">틀린 단어가 없습니다!</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-2 lg:gap-3">
+              {wrongItems.map((item, i) => (
+                <WrongWordCard
+                  key={i}
+                  english={item.english}
+                  correctAnswer={item.correctAnswer}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Bottom Area */}
-      <div className="px-4 pt-3 pb-10">
+      <div className="px-4 pt-3 pb-10 lg:px-12 flex justify-center">
         <button
-          onClick={() => navigate('/student')}
-          className="flex items-center justify-center gap-2 w-full h-[52px] rounded-2xl text-white"
+          onClick={() => navigate('/student', { replace: true })}
+          className="flex items-center justify-center gap-2 w-full lg:w-[760px] h-[52px] rounded-2xl text-white"
           style={{
             background: 'linear-gradient(90deg, #4F46E5, #7C3AED)',
             boxShadow: '0 4px 16px #4F46E540',

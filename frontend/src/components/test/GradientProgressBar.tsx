@@ -7,7 +7,7 @@ export function GradientProgressBar({ current, total }: GradientProgressBarProps
   const percent = total > 0 ? (current / total) * 100 : 0;
 
   return (
-    <div className="h-1.5 px-5 w-full">
+    <div className="h-1.5 px-5 lg:px-12 w-full">
       <div className="h-1.5 rounded-full bg-bg-muted w-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-500 ease-out"

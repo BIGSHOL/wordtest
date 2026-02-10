@@ -2,7 +2,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models.user import User
-from app.core.security import get_password_hash
+from app.core.security import get_password_hash_async
 
 
 async def get_student_by_username(db: AsyncSession, username: str) -> User | None:
@@ -15,7 +15,7 @@ async def create_student(
 ) -> User:
     student = User(
         username=username,
-        password_hash=get_password_hash(password),
+        password_hash=await get_password_hash_async(password),
         name=name,
         role="student",
         teacher_id=teacher_id,
@@ -46,7 +46,7 @@ async def update_student(
     if name is not None:
         student.name = name
     if password is not None:
-        student.password_hash = get_password_hash(password)
+        student.password_hash = await get_password_hash_async(password)
     await db.commit()
     await db.refresh(student)
     return student

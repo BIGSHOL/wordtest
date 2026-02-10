@@ -81,7 +81,7 @@ export function TestStartPage() {
     setIsStarting(true);
     try {
       await startTest(config.test_type, testCode);
-      navigate('/test');
+      navigate('/test', { replace: true });
     } catch {
       setValidationError('테스트를 시작할 수 없습니다');
     } finally {
@@ -98,7 +98,7 @@ export function TestStartPage() {
   // Show loading overlay when auto-starting from URL param
   if (autoStartTriggered.current && (isValidating || isStarting) && !validationError) {
     return (
-      <div className="min-h-screen bg-bg-cream flex flex-col items-center justify-center gap-4 md:max-w-[480px] md:mx-auto">
+      <div className="min-h-screen bg-bg-cream flex flex-col items-center justify-center gap-4">
         <div
           className="w-[72px] h-[72px] rounded-full flex items-center justify-center"
           style={{
@@ -119,9 +119,11 @@ export function TestStartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg-cream flex flex-col md:max-w-[480px] md:mx-auto">
+    <div className="min-h-screen bg-bg-cream flex flex-col items-center lg:justify-center">
+      {/* Center container for PC (480px), full width on mobile */}
+      <div className="flex flex-col w-full lg:w-[480px]">
       {/* Top Section */}
-      <div className="flex flex-col items-center gap-4 pt-[60px] pb-8 px-6">
+      <div className="flex flex-col items-center gap-4 pt-[60px] lg:pt-0 pb-8 px-6">
         <div
           className="w-[72px] h-[72px] rounded-full flex items-center justify-center"
           style={{
@@ -252,11 +254,11 @@ export function TestStartPage() {
         )}
       </div>
 
-      {/* Spacer */}
-      <div className="flex-1" />
+      {/* Spacer (mobile only) */}
+      <div className="flex-1 lg:hidden" />
 
       {/* Bottom Section */}
-      <div className="flex flex-col items-center gap-4 px-6 pb-10">
+      <div className="flex flex-col items-center gap-4 px-6 pb-10 lg:pb-0 lg:pt-8">
         <button
           onClick={handleStart}
           disabled={!config || isStarting}
@@ -279,6 +281,7 @@ export function TestStartPage() {
           {config ? '준비가 완료되었습니다. 시작 버튼을 눌러주세요' : '테스트 코드를 입력하고 확인 버튼을 눌러주세요'}
         </p>
       </div>
+      </div>{/* end center container */}
     </div>
   );
 }

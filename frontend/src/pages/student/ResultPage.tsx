@@ -62,7 +62,7 @@ export function ResultPage() {
         <div className="text-center space-y-4">
           <p className="text-wrong font-display font-medium">{error || '결과를 찾을 수 없습니다.'}</p>
           <button
-            onClick={() => navigate('/student')}
+            onClick={() => navigate('/student', { replace: true })}
             className="px-4 py-2 bg-accent-indigo text-white rounded-lg font-display hover:opacity-90 transition-colors"
           >
             돌아가기
@@ -94,9 +94,9 @@ export function ResultPage() {
   const previewWrong = wrongItems.slice(0, 4);
 
   return (
-    <div className="min-h-screen bg-bg-cream flex flex-col max-w-[600px] mx-auto">
+    <div className="min-h-screen bg-bg-cream flex flex-col lg:items-center">
       {/* Scroll Content */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto w-full lg:max-w-[600px]">
         {/* Result Header */}
         <div className="flex flex-col items-center gap-5 pt-12 pb-6 px-6">
           <span className="font-display text-sm font-semibold text-accent-indigo">테스트 완료!</span>
@@ -166,9 +166,9 @@ export function ResultPage() {
       </div>
 
       {/* Bottom Buttons */}
-      <div className="px-6 pt-3 pb-10">
+      <div className="px-6 pt-3 pb-10 w-full lg:max-w-[600px]">
         <button
-          onClick={() => navigate('/student')}
+          onClick={() => navigate('/student', { replace: true })}
           className="flex items-center justify-center gap-2 w-full h-[52px] rounded-2xl text-white"
           style={{
             background: 'linear-gradient(90deg, #4F46E5, #7C3AED)',

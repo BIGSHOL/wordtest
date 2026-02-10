@@ -12,10 +12,11 @@ import { ChoiceButton } from '../../components/test/ChoiceButton';
 import { FeedbackBanner } from '../../components/test/FeedbackBanner';
 import { useTestStore } from '../../stores/testStore';
 import { useTimer } from '../../hooks/useTimer';
-import { playSound } from '../../hooks/useSound';
+import { playSound, stopSound } from '../../hooks/useSound';
+import { preloadWordAudio } from '../../utils/tts';
 
 const TIMER_SECONDS = 15;
-const FEEDBACK_DELAY_MS = 1200;
+const FEEDBACK_DELAY_MS = 800;
 
 export function TestPage() {
   const navigate = useNavigate();
@@ -50,12 +51,30 @@ export function TestPage() {
     return () => useTestStore.getState().reset();
   }, []);
 
-  // Reset timer on new question
+  // Block browser back button during test
+  useEffect(() => {
+    const blockBack = () => {
+      window.history.pushState(null, '', window.location.href);
+    };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', blockBack);
+    return () => window.removeEventListener('popstate', blockBack);
+  }, []);
+
+  // Reset timer on new question + preload TTS for current & next word
   useEffect(() => {
     resetTimer();
     timerSoundPlayed.current = false;
     twoSoundPlayed.current = false;
-  }, [currentIndex, resetTimer]);
+    // Preload current word's pronunciation
+    if (questions[currentIndex]) {
+      preloadWordAudio(questions[currentIndex].word.english);
+    }
+    // Preload next word's pronunciation
+    if (questions[currentIndex + 1]) {
+      preloadWordAudio(questions[currentIndex + 1].word.english);
+    }
+  }, [currentIndex, resetTimer, questions]);
 
   // Timer warning sounds
   useEffect(() => {
@@ -73,23 +92,28 @@ export function TestPage() {
   // Play correct/wrong sound + auto-advance
   useEffect(() => {
     if (!answerResult) return;
+    stopSound('timer');
+    stopSound('two');
     playSound(answerResult.is_correct ? 'correct' : 'wrong');
 
     const timer = setTimeout(() => {
-      const { session: s, currentIndex: idx, questions: qs } = useTestStore.getState();
-      if (s && idx >= qs.length - 1) {
-        navigate(`/result/${s.id}`);
+      const { session: s, currentIndex: idx } = useTestStore.getState();
+      const total = s?.total_questions ?? 0;
+      if (s && idx >= total - 1) {
+        navigate(`/result/${s.id}`, { replace: true });
       } else {
         nextQuestion();
       }
     }, FEEDBACK_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [answerResult]);
+  }, [answerResult, navigate, nextQuestion]);
+
+  const adaptiveLevel = useTestStore((s) => s.adaptiveLevel);
 
   const currentQuestion = questions[currentIndex];
-  const isLastQuestion = currentIndex >= questions.length - 1;
+  const totalToAnswer = session?.total_questions ?? questions.length;
+  const isLastQuestion = currentIndex >= totalToAnswer - 1;
   const isFinished = answerResult && isLastQuestion;
-  const currentLevel = session?.determined_level || 1;
 
   // Every 5th question (5, 10, 15, 20) uses sentence format
   const isSentenceQuestion = (currentIndex + 1) % 5 === 0;
@@ -97,15 +121,12 @@ export function TestPage() {
   const handleChoiceClick = (choice: string) => {
     if (answerResult || isSubmitting) return;
     selectAnswer(choice);
-    setTimeout(() => {
-      const { selectedAnswer: sel, answerResult: res } = useTestStore.getState();
-      if (sel && !res) submitAnswer();
-    }, 0);
+    submitAnswer();
   };
 
   const handleNext = () => {
     if (isFinished && session) {
-      navigate(`/result/${session.id}`);
+      navigate(`/result/${session.id}`, { replace: true });
     } else {
       nextQuestion();
     }
@@ -150,40 +171,44 @@ export function TestPage() {
   if (!currentQuestion || !session) return null;
 
   return (
-    <div className="min-h-screen bg-bg-cream flex flex-col md:max-w-[640px] md:mx-auto">
+    <div className="min-h-screen bg-bg-cream flex flex-col">
       {/* Header */}
       <QuizHeader
-        level={currentLevel}
+        level={adaptiveLevel}
         currentIndex={currentIndex}
-        totalQuestions={questions.length}
+        totalQuestions={totalToAnswer}
       />
 
       {/* Progress Bar */}
-      <GradientProgressBar current={currentIndex + 1} total={questions.length} />
+      <GradientProgressBar current={currentIndex + 1} total={totalToAnswer} />
 
       {/* Content Area */}
-      <div className="flex-1 flex flex-col justify-center gap-6 px-5 py-6">
+      <div className="flex-1 flex flex-col justify-center items-center gap-6 px-5 py-6 lg:gap-7 lg:px-12 lg:py-5">
         {/* Timer */}
         {!answerResult && (
-          <TimerBar
-            secondsLeft={secondsLeft}
-            fraction={fraction}
-            urgency={urgency}
-          />
+          <div className="w-full lg:w-[640px]">
+            <TimerBar
+              secondsLeft={secondsLeft}
+              fraction={fraction}
+              urgency={urgency}
+            />
+          </div>
         )}
 
         {/* Word Card or Sentence Card */}
-        {isSentenceQuestion && currentQuestion.word.example_en ? (
-          <SentenceCard
-            sentence={currentQuestion.word.example_en}
-            word={currentQuestion.word.english}
-          />
-        ) : (
-          <WordCard word={currentQuestion.word.english} />
-        )}
+        <div className="w-full lg:w-[640px]">
+          {isSentenceQuestion && currentQuestion.word.example_en ? (
+            <SentenceCard
+              sentence={currentQuestion.word.example_en}
+              word={currentQuestion.word.english}
+            />
+          ) : (
+            <WordCard word={currentQuestion.word.english} />
+          )}
+        </div>
 
-        {/* Choices */}
-        <div className="flex flex-col gap-3 w-full">
+        {/* Choices: vertical on mobile, 2x2 grid on PC */}
+        <div className="flex flex-col gap-3 w-full lg:grid lg:grid-cols-2 lg:gap-3 lg:w-[640px]">
           {currentQuestion.choices.map((choice, i) => (
             <ChoiceButton
               key={i}
@@ -197,9 +222,9 @@ export function TestPage() {
       </div>
 
       {/* Footer Area */}
-      <div className="h-[70px] px-5 flex items-center" onClick={answerResult ? handleNext : undefined}>
+      <div className="h-[70px] px-5 flex items-center lg:justify-center" onClick={answerResult ? handleNext : undefined}>
         {answerResult ? (
-          <button onClick={handleNext} className="w-full">
+          <button onClick={handleNext} className="w-full lg:w-[640px]">
             <FeedbackBanner
               isCorrect={answerResult.is_correct}
               correctAnswer={answerResult.correct_answer}

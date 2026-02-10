@@ -25,7 +25,7 @@ class AuthToken(Base):
     )
 
     # Relationships
-    user: Mapped["User"] = relationship("User", lazy="selectin")
+    user: Mapped["User"] = relationship("User", lazy="noload")
 
     __table_args__ = (
         Index("idx_auth_token_user_id", "user_id"),

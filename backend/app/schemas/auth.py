@@ -8,6 +8,15 @@ class Token(BaseModel):
     token_type: str = "bearer"
 
 
+class LoginResponse(Token):
+    user: "UserResponse"
+
+
+from app.schemas.user import UserResponse  # noqa: E402
+
+LoginResponse.model_rebuild()
+
+
 class TokenPayload(BaseModel):
     sub: str | None = None
 

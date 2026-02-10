@@ -149,7 +149,8 @@ async def generate_questions(
 
         # Fill remaining if needed
         if len(selected) < count:
-            extras = [w for w in level_words if w not in selected]
+            selected_ids = {w.id for w in selected}
+            extras = [w for w in level_words if w.id not in selected_ids]
             if extras:
                 selected.extend(random.sample(
                     extras, min(count - len(selected), len(extras))
@@ -157,14 +158,20 @@ async def generate_questions(
 
         question_words.extend(selected)
 
+    # Pre-group words by korean meaning for O(1) wrong-answer filtering
+    words_by_korean: dict[str, list[Word]] = defaultdict(list)
+    for w in all_words:
+        words_by_korean[w.korean].append(w)
+    unique_korean_meanings = [k for k in words_by_korean if True]
+
     # Build questions (ordered easy → hard)
     questions = []
     for i, word in enumerate(question_words):
-        wrong_pool = [w for w in all_words if w.id != word.id and w.korean != word.korean]
-        wrong_words = random.sample(wrong_pool, min(3, len(wrong_pool)))
-        wrong_choices = [w.korean for w in wrong_words]
+        # Pick 3 wrong meanings (exclude correct answer's korean)
+        wrong_meanings = [k for k in unique_korean_meanings if k != word.korean]
+        sampled_meanings = random.sample(wrong_meanings, min(3, len(wrong_meanings)))
 
-        choices = [word.korean] + wrong_choices
+        choices = [word.korean] + sampled_meanings
         random.shuffle(choices)
 
         questions.append({

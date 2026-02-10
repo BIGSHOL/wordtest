@@ -37989,7 +37989,8 @@
               "fill": "#FFFFFFCC",
               "content": "영어 어휘력 레벨 테스트",
               "fontFamily": "Outfit",
-              "fontSize": 16
+              "fontSize": 16,
+              "fontWeight": "normal"
             },
             {
               "type": "frame",
@@ -38127,7 +38128,8 @@
                   "fill": "#6D6C6A",
                   "content": "계정에 로그인하세요",
                   "fontFamily": "Outfit",
-                  "fontSize": 14
+                  "fontSize": 14,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -38179,7 +38181,8 @@
                               "fill": "#9C9B99",
                               "content": "아이디를 입력하세요",
                               "fontFamily": "Outfit",
-                              "fontSize": 14
+                              "fontSize": 14,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -38228,7 +38231,8 @@
                               "fill": "#9C9B99",
                               "content": "비밀번호를 입력하세요",
                               "fontFamily": "Outfit",
-                              "fontSize": 14
+                              "fontSize": 14,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "icon_font",
@@ -38292,7 +38296,8 @@
                       "fill": "#9C9B99",
                       "content": "또는",
                       "fontFamily": "Outfit",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "frame",
@@ -38340,7 +38345,8 @@
                   "content": "© 2026 WordLvTest",
                   "textAlign": "center",
                   "fontFamily": "Outfit",
-                  "fontSize": 12
+                  "fontSize": 12,
+                  "fontWeight": "normal"
                 }
               ]
             }
@@ -38445,7 +38451,8 @@
                   "fill": "#6D6C6A",
                   "content": "영어 어휘력 레벨 테스트",
                   "fontFamily": "Outfit",
-                  "fontSize": 13
+                  "fontSize": 13,
+                  "fontWeight": "normal"
                 }
               ]
             },
@@ -38531,7 +38538,8 @@
                               "fill": "#9C9B99",
                               "content": "아이디를 입력하세요",
                               "fontFamily": "Outfit",
-                              "fontSize": 14
+                              "fontSize": 14,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -38581,7 +38589,8 @@
                               "fill": "#9C9B99",
                               "content": "비밀번호를 입력하세요",
                               "fontFamily": "Outfit",
-                              "fontSize": 14
+                              "fontSize": 14,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "icon_font",
@@ -38638,7 +38647,8 @@
                       "fill": "#6D6C6A",
                       "content": "계정이 없으신가요?",
                       "fontFamily": "Outfit",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "text",
@@ -38661,7 +38671,8 @@
               "fill": "#9C9B99",
               "content": "© 2026 WordLvTest",
               "fontFamily": "Outfit",
-              "fontSize": 12
+              "fontSize": 12,
+              "fontWeight": "normal"
             }
           ]
         }

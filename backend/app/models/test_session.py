@@ -37,7 +37,7 @@ class TestSession(Base):
     completed_at: Mapped[Optional[datetime]] = mapped_column(TZDateTime(), nullable=True)
 
     # Relationships
-    student: Mapped["User"] = relationship("User", lazy="selectin")
+    student: Mapped["User"] = relationship("User", lazy="noload")
     answers: Mapped[list["TestAnswer"]] = relationship(
         "TestAnswer", back_populates="test_session", cascade="all, delete-orphan"
     )

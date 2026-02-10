@@ -14,3 +14,11 @@ export function playSound(name: 'correct' | 'wrong' | 'timer' | 'two' | 'lvlup' 
   audio.currentTime = 0;
   audio.play().catch(() => {});
 }
+
+export function stopSound(name: 'correct' | 'wrong' | 'timer' | 'two' | 'lvlup' | 'lvldown' | 'perfect') {
+  const audio = cache.get(`/sounds/${name}.mp3`);
+  if (audio) {
+    audio.pause();
+    audio.currentTime = 0;
+  }
+}

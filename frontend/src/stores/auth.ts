@@ -33,8 +33,11 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: true, error: null });
         try {
           const response = await authService.login(data);
-          set({ token: response.access_token });
-          await get().fetchUser();
+          // Login response includes user — no extra fetchUser() call needed
+          set({ token: response.access_token, user: response.user ?? null });
+          if (!response.user) {
+            await get().fetchUser();
+          }
         } catch (error: unknown) {
           set({ error: getErrorMessage(error, 'Login failed') });
           throw error;

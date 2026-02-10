@@ -34,21 +34,18 @@ export function useTimer(totalSeconds: number, onTimeout?: () => void): UseTimer
   const urgency = getUrgency(fraction);
 
   useEffect(() => {
-    if (secondsLeft <= 0) {
-      onTimeoutRef.current?.();
-      return;
-    }
     const id = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
           clearInterval(id);
+          onTimeoutRef.current?.();
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [secondsLeft]);
+  }, []); // interval은 한 번만 생성, reset()으로 재시작
 
   const reset = useCallback(() => {
     setSecondsLeft(totalSeconds);

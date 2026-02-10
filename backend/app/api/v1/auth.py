@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
-from app.schemas.auth import Token, LoginRequest, RegisterRequest, RefreshRequest, PasswordChangeRequest
+from app.schemas.auth import Token, LoginRequest, LoginResponse, RegisterRequest, RefreshRequest, PasswordChangeRequest
 from app.schemas.user import UserResponse
 from app.services.auth import (
     authenticate_user, create_user, get_user_by_username, update_password,
@@ -33,12 +33,12 @@ async def register(
 
 
 
-@router.post("/login/json", response_model=Token)
+@router.post("/login/json", response_model=LoginResponse)
 async def login_json(
     login_data: LoginRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Login with JSON body and get access token + refresh token."""
+    """Login with JSON body and get access token + refresh token + user."""
     user = await authenticate_user(db, login_data.username, login_data.password)
     if not user:
         raise HTTPException(
@@ -48,7 +48,11 @@ async def login_json(
 
     access_token = create_access_token(subject=user.id)
     refresh_token = await create_auth_token(db, user.id)
-    return Token(access_token=access_token, refresh_token=refresh_token)
+    return LoginResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        user=UserResponse.model_validate(user),
+    )
 
 
 @router.post("/refresh", response_model=Token)

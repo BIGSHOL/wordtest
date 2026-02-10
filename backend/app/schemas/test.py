@@ -23,12 +23,14 @@ class TestQuestionWord(BaseModel):
     id: str
     english: str
     example_en: Optional[str] = None
+    level: int = 1  # word DB level (1-15)
 
 
 class TestQuestion(BaseModel):
     question_order: int
     word: TestQuestionWord
     choices: list[str]
+    correct_answer: str
 
 
 class TestSessionResponse(BaseModel):

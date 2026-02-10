@@ -60,27 +60,57 @@ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
   ensureVoices();
 }
 
+// Preloaded audio cache: word → HTMLAudioElement (ready to play instantly)
+const audioCache = new Map<string, HTMLAudioElement>();
+const preloadingWords = new Set<string>();
+
 /**
- * 단어 발음 재생: Dictionary API 원어민 음원 → fallback: Web Speech API
+ * 백그라운드에서 Dictionary API 음원을 미리 로드
  */
-export async function speakWord(word: string) {
-  try {
-    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
-    if (res.ok) {
-      const data = await res.json();
+export function preloadWordAudio(word: string) {
+  const key = word.toLowerCase();
+  if (audioCache.has(key) || preloadingWords.has(key)) return;
+  preloadingWords.add(key);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+  fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(key)}`, {
+    signal: controller.signal,
+  })
+    .then((res) => { clearTimeout(timeoutId); return res.ok ? res.json() : null; })
+    .then((data) => {
+      if (!data) return;
       const audioUrl = data?.[0]?.phonetics
         ?.map((p: { audio?: string }) => p.audio)
         ?.find((url: string) => url && url.length > 0);
       if (audioUrl) {
         const audio = new Audio(audioUrl);
-        await audio.play();
-        return;
+        audio.preload = 'auto';
+        audioCache.set(key, audio);
       }
-    }
-  } catch {
-    // API 실패 시 fallback
+    })
+    .catch(() => {})
+    .finally(() => preloadingWords.delete(key));
+}
+
+/**
+ * 단어 발음 재생: 프리로드된 음원 → fallback: Web Speech API
+ */
+export async function speakWord(word: string) {
+  const key = word.toLowerCase();
+  const cached = audioCache.get(key);
+  if (cached) {
+    cached.currentTime = 0;
+    cached.play().catch(() => {});
+    return;
   }
+
+  // 캐시에 없으면 Web Speech API로 즉시 재생 (지연 없음)
   speak(word, 'en-US', { rate: 0.85 });
+
+  // 백그라운드에서 음원 캐시 (다음 클릭 시 원어민 음원 사용)
+  preloadWordAudio(word);
 }
 
 /**

@@ -51,3 +51,9 @@ async def verify_password_async(plain_password: str, hashed_password: str) -> bo
 def get_password_hash(password: str) -> str:
     """Hash a password."""
     return pwd_context.hash(password)
+
+
+async def get_password_hash_async(password: str) -> str:
+    """Hash a password without blocking the event loop."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, get_password_hash, password)

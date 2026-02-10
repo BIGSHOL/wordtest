@@ -5,7 +5,7 @@ from sqlalchemy import select, delete
 from app.models.user import User
 from app.models.auth_token import AuthToken
 from app.schemas.auth import RegisterRequest
-from app.core.security import get_password_hash, verify_password_async, create_refresh_token
+from app.core.security import get_password_hash_async, verify_password_async, create_refresh_token
 from app.core.config import settings
 from jose import jwt, JWTError
 
@@ -39,7 +39,7 @@ async def authenticate_user(db: AsyncSession, login_id: str, password: str) -> U
 async def create_user(db: AsyncSession, user_in: RegisterRequest) -> User:
     user = User(
         username=user_in.username,
-        password_hash=get_password_hash(user_in.password),
+        password_hash=await get_password_hash_async(user_in.password),
         name=user_in.name,
         role="teacher",
     )
@@ -50,7 +50,7 @@ async def create_user(db: AsyncSession, user_in: RegisterRequest) -> User:
 
 
 async def update_password(db: AsyncSession, user: User, new_password: str) -> User:
-    user.password_hash = get_password_hash(new_password)
+    user.password_hash = await get_password_hash_async(new_password)
     await db.commit()
     await db.refresh(user)
     return user
