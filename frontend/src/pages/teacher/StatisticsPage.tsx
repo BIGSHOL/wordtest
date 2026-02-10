@@ -245,14 +245,14 @@ export function StatisticsPage() {
                         )}
                       </td>
                       <td className="px-6 text-sm text-text-tertiary">
-                        {new Date(test.completed_at).toLocaleDateString(
+                        {test.completed_at ? new Date(test.completed_at).toLocaleDateString(
                           'ko-KR',
                           {
                             year: 'numeric',
                             month: 'short',
                             day: 'numeric',
                           }
-                        )}
+                        ) : '-'}
                       </td>
                     </tr>
                   ))}
