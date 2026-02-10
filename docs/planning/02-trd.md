@@ -88,9 +88,10 @@
 
 | 항목 | 선택 | 이유 |
 |------|------|------|
-| 컨테이너 | Docker + Docker Compose | 로컬 개발 일관성, DB 포함 환경 구성 |
-| 호스팅 (BE) | Railway / Render | 무료 티어 활용 가능, 간편한 배포 |
-| 호스팅 (FE) | Vercel | React 앱 최적화, 무료 티어 |
+| 컨테이너 | Docker + Docker Compose | 로컬 개발 일관성 (개발 환경 전용) |
+| DB 호스팅 | **Supabase** (PostgreSQL) | 관리형 PostgreSQL, 무료 티어 충분, 글로벌 리전 |
+| 호스팅 (BE) | **Railway** | Python 배포 간편, Nixpacks 빌드, 무료 크레딧 |
+| 호스팅 (FE) | **Vercel** | React+Vite 최적화, 글로벌 CDN, 무료 |
 
 ---
 
