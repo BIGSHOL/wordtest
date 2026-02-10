@@ -5,19 +5,36 @@ import { RegisterPage } from './pages/auth/RegisterPage';
 import { RouteGuard } from './components/auth/RouteGuard';
 import './index.css';
 
+// Auto-reload on chunk load failure (stale deployment)
+function lazyRetry<T extends { default: React.ComponentType }>(
+  factory: () => Promise<T>,
+) {
+  return lazy(() =>
+    factory().catch(() => {
+      const reloaded = sessionStorage.getItem('chunk_reload');
+      if (!reloaded) {
+        sessionStorage.setItem('chunk_reload', '1');
+        window.location.reload();
+      }
+      sessionStorage.removeItem('chunk_reload');
+      return factory();
+    }),
+  );
+}
+
 // Lazy-loaded pages for code splitting
-const ProfilePage = lazy(() => import('./pages/teacher/ProfilePage'));
-const DashboardPage = lazy(() => import('./pages/teacher/DashboardPage'));
-const StudentManagePage = lazy(() => import('./pages/teacher/StudentManagePage'));
-const WordDatabasePage = lazy(() => import('./pages/teacher/WordDatabasePage'));
-const TestSettingsPage = lazy(() => import('./pages/teacher/TestSettingsPage'));
-const StatisticsPage = lazy(() => import('./pages/teacher/StatisticsPage'));
-const StudentResultPage = lazy(() => import('./pages/teacher/StudentResultPage'));
-const StudentMainPage = lazy(() => import('./pages/student/MainPage'));
-const TestStartPage = lazy(() => import('./pages/student/TestStartPage'));
-const TestPage = lazy(() => import('./pages/student/TestPage'));
-const ResultPage = lazy(() => import('./pages/student/ResultPage'));
-const WrongWordsPage = lazy(() => import('./pages/student/WrongWordsPage'));
+const ProfilePage = lazyRetry(() => import('./pages/teacher/ProfilePage'));
+const DashboardPage = lazyRetry(() => import('./pages/teacher/DashboardPage'));
+const StudentManagePage = lazyRetry(() => import('./pages/teacher/StudentManagePage'));
+const WordDatabasePage = lazyRetry(() => import('./pages/teacher/WordDatabasePage'));
+const TestSettingsPage = lazyRetry(() => import('./pages/teacher/TestSettingsPage'));
+const StatisticsPage = lazyRetry(() => import('./pages/teacher/StatisticsPage'));
+const StudentResultPage = lazyRetry(() => import('./pages/teacher/StudentResultPage'));
+const StudentMainPage = lazyRetry(() => import('./pages/student/MainPage'));
+const TestStartPage = lazyRetry(() => import('./pages/student/TestStartPage'));
+const TestPage = lazyRetry(() => import('./pages/student/TestPage'));
+const ResultPage = lazyRetry(() => import('./pages/student/ResultPage'));
+const WrongWordsPage = lazyRetry(() => import('./pages/student/WrongWordsPage'));
 
 function PageLoader() {
   return (
