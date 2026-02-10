@@ -1,11 +1,12 @@
 """AuthToken model - FEAT-0: 인증."""
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 
-from sqlalchemy import String, DateTime, ForeignKey, Index
+from sqlalchemy import String, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.core.timezone import now_kst, TZDateTime
 
 
 class AuthToken(Base):
@@ -18,9 +19,9 @@ class AuthToken(Base):
         String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     refresh_token: Mapped[str] = mapped_column(String(500), unique=True, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(TZDateTime(), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+        TZDateTime(), default=now_kst, nullable=False
     )
 
     # Relationships

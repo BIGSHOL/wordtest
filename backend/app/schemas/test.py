@@ -65,3 +65,7 @@ class AnswerDetail(BaseModel):
 class TestResultResponse(BaseModel):
     test_session: TestSessionResponse
     answers: list[AnswerDetail]
+
+
+class ListTestsResponse(BaseModel):
+    tests: list[TestSessionResponse]

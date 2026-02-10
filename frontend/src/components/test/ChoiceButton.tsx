@@ -1,3 +1,5 @@
+import { memo } from 'react';
+
 type ChoiceState = 'default' | 'selected' | 'correct' | 'wrong' | 'disabled';
 
 interface ChoiceButtonProps {
@@ -69,20 +71,21 @@ const stateStyles: Record<ChoiceState, {
   },
 };
 
-export function ChoiceButton({ index, text, state, onClick }: ChoiceButtonProps) {
+export const ChoiceButton = memo(function ChoiceButton({ index, text, state, onClick }: ChoiceButtonProps) {
   const s = stateStyles[state];
+  const isDisabled = state === 'disabled' || state === 'correct' || state === 'wrong';
 
   return (
     <button
       onClick={onClick}
-      disabled={state === 'disabled' || state === 'correct' || state === 'wrong'}
+      disabled={isDisabled}
       className="flex items-center gap-3 w-full h-14 px-5 rounded-2xl transition-all duration-200"
       style={{
         background: s.bg,
         border: `${s.borderWidth}px solid ${s.border}`,
         opacity: s.opacity,
         boxShadow: s.shadow,
-        cursor: state === 'disabled' || state === 'correct' || state === 'wrong' ? 'default' : 'pointer',
+        cursor: isDisabled ? 'default' : 'pointer',
       }}
     >
       <div
@@ -94,12 +97,10 @@ export function ChoiceButton({ index, text, state, onClick }: ChoiceButtonProps)
         </span>
       </div>
       <span
-        className="text-[16px] font-medium"
+        className="text-[16px]"
         style={{
           color: s.textColor,
-          fontFamily: state === 'correct' || state === 'wrong' || state === 'selected'
-            ? "'Pretendard Variable', 'Pretendard', sans-serif"
-            : "'Pretendard Variable', 'Pretendard', sans-serif",
+          fontFamily: "'Pretendard Variable', 'Pretendard', sans-serif",
           fontWeight: state === 'correct' || state === 'wrong' ? 600 : 500,
         }}
       >
@@ -107,4 +108,4 @@ export function ChoiceButton({ index, text, state, onClick }: ChoiceButtonProps)
       </span>
     </button>
   );
-}
+});

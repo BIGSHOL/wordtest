@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { CircleCheck, CircleX } from 'lucide-react';
 
 interface FeedbackBannerProps {
@@ -5,7 +6,7 @@ interface FeedbackBannerProps {
   correctAnswer?: string;
 }
 
-export function FeedbackBanner({ isCorrect, correctAnswer }: FeedbackBannerProps) {
+export const FeedbackBanner = memo(function FeedbackBanner({ isCorrect, correctAnswer }: FeedbackBannerProps) {
   if (isCorrect) {
     return (
       <div className="flex items-center gap-2.5 rounded-2xl bg-correct-light px-5 py-3.5 w-full">
@@ -25,4 +26,4 @@ export function FeedbackBanner({ isCorrect, correctAnswer }: FeedbackBannerProps
       </span>
     </div>
   );
-}
+});

@@ -5,6 +5,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User, LoginRequest, RegisterRequest } from '../types/auth';
 import authService from '../services/auth';
+import { getErrorMessage } from '../utils/error';
 
 interface AuthStore {
   user: User | null;
@@ -34,9 +35,8 @@ export const useAuthStore = create<AuthStore>()(
           const response = await authService.login(data);
           set({ token: response.access_token });
           await get().fetchUser();
-        } catch (error: any) {
-          const message = error.response?.data?.detail || 'Login failed';
-          set({ error: message });
+        } catch (error: unknown) {
+          set({ error: getErrorMessage(error, 'Login failed') });
           throw error;
         } finally {
           set({ isLoading: false });
@@ -49,9 +49,8 @@ export const useAuthStore = create<AuthStore>()(
           await authService.register(data);
           // Auto-login after registration
           await get().login({ username: data.username, password: data.password });
-        } catch (error: any) {
-          const message = error.response?.data?.detail || 'Registration failed';
-          set({ error: message });
+        } catch (error: unknown) {
+          set({ error: getErrorMessage(error, 'Registration failed') });
           throw error;
         } finally {
           set({ isLoading: false });

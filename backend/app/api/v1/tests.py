@@ -13,6 +13,7 @@ from app.schemas.test import (
     TestQuestionWord,
     TestResultResponse,
     AnswerDetail,
+    ListTestsResponse,
 )
 from app.core.deps import CurrentUser
 from app.services.test import start_test, submit_answer, get_test_result, list_tests_by_student
@@ -45,7 +46,7 @@ def _session_response(session) -> TestSessionResponse:
 router = APIRouter(prefix="/tests", tags=["tests"])
 
 
-@router.post("/start", status_code=status.HTTP_201_CREATED)
+@router.post("/start", response_model=StartTestResponse, status_code=status.HTTP_201_CREATED)
 async def start_test_endpoint(
     test_in: StartTestRequest,
     current_user: CurrentUser,
@@ -109,7 +110,7 @@ async def submit_answer_endpoint(
     )
 
 
-@router.get("/{test_id}/result")
+@router.get("/{test_id}/result", response_model=TestResultResponse)
 async def get_test_result_endpoint(
     test_id: str,
     current_user: CurrentUser,
@@ -136,7 +137,7 @@ async def get_test_result_endpoint(
     )
 
 
-@router.get("")
+@router.get("", response_model=ListTestsResponse)
 async def list_tests_endpoint(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],

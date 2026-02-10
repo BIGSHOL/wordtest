@@ -1,6 +1,6 @@
 """Statistics and analytics endpoints."""
 from typing import Annotated
-from datetime import datetime, timedelta, timezone
+from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +17,7 @@ from app.core.deps import CurrentTeacher, CurrentUser
 from app.models.user import User
 from app.models.word import Word
 from app.models.test_session import TestSession
+from app.core.timezone import now_kst
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -40,14 +41,14 @@ async def get_dashboard_stats(
     total_words_result = await db.execute(words_query)
     total_words = total_words_result.scalar() or 0
 
-    # Get student IDs for teacher
-    student_ids_query = select(User.id).where(
-        and_(User.role == "student", User.teacher_id == teacher.id)
+    # Subquery for student IDs (avoids loading all IDs into memory)
+    student_ids_subq = (
+        select(User.id)
+        .where(and_(User.role == "student", User.teacher_id == teacher.id))
+        .scalar_subquery()
     )
-    student_ids_result = await db.execute(student_ids_query)
-    student_ids = [row[0] for row in student_ids_result.fetchall()]
 
-    if not student_ids:
+    if total_students == 0:
         # No students, return empty stats
         return DashboardStats(
             total_students=0,
@@ -65,7 +66,7 @@ async def get_dashboard_stats(
     tests_query = (
         select(func.count())
         .select_from(TestSession)
-        .where(TestSession.student_id.in_(student_ids))
+        .where(TestSession.student_id.in_(student_ids_subq))
     )
     total_tests_result = await db.execute(tests_query)
     total_tests = total_tests_result.scalar() or 0
@@ -75,7 +76,7 @@ async def get_dashboard_stats(
         select(func.avg(TestSession.score))
         .where(
             and_(
-                TestSession.student_id.in_(student_ids),
+                TestSession.student_id.in_(student_ids_subq),
                 TestSession.completed_at.isnot(None),
                 TestSession.score.isnot(None),
             )
@@ -92,7 +93,7 @@ async def get_dashboard_stats(
         )
         .where(
             and_(
-                TestSession.student_id.in_(student_ids),
+                TestSession.student_id.in_(student_ids_subq),
                 TestSession.determined_level.isnot(None),
             )
         )
@@ -111,7 +112,7 @@ async def get_dashboard_stats(
         .join(User, TestSession.student_id == User.id)
         .where(
             and_(
-                TestSession.student_id.in_(student_ids),
+                TestSession.student_id.in_(student_ids_subq),
                 TestSession.completed_at.isnot(None),
             )
         )
@@ -131,13 +132,13 @@ async def get_dashboard_stats(
     ]
 
     # Weekly test count (last 7 days)
-    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    week_ago = now_kst() - timedelta(days=7)
     weekly_tests_query = (
         select(func.count())
         .select_from(TestSession)
         .where(
             and_(
-                TestSession.student_id.in_(student_ids),
+                TestSession.student_id.in_(student_ids_subq),
                 TestSession.completed_at.isnot(None),
                 TestSession.completed_at >= week_ago,
             )
@@ -147,7 +148,7 @@ async def get_dashboard_stats(
     weekly_test_count = weekly_tests_result.scalar() or 0
 
     # Score trend (daily averages for last 30 days)
-    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    thirty_days_ago = now_kst() - timedelta(days=30)
     score_trend_query = (
         select(
             func.date(TestSession.completed_at).label("date"),
@@ -156,7 +157,7 @@ async def get_dashboard_stats(
         )
         .where(
             and_(
-                TestSession.student_id.in_(student_ids),
+                TestSession.student_id.in_(student_ids_subq),
                 TestSession.completed_at.isnot(None),
                 TestSession.score.isnot(None),
                 TestSession.completed_at >= thirty_days_ago,

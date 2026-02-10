@@ -1,12 +1,13 @@
 """Word model - FEAT-1: 단어 데이터."""
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, Integer, DateTime, Index
+from sqlalchemy import String, Integer, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from app.core.timezone import now_kst, TZDateTime
 
 
 class Word(Base):
@@ -25,7 +26,7 @@ class Word(Base):
     example_en: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     example_ko: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+        TZDateTime(), default=now_kst, nullable=False
     )
 
     __table_args__ = (

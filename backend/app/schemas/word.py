@@ -1,4 +1,5 @@
 """Word schemas."""
+from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
 
@@ -14,6 +15,7 @@ class WordResponse(BaseModel):
     part_of_speech: Optional[str] = None
     example_en: Optional[str] = None
     example_ko: Optional[str] = None
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

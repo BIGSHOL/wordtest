@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/auth';
 import authService from '../../services/auth';
+import { getErrorMessage } from '../../utils/error';
 
 export function ProfilePage() {
   const navigate = useNavigate();
@@ -41,8 +42,8 @@ export function ProfilePage() {
       await fetchUser();
       setIsEditing(false);
       setMessage({ type: 'success', text: 'Profile updated successfully' });
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.response?.data?.detail || 'Failed to update profile' });
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: getErrorMessage(error, 'Failed to update profile') });
     } finally {
       setIsLoading(false);
     }
@@ -71,8 +72,8 @@ export function ProfilePage() {
       setIsChangingPassword(false);
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setMessage({ type: 'success', text: 'Password changed successfully' });
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.response?.data?.detail || 'Failed to change password' });
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: getErrorMessage(error, 'Failed to change password') });
     } finally {
       setIsLoading(false);
     }
@@ -92,8 +93,8 @@ export function ProfilePage() {
     try {
       await authService.deleteAccount();
       navigate('/login');
-    } catch (error: any) {
-      setMessage({ type: 'error', text: error.response?.data?.detail || 'Failed to delete account' });
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: getErrorMessage(error, 'Failed to delete account') });
     } finally {
       setIsLoading(false);
     }

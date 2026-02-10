@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Volume2 } from 'lucide-react';
 import { speak } from '../../utils/tts';
 
@@ -7,7 +8,7 @@ interface SentenceCardProps {
   blankText?: string;
 }
 
-export function SentenceCard({ sentenceBefore, sentenceAfter, blankText }: SentenceCardProps) {
+export const SentenceCard = memo(function SentenceCard({ sentenceBefore, sentenceAfter, blankText }: SentenceCardProps) {
   const handleSpeak = () => {
     const text = sentenceBefore + (blankText || '___') + sentenceAfter;
     speak(text);
@@ -48,4 +49,4 @@ export function SentenceCard({ sentenceBefore, sentenceAfter, blankText }: Sente
       </button>
     </div>
   );
-}
+});

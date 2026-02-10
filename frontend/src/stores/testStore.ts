@@ -7,6 +7,7 @@ import testService, {
   type TestSessionData,
   type SubmitAnswerResponse,
 } from '../services/test';
+import { getErrorMessage } from '../utils/error';
 
 export interface WrongAnswer {
   english: string;
@@ -57,9 +58,8 @@ export const useTestStore = create<TestStore>()((set, get) => ({
         answerResult: null,
         wrongAnswers: [],
       });
-    } catch (error: any) {
-      const message = error.response?.data?.detail || '테스트를 시작할 수 없습니다.';
-      set({ error: message });
+    } catch (error: unknown) {
+      set({ error: getErrorMessage(error, '테스트를 시작할 수 없습니다.') });
       throw error;
     } finally {
       set({ isLoading: false });
@@ -100,9 +100,8 @@ export const useTestStore = create<TestStore>()((set, get) => ({
               },
             ],
       }));
-    } catch (error: any) {
-      const message = error.response?.data?.detail || '답변을 제출할 수 없습니다.';
-      set({ error: message });
+    } catch (error: unknown) {
+      set({ error: getErrorMessage(error, '답변을 제출할 수 없습니다.') });
     } finally {
       set({ isSubmitting: false });
     }

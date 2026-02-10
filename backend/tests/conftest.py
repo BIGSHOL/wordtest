@@ -86,12 +86,13 @@ async def teacher_token(teacher_user: User) -> str:
 @pytest_asyncio.fixture
 async def teacher_refresh_token(db_session: AsyncSession, teacher_user: User) -> str:
     """Create a DB-backed refresh token for the teacher."""
-    from datetime import datetime, timedelta
+    from datetime import timedelta
+    from app.core.timezone import now_kst
     token = create_refresh_token(subject=teacher_user.id)
     auth_token = AuthToken(
         user_id=teacher_user.id,
         refresh_token=token,
-        expires_at=datetime.utcnow() + timedelta(days=7),
+        expires_at=now_kst() + timedelta(days=7),
     )
     db_session.add(auth_token)
     await db_session.commit()

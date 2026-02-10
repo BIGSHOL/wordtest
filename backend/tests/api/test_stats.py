@@ -1,6 +1,6 @@
 """Statistics API tests."""
 import pytest
-from datetime import datetime
+from app.core.timezone import now_kst
 
 
 @pytest.mark.asyncio
@@ -51,7 +51,7 @@ class TestDashboardStats:
             correct_count=15,
             determined_level=3,
             score=75,
-            completed_at=datetime.utcnow(),
+            completed_at=now_kst(),
         )
         db_session.add(test_session)
         await db_session.commit()

@@ -1,8 +1,10 @@
 """Test session service."""
-from datetime import datetime, timezone
+from datetime import timedelta
 from typing import Optional
+from app.core.timezone import now_kst
+from app.core.config import settings
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 from app.models.test_session import TestSession
 from app.models.test_answer import TestAnswer
@@ -12,6 +14,23 @@ from app.services.level_engine import (
     RANK_NAMES, format_rank_label,
 )
 from app.services.test_config import get_config_by_code
+
+
+async def _expire_stale_sessions(db: AsyncSession, student_id: str) -> None:
+    """Auto-expire incomplete sessions older than the configured timeout."""
+    cutoff = now_kst() - timedelta(minutes=settings.TEST_SESSION_TIMEOUT_MINUTES)
+    stale_result = await db.execute(
+        select(TestSession).where(
+            and_(
+                TestSession.student_id == student_id,
+                TestSession.completed_at.is_(None),
+                TestSession.started_at < cutoff,
+            )
+        )
+    )
+    for session in stale_result.scalars().all():
+        session.completed_at = now_kst()
+        session.score = 0
 
 
 async def start_test(
@@ -24,6 +43,9 @@ async def start_test(
 
     If test_code is provided, looks up the TestConfig and uses its settings.
     """
+    # Auto-expire stale incomplete sessions before starting a new one
+    await _expire_stale_sessions(db, student_id)
+
     test_config_id = None
 
     if test_code:
@@ -41,6 +63,9 @@ async def start_test(
         test_config_id = config.id
     else:
         questions = await generate_questions(db)
+
+    if not questions:
+        raise ValueError("Not enough words to generate test questions")
 
     session = TestSession(
         student_id=student_id,
@@ -94,6 +119,14 @@ async def submit_answer(
     if session.completed_at is not None:
         raise ValueError("Test session already completed")
 
+    # Timeout guard: reject answers for expired sessions
+    timeout_cutoff = session.started_at + timedelta(minutes=settings.TEST_SESSION_TIMEOUT_MINUTES)
+    if now_kst() > timeout_cutoff:
+        session.completed_at = now_kst()
+        session.score = 0
+        await db.commit()
+        raise ValueError("Test session has expired")
+
     # Find the answer record
     result = await db.execute(
         select(TestAnswer).where(
@@ -109,7 +142,7 @@ async def submit_answer(
     is_correct = selected_answer == answer.correct_answer
     answer.selected_answer = selected_answer
     answer.is_correct = is_correct
-    answer.answered_at = datetime.now(timezone.utc)
+    answer.answered_at = now_kst()
 
     # Update session correct count if correct
     if is_correct:
@@ -126,16 +159,18 @@ async def submit_answer(
         # All questions answered - complete the test
         correct_total = sum(1 for a in all_answers if a.is_correct)
         session.correct_count = correct_total
-        session.completed_at = datetime.now(timezone.utc)
+        session.completed_at = now_kst()
 
         # Build (word_level, lesson, is_correct) list ordered by question_order
         sorted_answers = sorted(all_answers, key=lambda a: a.question_order)
+        word_ids = [a.word_id for a in sorted_answers]
+        words_result = await db.execute(
+            select(Word).where(Word.id.in_(word_ids))
+        )
+        words_map = {w.id: w for w in words_result.scalars().all()}
         answers_with_details: list[tuple[int, str, bool]] = []
         for a in sorted_answers:
-            word_result = await db.execute(
-                select(Word).where(Word.id == a.word_id)
-            )
-            word = word_result.scalar_one_or_none()
+            word = words_map.get(a.word_id)
             if word:
                 answers_with_details.append((word.level, word.lesson, a.is_correct))
 
@@ -166,13 +201,16 @@ async def get_test_result(
     if not session:
         return None
 
-    # Load word data for answers
+    # Batch load word data for answers (avoid N+1 queries)
+    sorted_answers = sorted(session.answers, key=lambda a: a.question_order)
+    word_ids = [a.word_id for a in sorted_answers]
+    words_result = await db.execute(
+        select(Word).where(Word.id.in_(word_ids))
+    )
+    words_map = {w.id: w for w in words_result.scalars().all()}
     answers_with_words = []
-    for answer in sorted(session.answers, key=lambda a: a.question_order):
-        word_result = await db.execute(
-            select(Word).where(Word.id == answer.word_id)
-        )
-        word = word_result.scalar_one_or_none()
+    for answer in sorted_answers:
+        word = words_map.get(answer.word_id)
         answers_with_words.append({
             "question_order": answer.question_order,
             "word_english": word.english if word else "",

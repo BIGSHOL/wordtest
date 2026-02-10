@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Volume2 } from 'lucide-react';
 import { speakWord } from '../../utils/tts';
 
@@ -5,7 +6,7 @@ interface WordCardProps {
   word: string;
 }
 
-export function WordCard({ word }: WordCardProps) {
+export const WordCard = memo(function WordCard({ word }: WordCardProps) {
 
   return (
     <div
@@ -30,4 +31,4 @@ export function WordCard({ word }: WordCardProps) {
       </button>
     </div>
   );
-}
+});

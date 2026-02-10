@@ -18,7 +18,7 @@ export function LoginPage() {
     password: '',
   });
 
-  const from = (location.state as any)?.from?.pathname;
+  const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
 
   const handleTestCodeChange = (value: string) => {
     setTestCode(value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6));

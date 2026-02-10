@@ -13,9 +13,9 @@ export interface DashboardStats {
   recent_tests: {
     id: string;
     student_name: string;
-    score: number;
+    score: number | null;
     determined_level: number | null;
-    completed_at: string;
+    completed_at: string | null;
   }[];
   weekly_test_count: number;
   score_trend: { date: string; avg_score: number; count: number }[];

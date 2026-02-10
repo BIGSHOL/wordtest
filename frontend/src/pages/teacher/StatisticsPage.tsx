@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { TeacherLayout } from '../../components/layout/TeacherLayout';
 import { statsService, type DashboardStats } from '../../services/stats';
 import { BarChart3, Target, Award } from 'lucide-react';
+import { logger } from '../../utils/logger';
 
 export function StatisticsPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -14,7 +15,7 @@ export function StatisticsPage() {
         const data = await statsService.getDashboardStats();
         setStats(data);
       } catch (error) {
-        console.error('Failed to fetch statistics:', error);
+        logger.error('Failed to fetch statistics:', error);
       } finally {
         setIsLoading(false);
       }
@@ -223,7 +224,7 @@ export function StatisticsPage() {
                       </td>
                       <td className="px-6">
                         <span className="font-word text-sm text-text-secondary">
-                          {Math.round(test.score)}%
+                          {test.score != null ? `${Math.round(test.score)}%` : '-'}
                         </span>
                       </td>
                       <td className="px-6">
@@ -268,3 +269,5 @@ export function StatisticsPage() {
     </TeacherLayout>
   );
 }
+
+export default StatisticsPage;

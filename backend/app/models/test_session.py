@@ -1,12 +1,13 @@
 """TestSession model - FEAT-1: 테스트 세션."""
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, Integer, DateTime, ForeignKey, Index
+from sqlalchemy import String, Integer, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.core.timezone import now_kst, TZDateTime
 
 
 class TestSession(Base):
@@ -31,9 +32,9 @@ class TestSession(Base):
     rank_name: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     score: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     started_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+        TZDateTime(), default=now_kst, nullable=False
     )
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(TZDateTime(), nullable=True)
 
     # Relationships
     student: Mapped["User"] = relationship("User", lazy="selectin")

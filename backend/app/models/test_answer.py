@@ -3,10 +3,12 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, Integer, Boolean, DateTime, ForeignKey, Index
+
+from sqlalchemy import String, Integer, Boolean, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.core.timezone import TZDateTime
 
 
 class TestAnswer(Base):
@@ -25,7 +27,7 @@ class TestAnswer(Base):
     correct_answer: Mapped[str] = mapped_column(String(200), nullable=False)
     is_correct: Mapped[bool] = mapped_column(Boolean, nullable=False)
     question_order: Mapped[int] = mapped_column(Integer, nullable=False)
-    answered_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    answered_at: Mapped[Optional[datetime]] = mapped_column(TZDateTime(), nullable=True)
 
     # Relationships
     test_session: Mapped["TestSession"] = relationship(

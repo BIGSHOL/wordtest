@@ -3,6 +3,7 @@
  */
 import { useState, useEffect } from 'react';
 import { TeacherLayout } from '../../components/layout/TeacherLayout';
+import { logger } from '../../utils/logger';
 import { testConfigService, type TestConfig, type CreateTestConfigRequest, type UpdateTestConfigRequest } from '../../services/testConfig';
 import { Plus, Settings, Clock, BookOpen, ToggleLeft, ToggleRight, Copy, Hash } from 'lucide-react';
 
@@ -42,7 +43,7 @@ export function TestSettingsPage() {
       const data = await testConfigService.listConfigs();
       setConfigs(data);
     } catch (error) {
-      console.error('Failed to load configs:', error);
+      logger.error('Failed to load configs:', error);
     } finally {
       setIsLoading(false);
     }
@@ -91,7 +92,7 @@ export function TestSettingsPage() {
       });
       await loadConfigs();
     } catch (error) {
-      console.error('Failed to toggle active:', error);
+      logger.error('Failed to toggle active:', error);
     }
   };
 
@@ -124,7 +125,7 @@ export function TestSettingsPage() {
         await loadConfigs();
       }
     } catch (error) {
-      console.error('Failed to save config:', error);
+      logger.error('Failed to save config:', error);
     }
   };
 
@@ -138,7 +139,7 @@ export function TestSettingsPage() {
       setSelectedId(null);
       setIsCreating(false);
     } catch (error) {
-      console.error('Failed to delete config:', error);
+      logger.error('Failed to delete config:', error);
     }
   };
 

@@ -160,7 +160,7 @@ async def generate_questions(
     # Build questions (ordered easy → hard)
     questions = []
     for i, word in enumerate(question_words):
-        wrong_pool = [w for w in all_words if w.id != word.id]
+        wrong_pool = [w for w in all_words if w.id != word.id and w.korean != word.korean]
         wrong_words = random.sample(wrong_pool, min(3, len(wrong_pool)))
         wrong_choices = [w.korean for w in wrong_words]
 
@@ -243,8 +243,9 @@ def determine_level(
             sublevel = all_lessons.index(highest_correct) + 1
 
             # If they got ALL questions right for this rank, estimate MAX
+            # Require at least 2 answers to avoid single-question flukes
             correct_count = sum(1 for _, c in entries if c)
-            if correct_count == len(entries):
+            if correct_count == len(entries) and len(entries) >= 2:
                 # All correct → they likely mastered the whole book
                 # Set sublevel to total lessons (will display as MAX)
                 sublevel = 25  # default max; caller can adjust with actual data

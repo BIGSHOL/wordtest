@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { TeacherLayout } from '../../components/layout/TeacherLayout';
 import { wordService, type Word, type CreateWordRequest } from '../../services/word';
 import { Search, Plus, Pencil, Trash2, X } from 'lucide-react';
+import { logger } from '../../utils/logger';
 
 const ITEMS_PER_PAGE = 20;
 
@@ -41,7 +42,13 @@ export function WordDatabasePage() {
   const fetchWords = async () => {
     try {
       setIsLoading(true);
-      const params: any = {
+      const params: {
+        skip: number;
+        limit: number;
+        search?: string;
+        level?: number;
+        book_name?: string;
+      } = {
         skip: page * ITEMS_PER_PAGE,
         limit: ITEMS_PER_PAGE,
       };
@@ -53,7 +60,7 @@ export function WordDatabasePage() {
       setWords(response.words);
       setTotal(response.total);
     } catch (error) {
-      console.error('Failed to fetch words:', error);
+      logger.error('Failed to fetch words:', error);
     } finally {
       setIsLoading(false);
     }
@@ -110,7 +117,7 @@ export function WordDatabasePage() {
       handleCloseForm();
       await fetchWords();
     } catch (error) {
-      console.error('Failed to save word:', error);
+      logger.error('Failed to save word:', error);
       alert('단어 저장에 실패했습니다.');
     } finally {
       setIsSaving(false);
@@ -124,7 +131,7 @@ export function WordDatabasePage() {
       await wordService.deleteWord(id);
       await fetchWords();
     } catch (error) {
-      console.error('Failed to delete word:', error);
+      logger.error('Failed to delete word:', error);
       alert('단어 삭제에 실패했습니다.');
     }
   };
@@ -134,7 +141,7 @@ export function WordDatabasePage() {
   // Extract unique book names for filter
   const [bookOptions, setBookOptions] = useState<string[]>([]);
   useEffect(() => {
-    wordService.listBooks().then(setBookOptions).catch(console.error);
+    wordService.listBooks().then(setBookOptions).catch((e: unknown) => logger.error('Failed to load books:', e));
   }, []);
 
   return (
@@ -423,3 +430,5 @@ export function WordDatabasePage() {
     </TeacherLayout>
   );
 }
+
+export default WordDatabasePage;

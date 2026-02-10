@@ -1,12 +1,13 @@
 """User model - FEAT-0: 사용자 관리."""
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, DateTime, ForeignKey, Index
+from sqlalchemy import String, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from app.core.timezone import now_kst, TZDateTime
 
 
 class User(Base):
@@ -30,10 +31,10 @@ class User(Base):
     school_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     grade: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+        TZDateTime(), default=now_kst, nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False
+        TZDateTime(), default=now_kst, onupdate=now_kst, nullable=False
     )
 
     # Relationships
