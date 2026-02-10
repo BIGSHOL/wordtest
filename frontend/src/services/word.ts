@@ -58,6 +58,11 @@ export const wordService = {
     return response.data;
   },
 
+  async listBooks(): Promise<string[]> {
+    const response = await api.get<string[]>('/api/v1/words/books');
+    return response.data;
+  },
+
   async createWord(data: CreateWordRequest): Promise<Word> {
     const response = await api.post<Word>('/api/v1/words', data);
     return response.data;

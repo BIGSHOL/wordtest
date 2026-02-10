@@ -66,6 +66,21 @@ async def list_words(
     )
 
 
+@router.get("/books", response_model=list[str])
+async def list_books(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """Return distinct book names."""
+    result = await db.execute(
+        select(Word.book_name)
+        .where(Word.book_name.isnot(None), Word.book_name != "")
+        .distinct()
+        .order_by(Word.book_name)
+    )
+    return [row[0] for row in result.all()]
+
+
 @router.post("", response_model=WordResponse, status_code=status.HTTP_201_CREATED)
 async def create_word(
     word_in: CreateWordRequest,

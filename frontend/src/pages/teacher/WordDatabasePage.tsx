@@ -134,16 +134,7 @@ export function WordDatabasePage() {
   // Extract unique book names for filter
   const [bookOptions, setBookOptions] = useState<string[]>([]);
   useEffect(() => {
-    const fetchBooks = async () => {
-      try {
-        const response = await wordService.listWords({ limit: 1000 });
-        const books = Array.from(new Set(response.words.map(w => w.book_name).filter(Boolean))) as string[];
-        setBookOptions(books);
-      } catch (error) {
-        console.error('Failed to fetch books:', error);
-      }
-    };
-    fetchBooks();
+    wordService.listBooks().then(setBookOptions).catch(console.error);
   }, []);
 
   return (
