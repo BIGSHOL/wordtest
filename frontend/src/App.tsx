@@ -31,6 +31,7 @@ const WordDatabasePage = lazyRetry(() => import('./pages/teacher/WordDatabasePag
 const TestSettingsPage = lazyRetry(() => import('./pages/teacher/TestSettingsPage'));
 const StatisticsPage = lazyRetry(() => import('./pages/teacher/StatisticsPage'));
 const StudentResultPage = lazyRetry(() => import('./pages/teacher/StudentResultPage'));
+const MasteryReportPage = lazyRetry(() => import('./pages/teacher/MasteryReportPage'));
 const StudentMainPage = lazyRetry(() => import('./pages/student/MainPage'));
 const TestStartPage = lazyRetry(() => import('./pages/student/TestStartPage'));
 const TestPage = lazyRetry(() => import('./pages/student/TestPage'));
@@ -78,6 +79,14 @@ function App() {
             element={
               <RouteGuard roles={['teacher']}>
                 <StudentResultPage />
+              </RouteGuard>
+            }
+          />
+          <Route
+            path="/students/:studentId/mastery/:sessionId"
+            element={
+              <RouteGuard roles={['teacher']}>
+                <MasteryReportPage />
               </RouteGuard>
             }
           />

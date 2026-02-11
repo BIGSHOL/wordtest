@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { BookOpen, Hash, AlertCircle, Loader2, Play, RotateCcw, BarChart3, AlertTriangle } from 'lucide-react';
+import { BookOpen, Hash, AlertCircle, Loader2, Play, RotateCcw, BarChart3, AlertTriangle, Trophy, Target, Zap } from 'lucide-react';
 import { useTestStore } from '../../stores/testStore';
 import { useMasteryStore } from '../../stores/masteryStore';
+import { masteryService } from '../../services/mastery';
+import type { MasterySessionSummary } from '../../types/mastery';
 
 const CODE_LENGTH = 8;
 const CODE_CHARS = /[^A-Z0-9]/g;
@@ -22,6 +24,8 @@ export function TestStartPage() {
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completedInfo, setCompletedInfo] = useState<CompletedInfo | null>(null);
+  const [resultSummary, setResultSummary] = useState<MasterySessionSummary | null>(null);
+  const [isLoadingResult, setIsLoadingResult] = useState(false);
   const autoStartTriggered = useRef(false);
 
   // Auto-start from URL query param (e.g. /test/start?code=HKWN3V7P)
@@ -97,9 +101,18 @@ export function TestStartPage() {
     }
   };
 
-  const handleViewReport = () => {
+  const handleViewReport = async () => {
     if (!completedInfo) return;
-    navigate(`/result/${completedInfo.sessionId}`, { replace: true });
+    setIsLoadingResult(true);
+    setError(null);
+    try {
+      const summary = await masteryService.getSessionSummary(completedInfo.sessionId);
+      setResultSummary(summary);
+    } catch {
+      setError('결과를 불러올 수 없습니다');
+    } finally {
+      setIsLoadingResult(false);
+    }
   };
 
   const composingRef = useRef(false);
@@ -139,15 +152,56 @@ export function TestStartPage() {
             </p>
           </div>
 
-          {/* Warning */}
-          <div className="px-6 md:px-8 mb-5">
-            <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
-              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-              <span className="font-display text-[13px] font-medium text-amber-700 leading-relaxed">
-                재응시 시 기존 결과는 유지되며 덮어쓰지 않습니다. 새로운 학습 기록이 별도로 저장됩니다.
-              </span>
+          {/* Result summary (shown after clicking 결과 보기) */}
+          {resultSummary && (
+            <div className="px-6 md:px-8 mb-5">
+              <div className="rounded-2xl bg-white border border-[#E5E4E1] p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-display text-[15px] font-bold text-text-primary">
+                    {resultSummary.student_name}님의 결과
+                  </span>
+                  <span className="font-display text-[11px] font-medium text-text-tertiary">
+                    Level {resultSummary.current_level}
+                  </span>
+                </div>
+                <div className="flex gap-4">
+                  <div className="flex-1 flex flex-col items-center gap-1 rounded-xl bg-[#EEF2FF] py-3">
+                    <Target className="w-5 h-5 text-[#4F46E5]" />
+                    <span className="font-display text-xl font-bold text-[#4F46E5]">
+                      {resultSummary.accuracy}%
+                    </span>
+                    <span className="font-display text-[11px] text-text-tertiary">정답률</span>
+                  </div>
+                  <div className="flex-1 flex flex-col items-center gap-1 rounded-xl bg-[#F0FDF4] py-3">
+                    <Trophy className="w-5 h-5 text-[#16A34A]" />
+                    <span className="font-display text-xl font-bold text-[#16A34A]">
+                      {resultSummary.correct_count}/{resultSummary.total_questions}
+                    </span>
+                    <span className="font-display text-[11px] text-text-tertiary">정답</span>
+                  </div>
+                  <div className="flex-1 flex flex-col items-center gap-1 rounded-xl bg-[#FFF7ED] py-3">
+                    <Zap className="w-5 h-5 text-[#EA580C]" />
+                    <span className="font-display text-xl font-bold text-[#EA580C]">
+                      {resultSummary.best_combo}
+                    </span>
+                    <span className="font-display text-[11px] text-text-tertiary">최대 콤보</span>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Warning */}
+          {!resultSummary && (
+            <div className="px-6 md:px-8 mb-5">
+              <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
+                <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                <span className="font-display text-[13px] font-medium text-amber-700 leading-relaxed">
+                  재응시 시 기존 결과는 유지되며 덮어쓰지 않습니다. 새로운 학습 기록이 별도로 저장됩니다.
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Action buttons */}
           <div className="flex flex-col gap-3 px-6 md:px-8">
@@ -170,22 +224,29 @@ export function TestStartPage() {
               </span>
             </button>
 
-            <button
-              onClick={handleViewReport}
-              className="flex items-center justify-center gap-2.5 w-full h-14 rounded-2xl transition-opacity"
-              style={{
-                background: '#F5F4F1',
-                border: '1.5px solid #E5E4E1',
-              }}
-            >
-              <BarChart3 className="w-5 h-5 text-text-primary" />
-              <span className="font-display text-[17px] font-bold text-text-primary">
-                결과 보기
-              </span>
-            </button>
+            {!resultSummary && (
+              <button
+                onClick={handleViewReport}
+                disabled={isLoadingResult}
+                className="flex items-center justify-center gap-2.5 w-full h-14 rounded-2xl transition-opacity disabled:opacity-40"
+                style={{
+                  background: '#F5F4F1',
+                  border: '1.5px solid #E5E4E1',
+                }}
+              >
+                {isLoadingResult ? (
+                  <Loader2 className="w-5 h-5 text-text-primary animate-spin" />
+                ) : (
+                  <BarChart3 className="w-5 h-5 text-text-primary" />
+                )}
+                <span className="font-display text-[17px] font-bold text-text-primary">
+                  {isLoadingResult ? '불러오는 중...' : '결과 보기'}
+                </span>
+              </button>
+            )}
 
             <button
-              onClick={() => { setCompletedInfo(null); setTestCode(''); }}
+              onClick={() => { setCompletedInfo(null); setResultSummary(null); setTestCode(''); }}
               className="font-display text-sm font-medium text-text-tertiary mt-2"
             >
               다른 코드 입력하기

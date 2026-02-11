@@ -207,18 +207,30 @@ export function DashboardPage() {
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className="inline-flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-[#5A8F6B]"></span>
-                            <span className="text-xs text-text-secondary">완료</span>
+                            <span className={`w-2 h-2 rounded-full ${test.test_type === 'mastery' ? 'bg-violet-500' : 'bg-[#5A8F6B]'}`}></span>
+                            <span className="text-xs text-text-secondary">
+                              {test.test_type === 'mastery' ? '마스터리' : '완료'}
+                            </span>
                           </span>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <button
-                            onClick={() => navigate(`/students/${test.student_id}/results`)}
-                            className="inline-flex items-center gap-1 text-sm text-teal hover:text-teal/80 font-medium transition-colors"
-                          >
-                            <FileText className="w-4 h-4" />
-                            보기
-                          </button>
+                          {test.test_type === 'mastery' ? (
+                            <button
+                              onClick={() => navigate(`/students/${test.student_id}/mastery/${test.id}`)}
+                              className="inline-flex items-center gap-1 text-sm text-violet-600 hover:text-violet-500 font-medium transition-colors"
+                            >
+                              <FileText className="w-4 h-4" />
+                              보기
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => navigate(`/students/${test.student_id}/results`)}
+                              className="inline-flex items-center gap-1 text-sm text-teal hover:text-teal/80 font-medium transition-colors"
+                            >
+                              <FileText className="w-4 h-4" />
+                              보기
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );

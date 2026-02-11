@@ -23,6 +23,7 @@ class RecentTest(BaseModel):
     correct_count: int = 0
     duration_seconds: Optional[int] = None
     completed_at: Optional[str] = None
+    test_type: str = "test"  # "test" | "mastery"
 
 
 class ScoreTrend(BaseModel):
@@ -92,6 +93,58 @@ class EnhancedTestReport(BaseModel):
     recommended_book: str
     total_time_seconds: Optional[int] = None
     category_times: dict[str, int] = {}
+
+
+class MasteryAnswerDetail(BaseModel):
+    question_order: int
+    word_english: str
+    word_korean: str
+    correct_answer: str
+    selected_answer: Optional[str] = None
+    is_correct: bool
+    word_level: int
+    time_taken_seconds: Optional[float] = None
+    stage: int
+
+
+class MasteryWordSummary(BaseModel):
+    word_id: str
+    english: str
+    korean: str
+    final_stage: int
+    total_attempts: int
+    correct_count: int
+    accuracy: float  # 0-100
+    avg_time_sec: Optional[float] = None
+    mastered: bool
+
+
+class MasterySessionData(BaseModel):
+    id: str
+    student_id: str
+    total_questions: int
+    correct_count: int
+    determined_level: Optional[int] = None
+    score: Optional[int] = None
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    best_combo: int = 0
+    words_practiced: int = 0
+    words_advanced: int = 0
+    words_demoted: int = 0
+
+
+class MasteryReportResponse(BaseModel):
+    session: MasterySessionData
+    answers: list[MasteryAnswerDetail]
+    radar_metrics: RadarMetrics
+    metric_details: list[MetricDetail]
+    peer_ranking: Optional[PeerRanking] = None
+    grade_level: str
+    vocab_description: str
+    recommended_book: str
+    total_time_seconds: Optional[int] = None
+    word_summaries: list[MasteryWordSummary] = []
 
 
 class DashboardStats(BaseModel):

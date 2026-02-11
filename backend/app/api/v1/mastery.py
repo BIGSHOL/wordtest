@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func, Integer
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +35,10 @@ from app.services.mastery import (
 )
 from app.models.word_mastery import WordMastery
 from app.models.learning_session import LearningSession
+from app.models.learning_answer import LearningAnswer
 from app.models.test_assignment import TestAssignment
 from app.models.test_config import TestConfig
+from app.models.user import User
 
 router = APIRouter(prefix="/mastery", tags=["mastery"])
 
@@ -227,3 +229,45 @@ async def mastery_progress(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
     return MasteryProgressResponse(**result)
+
+
+@router.get("/session/{session_id}/summary")
+async def mastery_session_summary(
+    session_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Get mastery session summary. No auth - session_id (UUID) acts as token."""
+    result = await db.execute(
+        select(LearningSession).where(LearningSession.id == session_id)
+    )
+    session = result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Answer stats
+    answers_result = await db.execute(
+        select(
+            func.count(LearningAnswer.id),
+            func.sum(func.cast(LearningAnswer.is_correct, Integer)),
+        ).where(LearningAnswer.session_id == session_id)
+    )
+    row = answers_result.one()
+    total = row[0] or 0
+    correct = int(row[1] or 0)
+
+    # Student name
+    student_result = await db.execute(
+        select(User.name).where(User.id == session.student_id)
+    )
+    student_name = student_result.scalar() or "학생"
+
+    return {
+        "session_id": str(session.id),
+        "student_name": student_name,
+        "current_level": session.current_level,
+        "total_questions": total,
+        "correct_count": correct,
+        "accuracy": round(correct / total * 100) if total > 0 else 0,
+        "completed_at": session.completed_at.isoformat() if session.completed_at else None,
+        "best_combo": session.best_combo,
+    }

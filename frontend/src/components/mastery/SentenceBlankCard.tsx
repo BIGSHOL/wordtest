@@ -1,6 +1,6 @@
 /**
  * Sentence fill-in-the-blank card for higher-level words.
- * Shows English sentence with ____ and optional Korean translation.
+ * Shows English sentence with ____ and Korean translation with highlighted word.
  */
 import { memo } from 'react';
 import { BookOpen, Volume2 } from 'lucide-react';
@@ -9,7 +9,7 @@ import { speakSentence } from '../../utils/tts';
 interface SentenceBlankCardProps {
   /** English sentence with ____ replacing the target word */
   sentenceBlank: string;
-  /** Korean meaning of the target word (fallback) */
+  /** Korean meaning of the target word (used for highlighting) */
   korean?: string;
   /** Full Korean sentence translation */
   sentenceKo?: string;
@@ -26,6 +26,79 @@ const STAGE_PROMPTS: Record<number, string> = {
   4: '문장을 듣고 빈칸의 영단어를 고르세요',
   5: '빈칸에 들어갈 영단어를 입력하세요',
 };
+
+// --- Korean jamo decomposition for fuzzy stem matching ---
+
+/** Decompose a Hangul syllable into [initial, vowel, final] indices */
+function decompose(ch: string): [number, number, number] | null {
+  const c = ch.charCodeAt(0);
+  if (c < 0xAC00 || c > 0xD7A3) return null;
+  const o = c - 0xAC00;
+  return [Math.floor(o / 588), Math.floor((o % 588) / 28), o % 28];
+}
+
+/** Find stem in text using jamo-aware matching.
+ *  For non-last chars of stem: initial+vowel+final must match exactly.
+ *  For last char of stem: only initial+vowel need to match (allows 받침 differences). */
+function jamoMatch(text: string, stem: string): [number, number] | null {
+  for (let i = 0; i <= text.length - stem.length; i++) {
+    let ok = true;
+    for (let j = 0; j < stem.length; j++) {
+      const a = decompose(stem[j]);
+      const b = decompose(text[i + j]);
+      if (!a || !b) {
+        if (stem[j] !== text[i + j]) { ok = false; break; }
+        continue;
+      }
+      if (a[0] !== b[0] || a[1] !== b[1]) { ok = false; break; }
+      // For non-last chars, final consonant must also match
+      if (j < stem.length - 1 && a[2] !== b[2]) { ok = false; break; }
+    }
+    if (ok) return [i, i + stem.length];
+  }
+  return null;
+}
+
+/** Expand match indices to full Korean word boundaries (space-separated) */
+function wordBounds(text: string, start: number, end: number): [number, number] {
+  let s = start;
+  let e = end;
+  while (s > 0 && text[s - 1] !== ' ') s--;
+  while (e < text.length && text[e] !== ' ') e++;
+  return [s, e];
+}
+
+/** Highlight the Korean word meaning within the Korean sentence */
+function highlightKorean(sentenceKo: string, korean: string): React.ReactNode {
+  const meanings = korean.split(/[,、·]/).map(m => m.trim()).filter(m => m.length >= 2);
+
+  // Strategy 1: Direct substring match (handles 하다-verbs, etc.)
+  for (const meaning of meanings) {
+    for (let len = meaning.length; len >= 2; len--) {
+      const stem = meaning.slice(0, len);
+      const idx = sentenceKo.indexOf(stem);
+      if (idx !== -1) {
+        const [s, e] = wordBounds(sentenceKo, idx, idx + stem.length);
+        return <>{sentenceKo.slice(0, s)}<span className="font-bold" style={{ color: '#4F46E5' }}>{sentenceKo.slice(s, e)}</span>{sentenceKo.slice(e)}</>;
+      }
+    }
+  }
+
+  // Strategy 2: Jamo-aware match (handles ㅂ-irregular: 무서운→무섭다, etc.)
+  for (const meaning of meanings) {
+    for (let len = Math.min(meaning.length, 4); len >= 2; len--) {
+      const stem = meaning.slice(0, len);
+      const match = jamoMatch(sentenceKo, stem);
+      if (match) {
+        const [s, e] = wordBounds(sentenceKo, match[0], match[1]);
+        return <>{sentenceKo.slice(0, s)}<span className="font-bold" style={{ color: '#4F46E5' }}>{sentenceKo.slice(s, e)}</span>{sentenceKo.slice(e)}</>;
+      }
+    }
+  }
+
+  // Fallback: no match found
+  return sentenceKo;
+}
 
 export const SentenceBlankCard = memo(function SentenceBlankCard({
   sentenceBlank,
@@ -65,15 +138,10 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
         {parts[1]}
       </p>
 
-      {/* Korean sentence translation (normal) + word meaning (bold) */}
+      {/* Korean sentence with word highlighted in bold */}
       {sentenceKo && (
         <p className="font-display text-[15px] font-normal text-text-secondary text-center mt-1">
-          {sentenceKo}
-        </p>
-      )}
-      {korean && (
-        <p className="font-display text-[17px] font-bold text-accent-indigo text-center mt-0.5">
-          {korean}
+          {korean ? highlightKorean(sentenceKo, korean) : sentenceKo}
         </p>
       )}
 

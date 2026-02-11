@@ -152,6 +152,17 @@ export interface MasteryProgressResponse {
   word_details: WordMasteryDetail[];
 }
 
+export interface MasterySessionSummary {
+  session_id: string;
+  student_name: string;
+  current_level: number;
+  total_questions: number;
+  correct_count: number;
+  accuracy: number;
+  completed_at: string | null;
+  best_combo: number;
+}
+
 export interface WordMasteryDetail {
   word_id: string;
   english: string;

@@ -119,9 +119,12 @@ export function preloadWordAudio(word: string) {
     })
     .then((result) => {
       // Dictionary API에 음원이 없으면 Gemini TTS로 프리로드
-      if (!result && !audioCache.has(key)) {
+      if (!result && !audioCache.has(key) && !geminiQuotaExhausted) {
         return fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(cleaned)}&voice=${sessionVoice}`)
-          .then((r) => r.ok ? r.blob() : null)
+          .then((r) => {
+            if (r.status === 502 || r.status === 429) { geminiQuotaExhausted = true; return null; }
+            return r.ok ? r.blob() : null;
+          })
           .then((blob) => {
             if (!blob) return;
             const url = URL.createObjectURL(blob);
@@ -148,18 +151,21 @@ export async function speakWord(word: string) {
     return;
   }
 
-  // Gemini TTS for single word
-  try {
-    const resp = await fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(cleaned)}&voice=${sessionVoice}`);
-    if (resp.ok) {
-      const blob = await resp.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audio.onended = () => URL.revokeObjectURL(url);
-      await audio.play();
-      return;
-    }
-  } catch { /* fall through */ }
+  // Gemini TTS for single word (skip if quota exhausted)
+  if (!geminiQuotaExhausted) {
+    try {
+      const resp = await fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(cleaned)}&voice=${sessionVoice}`);
+      if (resp.status === 502 || resp.status === 429) { geminiQuotaExhausted = true; }
+      if (resp.ok) {
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.onended = () => URL.revokeObjectURL(url);
+        await audio.play();
+        return;
+      }
+    } catch { /* fall through */ }
+  }
 
   // Web Speech API fallback
   speak(cleaned, 'en-US', { rate: 0.85 });
@@ -172,9 +178,13 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const TTS_VOICES = ['Aoede', 'Puck', 'Charon', 'Fenrir', 'Leda'];
 let sessionVoice = TTS_VOICES[Math.floor(Math.random() * TTS_VOICES.length)];
 
-/** 시험 시작 시 호출 — 새 랜덤 음성 배정 */
+/** Gemini TTS 할당량 초과 시 세션 내에서 더 이상 호출하지 않음 */
+let geminiQuotaExhausted = false;
+
+/** 시험 시작 시 호출 — 새 랜덤 음성 배정, 할당량 플래그 리셋 */
 export function randomizeTtsVoice() {
   sessionVoice = TTS_VOICES[Math.floor(Math.random() * TTS_VOICES.length)];
+  geminiQuotaExhausted = false;
 }
 
 /**
@@ -202,9 +212,12 @@ const sentenceCache = new Map<string, HTMLAudioElement>();
 
 /** 문제 표시 시 호출 — 백그라운드에서 TTS 미리 로드 */
 export function preloadSentenceAudio(sentence: string) {
-  if (!sentence || sentenceCache.has(sentence)) return;
+  if (!sentence || sentenceCache.has(sentence) || geminiQuotaExhausted) return;
   fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(sentence)}&voice=${sessionVoice}`)
-    .then((r) => r.ok ? r.blob() : null)
+    .then((r) => {
+      if (r.status === 502 || r.status === 429) { geminiQuotaExhausted = true; return null; }
+      return r.ok ? r.blob() : null;
+    })
     .then((blob) => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
@@ -225,18 +238,21 @@ export async function speakSentence(text: string) {
     return;
   }
 
-  // 2) Gemini-TTS via backend
-  try {
-    const resp = await fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(text)}&voice=${sessionVoice}`);
-    if (resp.ok) {
-      const blob = await resp.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audio.onended = () => URL.revokeObjectURL(url);
-      await audio.play();
-      return;
-    }
-  } catch { /* fall through */ }
+  // 2) Gemini-TTS via backend (skip if quota exhausted)
+  if (!geminiQuotaExhausted) {
+    try {
+      const resp = await fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(text)}&voice=${sessionVoice}`);
+      if (resp.status === 502 || resp.status === 429) { geminiQuotaExhausted = true; }
+      if (resp.ok) {
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.onended = () => URL.revokeObjectURL(url);
+        await audio.play();
+        return;
+      }
+    } catch { /* fall through */ }
+  }
 
   // 3) Google Translate TTS fallback
   try {

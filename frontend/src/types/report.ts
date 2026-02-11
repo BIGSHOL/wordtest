@@ -36,3 +36,57 @@ export interface EnhancedTestReport {
   total_time_seconds?: number | null;
   category_times: Record<string, number>;
 }
+
+// --- Mastery Report ---
+
+export interface MasteryAnswerDetail {
+  question_order: number;
+  word_english: string;
+  word_korean: string;
+  correct_answer: string;
+  selected_answer: string | null;
+  is_correct: boolean;
+  word_level: number;
+  time_taken_seconds: number | null;
+  stage: number;
+}
+
+export interface MasteryWordSummary {
+  word_id: string;
+  english: string;
+  korean: string;
+  final_stage: number;
+  total_attempts: number;
+  correct_count: number;
+  accuracy: number;
+  avg_time_sec: number | null;
+  mastered: boolean;
+}
+
+export interface MasterySessionData {
+  id: string;
+  student_id: string;
+  total_questions: number;
+  correct_count: number;
+  determined_level: number | null;
+  score: number | null;
+  started_at: string | null;
+  completed_at: string | null;
+  best_combo: number;
+  words_practiced: number;
+  words_advanced: number;
+  words_demoted: number;
+}
+
+export interface MasteryReport {
+  session: MasterySessionData;
+  answers: MasteryAnswerDetail[];
+  radar_metrics: RadarMetrics;
+  metric_details: MetricDetail[];
+  peer_ranking?: PeerRanking | null;
+  grade_level: string;
+  vocab_description: string;
+  recommended_book: string;
+  total_time_seconds?: number | null;
+  word_summaries: MasteryWordSummary[];
+}

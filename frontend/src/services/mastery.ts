@@ -13,6 +13,7 @@ import type {
   MasteryAnswerResult,
   MasteryProgressResponse,
   CompleteBatchResponse,
+  MasterySessionSummary,
 } from '../types/mastery';
 
 export const masteryService = {
@@ -69,6 +70,14 @@ export const masteryService = {
   async getProgress(assignmentId: string): Promise<MasteryProgressResponse> {
     const response = await api.get<MasteryProgressResponse>(
       `/api/v1/mastery/progress/${assignmentId}`,
+    );
+    return response.data;
+  },
+
+  /** Get session summary (no auth required). */
+  async getSessionSummary(sessionId: string): Promise<MasterySessionSummary> {
+    const response = await api.get<MasterySessionSummary>(
+      `/api/v1/mastery/session/${sessionId}/summary`,
     );
     return response.data;
   },
