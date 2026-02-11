@@ -18,7 +18,7 @@ import { playSound, stopSound } from '../../hooks/useSound';
 
 // Components
 import { MasteryHeader } from '../../components/mastery/MasteryHeader';
-import { GrowthProgressBar } from '../../components/mastery/GrowthProgressBar';
+import { GradientProgressBar } from '../../components/test/GradientProgressBar';
 import { TimerBar } from '../../components/test/TimerBar';
 import { FeedbackBanner } from '../../components/test/FeedbackBanner';
 import { WordCard } from '../../components/test/WordCard';
@@ -292,61 +292,61 @@ export function MasteryPage() {
         onExit={handleExit}
       />
 
-      {/* Growth progress bar */}
-      <div className="px-4 md:px-6 pb-2">
-        <GrowthProgressBar summary={stageSummary} totalWords={totalWords} />
-      </div>
+      {/* Progress Bar */}
+      <GradientProgressBar current={currentIndex + 1} total={questions.length} />
 
-      {/* Timer */}
-      <div className="px-4 md:px-6 py-2">
-        <TimerBar
-          secondsLeft={timer.secondsLeft}
-          fraction={timer.fraction}
-          urgency={timer.urgency}
-        />
-      </div>
-
-      {/* Main content */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-5 px-4 md:px-6 py-4 max-w-lg mx-auto w-full">
-        {/* Question card - switches between word mode and sentence mode */}
-        {currentQuestion.context_mode === 'sentence' && currentQuestion.sentence_blank ? (
-          <>
-            {/* Sentence mode: stages 1,2,5 use SentenceBlankCard; 3,4 use ListenCard with sentence */}
-            {(currentStage === 1 || currentStage === 2 || currentStage === 5) && (
-              <SentenceBlankCard
-                sentenceBlank={currentQuestion.sentence_blank}
-                sentenceKo={currentQuestion.word.example_ko || undefined}
-                sentenceEn={currentQuestion.word.example_en || undefined}
-                stage={currentStage}
-              />
-            )}
-            {(currentStage === 3 || currentStage === 4) && (
-              <ListenCard
-                word={currentQuestion.word.english}
-                stage={currentStage}
-                contextMode="sentence"
-                sentenceBlank={currentQuestion.sentence_blank}
-                sentenceEn={currentQuestion.word.example_en}
-              />
-            )}
-          </>
-        ) : (
-          <>
-            {/* Word mode (original) */}
-            {currentStage === 1 && (
-              <WordCard word={currentQuestion.word.english} />
-            )}
-            {currentStage === 2 && (
-              <MeaningCard korean={currentQuestion.word.korean || ''} />
-            )}
-            {(currentStage === 3 || currentStage === 4) && (
-              <ListenCard word={currentQuestion.word.english} stage={currentStage} />
-            )}
-            {currentStage === 5 && (
-              <MeaningCard korean={currentQuestion.word.korean || ''} />
-            )}
-          </>
+      {/* Content Area */}
+      <div className="flex-1 flex flex-col justify-center items-center gap-6 px-5 py-6 md:px-8 md:gap-7">
+        {/* Timer - hide after answer */}
+        {!answerResult && (
+          <div className="w-full md:w-[640px]">
+            <TimerBar
+              secondsLeft={timer.secondsLeft}
+              fraction={timer.fraction}
+              urgency={timer.urgency}
+            />
+          </div>
         )}
+
+        {/* Question card */}
+        <div className="w-full md:w-[640px]">
+          {currentQuestion.context_mode === 'sentence' && currentQuestion.sentence_blank ? (
+            <>
+              {(currentStage === 1 || currentStage === 2 || currentStage === 5) && (
+                <SentenceBlankCard
+                  sentenceBlank={currentQuestion.sentence_blank}
+                  sentenceKo={currentQuestion.word.example_ko || undefined}
+                  sentenceEn={currentQuestion.word.example_en || undefined}
+                  stage={currentStage}
+                />
+              )}
+              {(currentStage === 3 || currentStage === 4) && (
+                <ListenCard
+                  word={currentQuestion.word.english}
+                  stage={currentStage}
+                  contextMode="sentence"
+                  sentenceBlank={currentQuestion.sentence_blank}
+                  sentenceEn={currentQuestion.word.example_en}
+                />
+              )}
+            </>
+          ) : (
+            <>
+              {currentStage === 1 && (
+                <WordCard word={currentQuestion.word.english} />
+              )}
+              {currentStage === 2 && (
+                <MeaningCard korean={currentQuestion.word.korean || ''} />
+              )}
+              {(currentStage === 3 || currentStage === 4) && (
+                <ListenCard word={currentQuestion.word.english} stage={currentStage} />
+              )}
+              {currentStage === 5 && (
+                <MeaningCard korean={currentQuestion.word.korean || ''} />
+              )}
+            </>
+          )}
+        </div>
 
         {/* Sentence review overlay (stage 1 only) */}
         {showSentenceReview && answerResult && (
@@ -365,7 +365,7 @@ export function MasteryPage() {
 
         {/* Answer area */}
         {!showSentenceReview && (
-          <>
+          <div className="w-full md:w-[640px]">
             {isTypingStage ? (
               <TypingInput
                 value={typedAnswer}
@@ -374,7 +374,7 @@ export function MasteryPage() {
                 disabled={!!answerResult}
               />
             ) : (
-              <div className="flex flex-col gap-2.5 w-full">
+              <div className="flex flex-col gap-3 w-full">
                 {currentQuestion.choices?.map((choice, i) => (
                   <ChoiceButton
                     key={choice}
@@ -386,25 +386,27 @@ export function MasteryPage() {
                 ))}
               </div>
             )}
-          </>
+          </div>
         )}
+      </div>
 
-        {/* Feedback banner */}
+      {/* Footer: feedback banner (matches original design - fixed at bottom) */}
+      <div className="h-[70px] px-5 md:px-8 flex items-center">
         {answerResult && !showSentenceReview && (
-          <FeedbackBanner
-            isCorrect={answerResult.is_correct}
-            correctAnswer={answerResult.correct_answer}
-            stageStreak={answerResult.stage_streak}
-            requiredStreak={answerResult.required_streak}
-          />
-        )}
-
-        {/* Almost correct feedback for typing */}
-        {answerResult?.almost_correct && (
-          <div className="flex items-center gap-2.5 rounded-2xl bg-amber-50 border border-amber-200 px-5 py-3.5 w-full">
-            <span className="font-display text-sm font-semibold text-amber-700">
-              거의 맞았어요! 정답: &lsquo;{answerResult.correct_answer}&rsquo;
-            </span>
+          <div className="w-full md:w-[640px] md:mx-auto">
+            <FeedbackBanner
+              isCorrect={answerResult.is_correct}
+              correctAnswer={answerResult.correct_answer}
+              stageStreak={answerResult.stage_streak}
+              requiredStreak={answerResult.required_streak}
+            />
+            {answerResult.almost_correct && (
+              <div className="flex items-center gap-2.5 rounded-2xl bg-amber-50 border border-amber-200 px-5 py-3.5 w-full mt-2">
+                <span className="font-display text-sm font-semibold text-amber-700">
+                  거의 맞았어요! 정답: &lsquo;{answerResult.correct_answer}&rsquo;
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -1,9 +1,9 @@
 /**
- * Mastery session header - shows current stage, progress, exit button.
+ * Mastery session header - matches original QuizHeader design.
+ * Center: stage badge pill with gradient + combo.
  */
 import { memo } from 'react';
-import { ArrowLeft } from 'lucide-react';
-import { GrowthIcon } from './GrowthIcon';
+import { ArrowLeft, Circle, Sprout, TreePine, TreeDeciduous, Cherry } from 'lucide-react';
 import { ComboCounter } from './ComboCounter';
 import { STAGE_CONFIG } from '../../types/mastery';
 import type { StageNumber } from '../../types/mastery';
@@ -16,6 +16,18 @@ interface MasteryHeaderProps {
   onExit: () => void;
 }
 
+const STAGE_GRADIENTS: Record<number, [string, string]> = {
+  1: ['#9CA3AF', '#6B7280'],
+  2: ['#10B981', '#059669'],
+  3: ['#3B82F6', '#2563EB'],
+  4: ['#F59E0B', '#D97706'],
+  5: ['#EF4444', '#DC2626'],
+};
+
+const STAGE_ICONS: Record<number, React.ComponentType<{ className?: string }>> = {
+  1: Circle, 2: Sprout, 3: TreePine, 4: TreeDeciduous, 5: Cherry,
+};
+
 export const MasteryHeader = memo(function MasteryHeader({
   stage,
   currentIndex,
@@ -24,44 +36,40 @@ export const MasteryHeader = memo(function MasteryHeader({
   onExit,
 }: MasteryHeaderProps) {
   const config = STAGE_CONFIG[stage as StageNumber];
+  const [c1, c2] = STAGE_GRADIENTS[stage] ?? ['#9CA3AF', '#6B7280'];
+  const StageIcon = STAGE_ICONS[stage] ?? Circle;
 
   return (
-    <div className="flex items-center justify-between px-4 md:px-6 py-3 w-full">
-      {/* Left: back + stage info */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onExit}
-          className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-bg-surface transition-colors"
+    <div className="flex items-center justify-between h-14 px-5 md:px-8 w-full">
+      {/* Left: back button */}
+      <button
+        onClick={onExit}
+        className="w-10 h-10 rounded-full flex items-center justify-center"
+      >
+        <ArrowLeft className="w-[22px] h-[22px] text-text-primary" />
+      </button>
+
+      {/* Center: stage badge + combo */}
+      <div className="flex items-center gap-2">
+        <div
+          className="flex items-center gap-[5px] rounded-full px-3.5 py-[5px]"
+          style={{
+            background: `linear-gradient(90deg, ${c1}, ${c2})`,
+            boxShadow: `0 0 8px ${c1}30`,
+          }}
         >
-          <ArrowLeft className="w-5 h-5 text-text-secondary" />
-        </button>
-
-        <div className="flex items-center gap-2">
-          <GrowthIcon stage={stage as StageNumber} size="sm" />
-          <div className="flex flex-col">
-            <span className="font-display text-[13px] font-bold text-text-primary leading-tight">
-              Stage {stage}
-            </span>
-            <span className="font-display text-[11px] text-text-tertiary leading-tight">
-              {config?.name}
-            </span>
-          </div>
+          <StageIcon className="w-3.5 h-3.5 text-white" />
+          <span className="font-display text-[13px] font-bold text-white">
+            {config?.label} {stage}
+          </span>
         </div>
+        {combo >= 2 && <ComboCounter combo={combo} />}
       </div>
 
-      {/* Center: combo */}
-      <ComboCounter combo={combo} />
-
-      {/* Right: progress counter */}
-      <div className="flex items-center gap-1">
-        <span className="font-display text-sm font-bold text-accent-indigo tabular-nums">
-          {currentIndex + 1}
-        </span>
-        <span className="font-display text-sm text-text-tertiary">/</span>
-        <span className="font-display text-sm text-text-tertiary tabular-nums">
-          {totalInBatch}
-        </span>
-      </div>
+      {/* Right: counter */}
+      <span className="font-display text-[15px] font-semibold text-text-secondary">
+        {currentIndex + 1} / {totalInBatch}
+      </span>
     </div>
   );
 });
