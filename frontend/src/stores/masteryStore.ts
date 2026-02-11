@@ -98,7 +98,7 @@ export interface MasteryStore {
   // Computed getters (not stored, derived)
 
   // Actions
-  startByCode: (testCode: string) => Promise<StartMasteryResponse>;
+  startByCode: (testCode: string, allowRestart?: boolean) => Promise<StartMasteryResponse>;
   selectAnswer: (answer: string) => void;
   setTypedAnswer: (text: string) => void;
   submitAnswer: (timeTaken: number) => Promise<MasteryAnswerResult>;
@@ -159,10 +159,10 @@ function getCurrentQuestion(state: {
 export const useMasteryStore = create<MasteryStore>()((set, get) => ({
   ...initialState,
 
-  startByCode: async (testCode: string) => {
+  startByCode: async (testCode: string, allowRestart = false) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await masteryService.startByCode(testCode);
+      const response = await masteryService.startByCode(testCode, allowRestart);
 
       // Store JWT in auth store
       if (response.access_token) {

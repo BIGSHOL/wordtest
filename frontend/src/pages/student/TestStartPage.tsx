@@ -1,11 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { BookOpen, Hash, AlertCircle, Loader2, Play } from 'lucide-react';
+import { BookOpen, Hash, AlertCircle, Loader2, Play, RotateCcw, BarChart3, AlertTriangle } from 'lucide-react';
 import { useTestStore } from '../../stores/testStore';
 import { useMasteryStore } from '../../stores/masteryStore';
 
 const CODE_LENGTH = 8;
 const CODE_CHARS = /[^A-Z0-9]/g;
+
+interface CompletedInfo {
+  sessionId: string;
+  assignmentId: string;
+  code: string;
+}
 
 export function TestStartPage() {
   const navigate = useNavigate();
@@ -15,6 +21,7 @@ export function TestStartPage() {
   const [testCode, setTestCode] = useState('');
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [completedInfo, setCompletedInfo] = useState<CompletedInfo | null>(null);
   const autoStartTriggered = useRef(false);
 
   // Auto-start from URL query param (e.g. /test/start?code=HKWN3V7P)
@@ -48,7 +55,14 @@ export function TestStartPage() {
       navigate('/test', { replace: true });
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
-      if (detail === 'This test code has already been used') {
+      const status = err?.response?.status;
+      if (status === 409 && detail?.code === 'ALREADY_COMPLETED') {
+        setCompletedInfo({
+          sessionId: detail.session_id,
+          assignmentId: detail.assignment_id,
+          code,
+        });
+      } else if (detail === 'This test code has already been used') {
         setError('이미 사용된 테스트 코드입니다');
       } else if (detail === 'Invalid or inactive test code') {
         // Try legacy test start-by-code as fallback
@@ -67,6 +81,27 @@ export function TestStartPage() {
     }
   };
 
+  const handleRestart = async () => {
+    if (!completedInfo) return;
+    setIsStarting(true);
+    setError(null);
+    try {
+      const response = await startMasteryByCode(completedInfo.code, true);
+      if (response.assignment_type === 'mastery') {
+        navigate('/mastery', { replace: true });
+      }
+    } catch {
+      setError('재응시를 시작할 수 없습니다');
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  const handleViewReport = () => {
+    if (!completedInfo) return;
+    navigate(`/result/${completedInfo.sessionId}`, { replace: true });
+  };
+
   const composingRef = useRef(false);
 
   const handleCodeChange = (value: string) => {
@@ -75,6 +110,98 @@ export function TestStartPage() {
     setTestCode(cleaned);
     if (error) setError(null);
   };
+
+  // Show already-completed choice screen
+  if (completedInfo) {
+    return (
+      <div className="min-h-screen bg-bg-cream flex flex-col items-center md:justify-center lg:justify-center">
+        <div className="flex flex-col w-full md:w-[480px] lg:w-[480px]">
+          <div className="flex flex-col items-center gap-4 pt-[60px] md:pt-0 lg:pt-0 pb-8 px-6 md:px-8">
+            <div
+              className="w-[72px] h-[72px] rounded-full flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(180deg, #22C55E, #16A34A)',
+                boxShadow: '0 4px 20px #22C55E30',
+              }}
+            >
+              <BookOpen className="w-8 h-8 text-white" />
+            </div>
+            <h1
+              className="font-display text-[26px] font-bold text-text-primary"
+              style={{ letterSpacing: -0.5 }}
+            >
+              이미 완료된 테스트
+            </h1>
+            <p className="font-display text-sm font-medium text-text-secondary text-center max-w-[300px]">
+              이 테스트 코드는 이미 사용되었습니다.
+              <br />
+              재응시하거나 결과를 확인할 수 있습니다.
+            </p>
+          </div>
+
+          {/* Warning */}
+          <div className="px-6 md:px-8 mb-5">
+            <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
+              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <span className="font-display text-[13px] font-medium text-amber-700 leading-relaxed">
+                재응시 시 기존 결과는 유지되며 덮어쓰지 않습니다. 새로운 학습 기록이 별도로 저장됩니다.
+              </span>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-col gap-3 px-6 md:px-8">
+            <button
+              onClick={handleRestart}
+              disabled={isStarting}
+              className="flex items-center justify-center gap-2.5 w-full h-14 rounded-2xl text-white transition-opacity disabled:opacity-40"
+              style={{
+                background: 'linear-gradient(90deg, #4F46E5, #7C3AED)',
+                boxShadow: '0 4px 16px #4F46E540',
+              }}
+            >
+              {isStarting ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <RotateCcw className="w-5 h-5" />
+              )}
+              <span className="font-display text-[17px] font-bold">
+                {isStarting ? '준비 중...' : '재응시하기'}
+              </span>
+            </button>
+
+            <button
+              onClick={handleViewReport}
+              className="flex items-center justify-center gap-2.5 w-full h-14 rounded-2xl transition-opacity"
+              style={{
+                background: '#F5F4F1',
+                border: '1.5px solid #E5E4E1',
+              }}
+            >
+              <BarChart3 className="w-5 h-5 text-text-primary" />
+              <span className="font-display text-[17px] font-bold text-text-primary">
+                결과 보기
+              </span>
+            </button>
+
+            <button
+              onClick={() => { setCompletedInfo(null); setTestCode(''); }}
+              className="font-display text-sm font-medium text-text-tertiary mt-2"
+            >
+              다른 코드 입력하기
+            </button>
+          </div>
+
+          {error && (
+            <div className="flex items-center justify-center gap-1.5 text-[13px] text-red-500 font-display mt-4 px-6">
+              <AlertCircle className="w-3.5 h-3.5" />
+              {error}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // Show loading overlay when auto-starting from URL param
   if (autoStartTriggered.current && isStarting && !error) {

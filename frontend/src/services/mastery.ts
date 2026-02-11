@@ -16,10 +16,10 @@ import type {
 } from '../types/mastery';
 
 export const masteryService = {
-  async startByCode(testCode: string): Promise<StartMasteryResponse> {
+  async startByCode(testCode: string, allowRestart = false): Promise<StartMasteryResponse> {
     const response = await api.post<StartMasteryResponse>(
       '/api/v1/mastery/start-by-code',
-      { test_code: testCode },
+      { test_code: testCode, allow_restart: allowRestart },
     );
     return response.data;
   },

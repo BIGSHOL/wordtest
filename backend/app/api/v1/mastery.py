@@ -65,9 +65,19 @@ async def start_mastery_by_code(
 
     try:
         session, questions, masteries, all_words, assignment, student_name, current_level = \
-            await start_session_by_code(db, code)
+            await start_session_by_code(db, code, allow_restart=body.allow_restart)
     except ValueError as e:
         msg = str(e)
+        if msg.startswith("ALREADY_COMPLETED|"):
+            parts = msg.split("|")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "code": "ALREADY_COMPLETED",
+                    "session_id": parts[1],
+                    "assignment_id": parts[2],
+                },
+            )
         if "inactive" in msg.lower() or "invalid" in msg.lower():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)

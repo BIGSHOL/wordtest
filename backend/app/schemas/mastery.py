@@ -20,6 +20,7 @@ STAGE_QUESTION_TYPES = {
 
 class StartMasteryByCodeRequest(BaseModel):
     test_code: str
+    allow_restart: bool = False
 
 
 class MasteryBatchRequest(BaseModel):

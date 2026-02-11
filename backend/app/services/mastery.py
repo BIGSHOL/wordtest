@@ -143,7 +143,7 @@ async def _compute_stage_summary(
 
 
 async def start_session_by_code(
-    db: AsyncSession, code: str
+    db: AsyncSession, code: str, allow_restart: bool = False
 ) -> tuple[LearningSession, list[MasteryQuestion], list[WordMastery], list[Word], TestAssignment, str, int]:
     """Start or resume a mastery learning session by test code.
 
@@ -185,6 +185,18 @@ async def start_session_by_code(
     # Update assignment status
     if assignment.status == "pending":
         assignment.status = "in_progress"
+
+    # Check for already-completed session (1회 사용 제한)
+    completed_result = await db.execute(
+        select(LearningSession).where(
+            LearningSession.assignment_id == assignment.id,
+            LearningSession.student_id == assignment.student_id,
+            LearningSession.completed_at != None,
+        ).order_by(LearningSession.completed_at.desc()).limit(1)
+    )
+    completed_session = completed_result.scalar_one_or_none()
+    if completed_session and not allow_restart:
+        raise ValueError(f"ALREADY_COMPLETED|{completed_session.id}|{assignment.id}")
 
     # Find or create session
     session_result = await db.execute(
