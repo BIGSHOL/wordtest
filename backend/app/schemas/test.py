@@ -22,6 +22,7 @@ class SubmitAnswerResponse(BaseModel):
 class TestQuestionWord(BaseModel):
     id: str
     english: str
+    korean: Optional[str] = None
     example_en: Optional[str] = None
     level: int = 1  # word DB level (1-15)
     lesson: str = ""  # lesson name within book
@@ -32,6 +33,7 @@ class TestQuestion(BaseModel):
     word: TestQuestionWord
     choices: list[str]
     correct_answer: str
+    question_type: str = "word_meaning"
 
 
 class TestSessionResponse(BaseModel):
@@ -64,6 +66,8 @@ class AnswerDetail(BaseModel):
     correct_answer: str
     selected_answer: Optional[str] = None
     is_correct: bool
+    word_level: int = 1
+    time_taken_seconds: Optional[float] = None
 
 
 class TestResultResponse(BaseModel):
@@ -73,3 +77,14 @@ class TestResultResponse(BaseModel):
 
 class ListTestsResponse(BaseModel):
     tests: list[TestSessionResponse]
+
+
+class StartByCodeRequest(BaseModel):
+    test_code: str
+
+
+class StartByCodeResponse(BaseModel):
+    access_token: str
+    test_session: TestSessionResponse
+    questions: list[TestQuestion]
+    student_name: str

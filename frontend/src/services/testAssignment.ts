@@ -5,20 +5,23 @@ import api from './api';
 
 export interface AssignTestRequest {
   student_ids: string[];
+  test_type?: 'placement' | 'periodic';
   question_count: number;
   per_question_time_seconds: number;
   question_types: string[];
-  book_name: string;
-  lesson_range_start: string;
-  lesson_range_end: string;
+  book_name?: string;
+  lesson_range_start?: string;
+  lesson_range_end?: string;
 }
 
 export interface TestAssignmentItem {
   id: string;
+  student_id: string;
   student_name: string;
   student_school: string | null;
   student_grade: string | null;
   test_code: string;
+  test_type: 'placement' | 'periodic';
   question_count: number;
   per_question_time_seconds: number | null;
   question_types: string | null;

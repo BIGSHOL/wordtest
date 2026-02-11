@@ -105,7 +105,7 @@ export function StudentResultPage() {
                 <h1 className="font-display text-lg font-bold text-text-primary">
                   학생 리포트
                 </h1>
-                <p className="text-[13px] text-text-secondary">
+                <p className="text-[13px] text-text-secondary whitespace-nowrap">
                   {student?.name || '학생'}
                   {student?.school_name ? ` · ${student.school_name}` : ''}
                   {student?.grade ? ` ${student.grade}` : ''}

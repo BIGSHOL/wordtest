@@ -25,17 +25,19 @@ export function AccuracyChart({ history }: { history: TestHistoryItem[] }) {
       </div>
       <div className="flex items-end gap-0 h-[120px] lg:h-[160px]">
         {history.slice(-5).map((item, i) => {
-          const barH = Math.max(item.accuracy * 1.1, 10);
+          const barH = Math.max(item.accuracy, 8);
           return (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <div
-                className="w-8 lg:w-9 rounded-t-lg"
-                style={{
-                  height: `${barH}%`,
-                  background: 'linear-gradient(180deg, #818CF8, #4F46E5)',
-                }}
-              />
-              <span className="text-[10px] font-bold text-accent-indigo">
+            <div key={i} className="flex-1 flex flex-col items-center">
+              <div className="flex-1 w-full flex items-end justify-center">
+                <div
+                  className="w-8 lg:w-9 rounded-t-lg"
+                  style={{
+                    height: `${barH}%`,
+                    background: 'linear-gradient(180deg, #2D9CAE, #3DBDC8)',
+                  }}
+                />
+              </div>
+              <span className="text-[10px] font-bold text-teal mt-1">
                 {item.accuracy}%
               </span>
               <span className="text-[9px] text-text-tertiary">

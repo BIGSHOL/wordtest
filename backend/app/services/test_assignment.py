@@ -13,16 +13,19 @@ from app.core.timezone import now_kst
 async def assign_test(
     db: AsyncSession, teacher_id: str, data: AssignTestRequest
 ) -> list[TestAssignmentResponse]:
-    """Create a TestConfig and assign it to multiple students."""
-    test_code = await generate_test_code(db)
+    """Create a TestConfig and assign it to multiple students with individual codes."""
     question_types_str = ",".join(data.question_types)
     time_limit = data.per_question_time_seconds * data.question_count
+    is_placement = data.test_type == "placement"
+
+    type_label = "적응형" if is_placement else "정기형"
+    config_name = f"{data.book_name} {data.lesson_range_start}-{data.lesson_range_end} ({type_label})"
 
     config = TestConfig(
         teacher_id=teacher_id,
-        name=f"{data.book_name} {data.lesson_range_start}-{data.lesson_range_end}",
-        test_code=test_code,
-        test_type="periodic",
+        name=config_name,
+        test_code=None,
+        test_type=data.test_type,
         question_count=data.question_count,
         time_limit_seconds=time_limit,
         is_active=True,
@@ -37,10 +40,12 @@ async def assign_test(
 
     assignments = []
     for student_id in data.student_ids:
+        individual_code = await generate_test_code(db)
         assignment = TestAssignment(
             test_config_id=config.id,
             student_id=student_id,
             teacher_id=teacher_id,
+            test_code=individual_code,
         )
         db.add(assignment)
         assignments.append(assignment)
@@ -57,7 +62,11 @@ async def assign_test(
     )
     students_map = {s.id: s for s in student_result.scalars().all()}
 
-    lesson_range = f"{data.lesson_range_start}-{data.lesson_range_end}"
+    lesson_range = (
+        f"{data.lesson_range_start}-{data.lesson_range_end}"
+        if data.lesson_range_start and data.lesson_range_end
+        else None
+    )
 
     responses = []
     for a in assignments:
@@ -65,10 +74,12 @@ async def assign_test(
         responses.append(
             TestAssignmentResponse(
                 id=a.id,
+                student_id=a.student_id,
                 student_name=student.name if student else "",
                 student_school=student.school_name if student else None,
                 student_grade=student.grade if student else None,
-                test_code=test_code,
+                test_code=a.test_code,
+                test_type=data.test_type,
                 question_count=data.question_count,
                 per_question_time_seconds=data.per_question_time_seconds,
                 question_types=question_types_str,
@@ -102,10 +113,12 @@ async def list_assignments_by_teacher(
         responses.append(
             TestAssignmentResponse(
                 id=assignment.id,
+                student_id=assignment.student_id,
                 student_name=student.name,
                 student_school=student.school_name,
                 student_grade=student.grade,
-                test_code=config.test_code,
+                test_code=assignment.test_code,
+                test_type=config.test_type,
                 question_count=config.question_count,
                 per_question_time_seconds=config.per_question_time_seconds,
                 question_types=config.question_types,

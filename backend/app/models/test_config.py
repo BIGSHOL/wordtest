@@ -20,7 +20,7 @@ class TestConfig(Base):
         String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
-    test_code: Mapped[str] = mapped_column(String(6), unique=True, nullable=False)
+    test_code: Mapped[Optional[str]] = mapped_column(String(8), nullable=True)
     test_type: Mapped[str] = mapped_column(
         String(20), nullable=False
     )  # placement / periodic
@@ -46,5 +46,4 @@ class TestConfig(Base):
     __table_args__ = (
         Index("idx_test_config_teacher_id", "teacher_id"),
         Index("idx_test_config_active", "is_active"),
-        Index("idx_test_config_test_code", "test_code", unique=True),
     )

@@ -16,9 +16,10 @@ export interface SubmitAnswerRequest {
 
 export interface TestQuestion {
   question_order: number;
-  word: { id: string; english: string; example_en?: string; level: number; lesson: string };
+  word: { id: string; english: string; korean?: string; example_en?: string; level: number; lesson: string };
   choices: string[];
   correct_answer: string;
+  question_type?: string;
 }
 
 export interface TestSessionData {
@@ -42,6 +43,13 @@ export interface StartTestResponse {
   questions: TestQuestion[];
 }
 
+export interface StartByCodeResponse {
+  access_token: string;
+  test_session: TestSessionData;
+  questions: TestQuestion[];
+  student_name: string;
+}
+
 export interface SubmitAnswerResponse {
   is_correct: boolean;
   correct_answer: string;
@@ -53,6 +61,8 @@ export interface AnswerDetail {
   correct_answer: string;
   selected_answer: string | null;
   is_correct: boolean;
+  word_level: number;
+  time_taken_seconds: number | null;
 }
 
 export interface TestResultResponse {
@@ -67,6 +77,14 @@ export interface ListTestsResponse {
 export const testService = {
   async startTest(data: StartTestRequest): Promise<StartTestResponse> {
     const response = await api.post<StartTestResponse>('/api/v1/tests/start', data);
+    return response.data;
+  },
+
+  async startByCode(testCode: string): Promise<StartByCodeResponse> {
+    const response = await api.post<StartByCodeResponse>(
+      '/api/v1/tests/start-by-code',
+      { test_code: testCode },
+    );
     return response.data;
   },
 

@@ -12,11 +12,14 @@ from app.schemas.stats import (
     ScoreTrend,
     TestHistoryItem,
     TestHistoryResponse,
+    WordStat,
+    WordStatsResponse,
 )
 from app.core.deps import CurrentTeacher, CurrentUser
 from app.models.user import User
 from app.models.word import Word
 from app.models.test_session import TestSession
+from app.models.test_answer import TestAnswer
 from app.core.timezone import now_kst
 
 router = APIRouter(prefix="/stats", tags=["stats"])

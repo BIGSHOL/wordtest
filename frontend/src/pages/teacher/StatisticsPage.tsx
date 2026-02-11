@@ -244,7 +244,7 @@ export function StatisticsPage() {
                     const rank = getLevelRank(l.level);
                     return (
                       <div key={l.level} className="flex items-center gap-3">
-                        <span className="text-sm w-20 text-text-secondary font-medium font-word">
+                        <span className="text-sm w-28 text-text-secondary font-medium font-word whitespace-nowrap shrink-0">
                           {rank.name}
                         </span>
                         <div className="flex-1 bg-[#F5F4F1] h-5 rounded-[10px] overflow-hidden">

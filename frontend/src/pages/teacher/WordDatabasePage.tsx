@@ -439,12 +439,13 @@ export function WordDatabasePage() {
                 <table className="w-full">
                   <thead>
                     <tr className="bg-[#F8F8F6] h-11 text-xs text-text-tertiary font-semibold">
-                      <th className="text-center px-3 w-[50px]">No.</th>
-                      <th className="text-left px-4 w-[150px]">영어 단어</th>
-                      <th className="text-left px-4 w-[150px]">한국어 뜻</th>
-                      <th className="text-left px-4 w-[200px]">예문</th>
-                      <th className="text-left px-4 w-[100px]">레슨</th>
-                      <th className="text-center px-4">관리</th>
+                      <th className="text-center px-3 w-[50px] whitespace-nowrap">No.</th>
+                      <th className="text-left px-3 whitespace-nowrap">영어 단어</th>
+                      <th className="text-left px-3 whitespace-nowrap">품사</th>
+                      <th className="text-left px-3 whitespace-nowrap">한국어 뜻</th>
+                      <th className="text-left px-3">예문</th>
+                      <th className="text-left px-3 whitespace-nowrap">레슨</th>
+                      <th className="text-center px-3 whitespace-nowrap">관리</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -470,10 +471,13 @@ export function WordDatabasePage() {
                               </button>
                             </div>
                           </td>
-                          <td className="px-4 text-sm text-text-secondary">{word.korean}</td>
-                          <td className="px-4 text-sm text-text-secondary">
+                          <td className="px-3 text-xs text-text-tertiary whitespace-nowrap">{word.part_of_speech || '-'}</td>
+                          <td className="px-3 text-sm text-text-secondary">
+                            <span className="truncate block max-w-[160px]">{word.korean}</span>
+                          </td>
+                          <td className="px-3 text-sm text-text-secondary">
                             {word.example_en ? (
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1 max-w-[280px]">
                                 <span className="truncate">{word.example_en}</span>
                                 <button
                                   onClick={() => handlePlaySentence(word.example_en!)}
@@ -485,9 +489,9 @@ export function WordDatabasePage() {
                               </div>
                             ) : '-'}
                           </td>
-                          <td className="px-4">
+                          <td className="px-3 whitespace-nowrap">
                             <span
-                              className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold"
+                              className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold whitespace-nowrap"
                               style={{
                                 backgroundColor: rankInfo.colors[0] + '20',
                                 color: rankInfo.colors[1],
@@ -496,7 +500,7 @@ export function WordDatabasePage() {
                               {word.lesson || `Lesson ${word.level}`}
                             </span>
                           </td>
-                          <td className="px-4">
+                          <td className="px-3">
                             <div className="flex items-center justify-center gap-2">
                               <button
                                 onClick={() => handleOpenForm(word)}

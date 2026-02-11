@@ -8,6 +8,7 @@ import { RankBadge } from '../../components/test/RankBadge';
 import { StatCard } from '../../components/test/StatCard';
 import { getLevelRank } from '../../types/rank';
 import { useTestStore } from '../../stores/testStore';
+import { useAuthStore } from '../../stores/auth';
 import testService, { type TestResultResponse } from '../../services/test';
 import { playSound } from '../../hooks/useSound';
 
@@ -15,6 +16,9 @@ export function ResultPage() {
   const { testId } = useParams<{ testId: string }>();
   const navigate = useNavigate();
   const { wrongAnswers } = useTestStore();
+  const user = useAuthStore((s) => s.user);
+  const isCodeOnlyUser = !user?.username;
+  const homePath = isCodeOnlyUser ? '/test/start' : '/student';
   const [result, setResult] = useState<TestResultResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +66,7 @@ export function ResultPage() {
         <div className="text-center space-y-4">
           <p className="text-wrong font-display font-medium">{error || '결과를 찾을 수 없습니다.'}</p>
           <button
-            onClick={() => navigate('/student', { replace: true })}
+            onClick={() => navigate(homePath, { replace: true })}
             className="px-4 py-2 bg-accent-indigo text-white rounded-lg font-display hover:opacity-90 transition-colors"
           >
             돌아가기

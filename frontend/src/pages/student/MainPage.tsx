@@ -16,12 +16,12 @@ export function StudentMainPage() {
 
   const handleCodeChange = (value: string) => {
     if (composingRef.current) return;
-    const cleaned = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    const cleaned = value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 8);
     setTestCode(cleaned);
   };
 
   const handleStart = () => {
-    if (testCode.length === 6) {
+    if (testCode.length === 8) {
       navigate(`/test/start?code=${testCode}`);
     } else {
       navigate('/test/start');
@@ -75,7 +75,7 @@ export function StudentMainPage() {
               onCompositionEnd={(e) => { composingRef.current = false; handleCodeChange((e.target as HTMLInputElement).value); }}
               onKeyDown={(e) => e.key === 'Enter' && handleStart()}
               className="flex-1 bg-transparent text-text-primary placeholder:text-text-tertiary outline-none text-sm font-display tracking-[0.15em] font-semibold uppercase"
-              maxLength={6}
+              maxLength={8}
             />
           </div>
         </div>

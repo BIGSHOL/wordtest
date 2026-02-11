@@ -6,12 +6,16 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { WrongWordCard } from '../../components/test/WrongWordCard';
 import { useTestStore, type WrongAnswer } from '../../stores/testStore';
+import { useAuthStore } from '../../stores/auth';
 import testService from '../../services/test';
 
 export function WrongWordsPage() {
   const { testId } = useParams<{ testId: string }>();
   const navigate = useNavigate();
   const storeWrongAnswers = useTestStore((s) => s.wrongAnswers);
+  const user = useAuthStore((s) => s.user);
+  const isCodeOnlyUser = !user?.username;
+  const homePath = isCodeOnlyUser ? '/test/start' : '/student';
   const [wrongItems, setWrongItems] = useState<WrongAnswer[]>(storeWrongAnswers);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -86,7 +90,7 @@ export function WrongWordsPage() {
       {/* Bottom Area */}
       <div className="px-4 md:px-8 pt-3 pb-10 lg:px-12 flex justify-center">
         <button
-          onClick={() => navigate('/student', { replace: true })}
+          onClick={() => navigate(homePath, { replace: true })}
           className="flex items-center justify-center gap-2 w-full md:max-w-[640px] lg:w-[760px] h-[52px] rounded-2xl text-white"
           style={{
             background: 'linear-gradient(90deg, #4F46E5, #7C3AED)',

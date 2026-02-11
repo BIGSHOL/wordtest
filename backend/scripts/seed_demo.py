@@ -8,10 +8,14 @@ Usage:
     python scripts/seed_demo.py
 """
 import asyncio
+import secrets
 import sys
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+
+# Ambiguity-free charset for test codes (no I/O/0/1)
+CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 # ──────────────────────────────────────────────────────────────
 # Configuration
@@ -33,10 +37,9 @@ STUDENTS = [
     {"username": "student05", "password": "test1234", "name": "정하늘"},
 ]
 
-# Test configurations with FIXED memorable test codes
+# Test configurations (codes are now per-assignment, not per-config)
 TEST_CONFIGS = [
     {
-        "test_code": "TEST01",
         "name": "기초 배치고사 (Lv1-5)",
         "test_type": "placement",
         "question_count": 10,
@@ -45,7 +48,6 @@ TEST_CONFIGS = [
         "level_range_max": 5,
     },
     {
-        "test_code": "TEST02",
         "name": "중급 배치고사 (Lv1-10)",
         "test_type": "placement",
         "question_count": 20,
@@ -54,7 +56,6 @@ TEST_CONFIGS = [
         "level_range_max": 10,
     },
     {
-        "test_code": "TEST03",
         "name": "주간 테스트 (Lv1-3)",
         "test_type": "periodic",
         "question_count": 10,
@@ -63,6 +64,26 @@ TEST_CONFIGS = [
         "level_range_max": 3,
     },
 ]
+
+# Fixed demo test codes for easy testing (8-char, per student per config)
+# Format: config_index -> student_username -> code
+DEMO_CODES = {
+    0: {  # 기초 배치고사
+        "student01": "TEST2AA1",
+        "student02": "TEST2AA2",
+        "student03": "TEST2AA3",
+    },
+    1: {  # 중급 배치고사
+        "student01": "TEST2BB1",
+        "student02": "TEST2BB2",
+        "student03": "TEST2BB3",
+    },
+    2: {  # 주간 테스트
+        "student01": "TEST2CC1",
+        "student02": "TEST2CC2",
+        "student03": "TEST2CC3",
+    },
+}
 
 # Word data - realistic English vocabulary by level
 WORDS_BY_LEVEL: dict[int, list[dict]] = {
@@ -297,22 +318,34 @@ async def seed_words(session: AsyncSession) -> int:
 
 
 async def seed_test_configs(session: AsyncSession, teacher_id: str):
-    """Create test configurations with fixed test codes."""
+    """Create test configurations with per-student individual test codes."""
     from app.models.test_config import TestConfig
+    from app.models.test_assignment import TestAssignment
+    from app.models.user import User
 
-    for tc in TEST_CONFIGS:
+    # Get student map
+    student_result = await session.execute(
+        select(User).where(User.role == "student", User.teacher_id == teacher_id)
+    )
+    students_map = {s.username: s for s in student_result.scalars().all()}
+
+    for idx, tc in enumerate(TEST_CONFIGS):
+        # Check if config already exists by name
         result = await session.execute(
-            select(TestConfig).where(TestConfig.test_code == tc["test_code"])
+            select(TestConfig).where(
+                TestConfig.name == tc["name"],
+                TestConfig.teacher_id == teacher_id,
+            )
         )
         existing = result.scalar_one_or_none()
         if existing:
-            print(f"  [SKIP] Test code already exists: {tc['test_code']}")
+            print(f"  [SKIP] Config already exists: {tc['name']}")
             continue
 
         config = TestConfig(
             teacher_id=teacher_id,
             name=tc["name"],
-            test_code=tc["test_code"],
+            test_code=None,
             test_type=tc["test_type"],
             question_count=tc["question_count"],
             time_limit_seconds=tc["time_limit_seconds"],
@@ -321,7 +354,24 @@ async def seed_test_configs(session: AsyncSession, teacher_id: str):
             is_active=True,
         )
         session.add(config)
-        print(f"  [OK] Test config: {tc['test_code']} -> {tc['name']}")
+        await session.flush()
+        print(f"  [OK] Test config: {tc['name']}")
+
+        # Create per-student assignments with fixed demo codes
+        demo_codes = DEMO_CODES.get(idx, {})
+        for username, code in demo_codes.items():
+            student = students_map.get(username)
+            if not student:
+                continue
+
+            assignment = TestAssignment(
+                test_config_id=config.id,
+                student_id=student.id,
+                teacher_id=teacher_id,
+                test_code=code,
+            )
+            session.add(assignment)
+            print(f"       -> {student.name}({username}): {code}")
 
 
 def print_summary():
@@ -338,15 +388,21 @@ def print_summary():
     for s in STUDENTS:
         print(f"  {s['username']} / {s['password']}  ({s['name']})")
 
-    print("\n  --- Test Codes ---")
-    for tc in TEST_CONFIGS:
-        print(f"  {tc['test_code']}  ->  {tc['name']}")
-        print(f"          ({tc['test_type']}, {tc['question_count']}Q, {tc['time_limit_seconds']}s)")
+    print("\n  --- Test Codes (per student) ---")
+    for idx, tc in enumerate(TEST_CONFIGS):
+        print(f"  [{tc['name']}]")
+        print(f"    ({tc['test_type']}, {tc['question_count']}Q, {tc['time_limit_seconds']}s)")
+        demo_codes = DEMO_CODES.get(idx, {})
+        for username, code in demo_codes.items():
+            student = next((s for s in STUDENTS if s["username"] == username), None)
+            name = student["name"] if student else username
+            print(f"    {name}({username}): {code}")
+        print()
 
-    print("\n  --- Quick Start ---")
-    print("  1. Login page -> student01 / test1234")
-    print("  2. Test code field -> TEST01")
-    print("  3. Click login -> test starts immediately!")
+    print("  --- Quick Start ---")
+    print("  1. Go to /test/start (no login required)")
+    print("  2. Enter test code: TEST2AA1")
+    print("  3. Test starts immediately!")
     print("=" * 60)
 
 

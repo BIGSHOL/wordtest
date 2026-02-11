@@ -124,11 +124,7 @@ function App() {
           />
           <Route
             path="/test/start"
-            element={
-              <RouteGuard roles={['student']}>
-                <TestStartPage />
-              </RouteGuard>
-            }
+            element={<TestStartPage />}
           />
           <Route
             path="/test"

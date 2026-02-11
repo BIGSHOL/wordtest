@@ -1,5 +1,6 @@
 /**
  * Test assignment page for teachers.
+ * Matches Pencil editor design layout.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -14,7 +15,6 @@ import type { User } from '../../types/auth';
 import type { LessonInfo } from '../../services/word';
 import type { TestAssignmentItem } from '../../services/testAssignment';
 import { logger } from '../../utils/logger';
-import { Send } from 'lucide-react';
 
 export function TestSettingsPage() {
   const navigate = useNavigate();
@@ -30,6 +30,7 @@ export function TestSettingsPage() {
 
   // Config
   const [config, setConfig] = useState<TestConfigState>({
+    testType: 'periodic',
     questionCount: 20,
     customQuestionCount: '',
     perQuestionTime: 10,
@@ -111,16 +112,16 @@ export function TestSettingsPage() {
     if (!config.bookName || !config.lessonStart || !config.lessonEnd) return;
     if (config.questionTypes.length === 0) return;
 
-    const questionCount =
-      config.questionCount === -1
-        ? parseInt(config.customQuestionCount) || 0
-        : config.questionCount;
+    const questionCount = config.questionCount === -1
+      ? parseInt(config.customQuestionCount) || 0
+      : config.questionCount;
     if (questionCount <= 0) return;
 
     setIsSubmitting(true);
     try {
       await testAssignmentService.assignTest({
         student_ids: Array.from(selectedIds),
+        test_type: config.testType,
         question_count: questionCount,
         per_question_time_seconds: config.perQuestionTime,
         question_types: config.questionTypes,
@@ -147,15 +148,15 @@ export function TestSettingsPage() {
     }
   };
 
-  const handleViewResult = (testSessionId: string) => {
-    navigate(`/results/${testSessionId}`);
+  const handleViewResult = (studentId: string) => {
+    navigate(`/students/${studentId}/results`);
   };
 
   const canAssign =
     selectedIds.size > 0 &&
-    config.bookName &&
-    config.lessonStart &&
-    config.lessonEnd &&
+    !!config.bookName &&
+    !!config.lessonStart &&
+    !!config.lessonEnd &&
     config.questionTypes.length > 0 &&
     (config.questionCount > 0 || (config.questionCount === -1 && parseInt(config.customQuestionCount) > 0));
 
@@ -166,24 +167,27 @@ export function TestSettingsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-display font-bold text-text-primary">테스트 출제</h1>
-            <p className="text-sm text-text-secondary mt-1">
-              학생을 선택하고 테스트를 설정하여 출제하세요.
+            <p className="text-[13px] text-text-secondary mt-1">
+              학생을 선택하고 테스트를 설정한 뒤 출제합니다
             </p>
           </div>
           <button
             onClick={handleAssign}
             disabled={!canAssign || isSubmitting}
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal to-teal/80 text-white rounded-lg hover:from-teal/90 hover:to-teal/70 transition-all font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center justify-center rounded-[10px] text-sm font-semibold text-white transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+            style={{
+              background: 'linear-gradient(135deg, #2D9CAE, #3DBDC8)',
+              padding: '10px 24px',
+            }}
           >
-            <Send className="w-4 h-4" />
             {isSubmitting ? '출제 중...' : '테스트 출제하기'}
           </button>
         </div>
 
         {/* Two-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          {/* Left Panel (60%) */}
-          <div className="lg:col-span-3 space-y-6">
+        <div className="flex gap-6">
+          {/* Left Column */}
+          <div className="flex-1 min-w-0 space-y-5">
             <StudentSelectionCard
               students={students}
               selectedIds={selectedIds}
@@ -197,8 +201,8 @@ export function TestSettingsPage() {
             />
           </div>
 
-          {/* Right Panel (40%) */}
-          <div className="lg:col-span-2">
+          {/* Right Column */}
+          <div className="w-[380px] shrink-0">
             <div className="sticky top-6">
               <TestConfigPanel
                 config={config}

@@ -49,31 +49,59 @@ async def start_test(
 
     test_config_id = None
 
+    ADAPTIVE_POOL_SIZE = 60
+    ADAPTIVE_ANSWER_COUNT = 20
+
     if test_code:
-        config = await get_config_by_code(db, test_code)
-        if not config:
+        lookup = await get_config_by_code(db, test_code)
+        if not lookup:
             raise ValueError("Invalid or inactive test code")
-        questions = await generate_questions(
-            db,
-            num_questions=config.question_count,
-            level_min=config.level_range_min,
-            level_max=config.level_range_max,
-            book_name=config.book_name,
-        )
+        assignment, config = lookup
         test_type = config.test_type
         test_config_id = config.id
+
+        qtypes = config.question_types.split(",") if config.question_types else None
+
+        if config.test_type == "placement":
+            # Adaptive: generate larger pool for cursor-based selection
+            pool_size = max(ADAPTIVE_POOL_SIZE, config.question_count * 3)
+            questions = await generate_questions(
+                db,
+                num_questions=pool_size,
+                level_min=config.level_range_min,
+                level_max=config.level_range_max,
+                book_name=config.book_name,
+                lesson_start=config.lesson_range_start,
+                lesson_end=config.lesson_range_end,
+                question_types=qtypes,
+            )
+        else:
+            # Periodic: generate exact question count
+            questions = await generate_questions(
+                db,
+                num_questions=config.question_count,
+                level_min=config.level_range_min,
+                level_max=config.level_range_max,
+                book_name=config.book_name,
+                lesson_start=config.lesson_range_start,
+                lesson_end=config.lesson_range_end,
+                question_types=qtypes,
+            )
     else:
-        # Adaptive mode: generate large pool, present only 20 questions
-        ADAPTIVE_POOL_SIZE = 60
-        ADAPTIVE_ANSWER_COUNT = 20
+        # Adaptive mode without code: generate large pool from all words
         questions = await generate_questions(db, num_questions=ADAPTIVE_POOL_SIZE)
 
     if not questions:
         raise ValueError("Not enough words to generate test questions")
 
-    # For adaptive (no test_code): total_questions = 20, pool may be larger
-    # For config-based: total_questions = actual question count
-    actual_count = len(questions) if test_code else min(ADAPTIVE_ANSWER_COUNT, len(questions))
+    # Adaptive: student answers target count from larger pool
+    # Periodic: student answers all generated questions
+    is_placement = test_type == "placement"
+    if is_placement:
+        target = config.question_count if test_code else ADAPTIVE_ANSWER_COUNT
+        actual_count = min(target, len(questions))
+    else:
+        actual_count = len(questions)
 
     session = TestSession(
         student_id=student_id,
@@ -243,14 +271,25 @@ async def get_test_result(
     )
     words_map = {w.id: w for w in words_result.scalars().all()}
     answers_with_words = []
-    for answer in sorted_answers:
+    for i, answer in enumerate(sorted_answers):
         word = words_map.get(answer.word_id)
+        # Calculate time taken between consecutive answers
+        time_taken = None
+        if answer.answered_at:
+            prev_time = sorted_answers[i - 1].answered_at if i > 0 else session.started_at
+            if prev_time:
+                delta = answer.answered_at - prev_time
+                time_taken = round(delta.total_seconds(), 1)
+                if time_taken < 0:
+                    time_taken = None
         answers_with_words.append({
             "question_order": answer.question_order,
             "word_english": word.english if word else "",
             "correct_answer": answer.correct_answer,
             "selected_answer": answer.selected_answer,
             "is_correct": answer.is_correct,
+            "word_level": word.level if word else 1,
+            "time_taken_seconds": time_taken,
         })
 
     return session, answers_with_words

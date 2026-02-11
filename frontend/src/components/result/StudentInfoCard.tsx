@@ -59,7 +59,7 @@ export function StudentInfoCard({
             {student?.name || '학생'}
           </h2>
           {schoolGrade && (
-            <p className="text-xs lg:text-sm text-text-secondary">{schoolGrade}</p>
+            <p className="text-xs lg:text-sm text-text-secondary truncate">{schoolGrade}</p>
           )}
         </div>
         <div className="hidden lg:flex items-center gap-6">

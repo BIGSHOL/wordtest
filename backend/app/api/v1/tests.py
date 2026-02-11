@@ -6,6 +6,8 @@ from app.db.session import get_db
 from app.schemas.test import (
     StartTestRequest,
     StartTestResponse,
+    StartByCodeRequest,
+    StartByCodeResponse,
     SubmitAnswerRequest,
     SubmitAnswerResponse,
     TestSessionResponse,
@@ -16,8 +18,12 @@ from app.schemas.test import (
     ListTestsResponse,
 )
 from app.core.deps import CurrentUser
+from app.core.security import create_access_token
 from app.services.test import start_test, submit_answer, get_test_result, list_tests_by_student
+from app.services.test_config import get_config_by_code
 from app.services.level_engine import format_rank_label
+from app.models.user import User
+from sqlalchemy import select
 
 
 def _session_response(session) -> TestSessionResponse:
@@ -43,6 +49,26 @@ def _session_response(session) -> TestSessionResponse:
         completed_at=str(session.completed_at) if session.completed_at else None,
     )
 
+
+def _questions_response(questions: list[dict]) -> list[TestQuestion]:
+    return [
+        TestQuestion(
+            question_order=q["question_order"],
+            word=TestQuestionWord(
+                id=q["word"].id,
+                english=q["word"].english,
+                korean=q["word"].korean,
+                example_en=q["word"].example_en,
+                level=q["word"].level,
+                lesson=q["word"].lesson or "",
+            ),
+            choices=q["choices"],
+            correct_answer=q["correct_answer"],
+            question_type=q.get("question_type", "word_meaning"),
+        )
+        for q in questions
+    ]
+
 router = APIRouter(prefix="/tests", tags=["tests"])
 
 
@@ -65,15 +91,73 @@ async def start_test_endpoint(
 
     return StartTestResponse(
         test_session=_session_response(session),
-        questions=[
-            TestQuestion(
-                question_order=q["question_order"],
-                word=TestQuestionWord(id=q["word"].id, english=q["word"].english, example_en=q["word"].example_en, level=q["word"].level, lesson=q["word"].lesson or ""),
-                choices=q["choices"],
-                correct_answer=q["correct_answer"],
-            )
-            for q in questions
-        ],
+        questions=_questions_response(questions),
+    )
+
+
+@router.post("/start-by-code", response_model=StartByCodeResponse, status_code=status.HTTP_201_CREATED)
+async def start_test_by_code_endpoint(
+    body: StartByCodeRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Start a test using only a test code (no authentication required).
+
+    Looks up the assignment by code, verifies it's pending, starts the test,
+    and returns a JWT for subsequent authenticated requests.
+    """
+    code = body.test_code.strip().upper()
+    if not code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Test code is required",
+        )
+
+    # Look up assignment + config
+    lookup = await get_config_by_code(db, code)
+    if not lookup:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invalid or inactive test code",
+        )
+
+    assignment, config = lookup
+
+    if assignment.status != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This test code has already been used",
+        )
+
+    # Get student info
+    student_result = await db.execute(
+        select(User).where(User.id == assignment.student_id)
+    )
+    student = student_result.scalar_one_or_none()
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Student not found",
+        )
+
+    # Start the test
+    try:
+        session, questions = await start_test(
+            db, assignment.student_id, config.test_type, code
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    # Issue JWT for subsequent requests
+    access_token = create_access_token(subject=student.id)
+
+    return StartByCodeResponse(
+        access_token=access_token,
+        test_session=_session_response(session),
+        questions=_questions_response(questions),
+        student_name=student.name,
     )
 
 

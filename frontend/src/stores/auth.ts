@@ -19,6 +19,7 @@ interface AuthStore {
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
   clearError: () => void;
+  setTokenDirect: (token: string, user: User) => void;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -90,6 +91,11 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       clearError: () => set({ error: null }),
+
+      setTokenDirect: (token: string, user: User) => {
+        authService.setToken(token);
+        set({ token, user, error: null });
+      },
     }),
     {
       name: 'auth-storage',

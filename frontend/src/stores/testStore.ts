@@ -10,8 +10,10 @@ import testService, {
   type TestQuestion,
   type TestSessionData,
   type SubmitAnswerResponse,
+  type StartByCodeResponse,
 } from '../services/test';
 import { getErrorMessage } from '../utils/error';
+import { useAuthStore } from './auth';
 
 /**
  * Pick the unused pool question whose index is closest to targetIdx.
@@ -57,6 +59,7 @@ interface TestStore {
   error: string | null;
 
   startTest: (testType: 'placement' | 'periodic', testCode?: string) => Promise<void>;
+  startTestByCode: (testCode: string) => Promise<StartByCodeResponse>;
   selectAnswer: (answer: string) => void;
   submitAnswer: (elapsedSeconds?: number) => Promise<void>;
   nextQuestion: () => void;
@@ -97,7 +100,7 @@ export const useTestStore = create<TestStore>()((set, get) => ({
       const response = await testService.startTest(req);
 
       const pool = response.questions;
-      const isAdaptive = !response.test_session.test_config_id;
+      const isAdaptive = response.test_session.test_type === 'placement';
 
       if (isAdaptive && pool.length > response.test_session.total_questions) {
         // Pool is sorted by level→lesson from backend.
@@ -144,6 +147,75 @@ export const useTestStore = create<TestStore>()((set, get) => ({
     }
   },
 
+  startTestByCode: async (testCode: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await testService.startByCode(testCode);
+
+      // Store JWT in auth store with complete User shape
+      useAuthStore.getState().setTokenDirect(response.access_token, {
+        id: response.test_session.student_id,
+        email: null,
+        username: null,
+        name: response.student_name,
+        role: 'student',
+        teacher_id: null,
+        school_name: null,
+        grade: null,
+        phone_number: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+      const pool = response.questions;
+      const isAdaptive = response.test_session.test_type === 'placement';
+
+      if (isAdaptive && pool.length > response.test_session.total_questions) {
+        // Placement via code: adaptive mode
+        const usedIndices = new Set<number>();
+        const firstIdx = pickClosest(pool.length, usedIndices, 0);
+        if (firstIdx >= 0) usedIndices.add(firstIdx);
+        const firstQuestion = firstIdx >= 0 ? pool[firstIdx] : pool[0];
+
+        set({
+          session: response.test_session,
+          questionPool: pool,
+          questions: [firstQuestion],
+          currentIndex: 0,
+          adaptiveLevel: firstQuestion.word.level,
+          adaptiveLesson: firstQuestion.word.lesson,
+          difficultyCursor: 0,
+          usedPoolIndices: usedIndices,
+          selectedAnswer: null,
+          answerResult: null,
+          wrongAnswers: [],
+        });
+      } else {
+        // Sequential mode (periodic)
+        set({
+          session: response.test_session,
+          questionPool: pool,
+          questions: pool,
+          currentIndex: 0,
+          adaptiveLevel: pool[0]?.word.level ?? 1,
+          adaptiveLesson: pool[0]?.word.lesson ?? '',
+          difficultyCursor: 0,
+          usedPoolIndices: new Set(pool.map((_, i) => i)),
+          selectedAnswer: null,
+          answerResult: null,
+          wrongAnswers: [],
+        });
+      }
+
+      return response;
+    } catch (error: unknown) {
+      set({ error: getErrorMessage(error, '테스트를 시작할 수 없습니다.') });
+      throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
   selectAnswer: (answer) => {
     if (get().answerResult) return;
     set({ selectedAnswer: answer });
@@ -160,7 +232,7 @@ export const useTestStore = create<TestStore>()((set, get) => ({
       correct_answer: question.correct_answer,
     };
 
-    const isAdaptive = !session.test_config_id;
+    const isAdaptive = session.test_type === 'placement';
 
     set((state) => {
       const newCursor = isAdaptive
@@ -207,7 +279,7 @@ export const useTestStore = create<TestStore>()((set, get) => ({
     const { session, questionPool, questions, currentIndex, difficultyCursor, usedPoolIndices } = get();
     if (!session) return;
 
-    const isAdaptive = !session.test_config_id;
+    const isAdaptive = session.test_type === 'placement';
 
     if (isAdaptive) {
       const nextIdx = pickClosest(questionPool.length, usedPoolIndices, difficultyCursor);

@@ -43,6 +43,20 @@ class TestHistoryResponse(BaseModel):
     history: list[TestHistoryItem]
 
 
+class WordStat(BaseModel):
+    word_id: str
+    english: str
+    korean: str
+    accuracy: float  # 0-100
+    attempt_count: int
+    avg_time_seconds: Optional[float] = None
+
+
+class WordStatsResponse(BaseModel):
+    lowest_accuracy: list[WordStat]
+    slowest_response: list[WordStat]
+
+
 class DashboardStats(BaseModel):
     total_students: int
     total_words: int

@@ -7,7 +7,7 @@ class TestConfigResponse(BaseModel):
     id: str
     teacher_id: str
     name: str
-    test_code: str
+    test_code: Optional[str] = None
     test_type: str
     question_count: int
     time_limit_seconds: int

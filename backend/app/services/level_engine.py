@@ -67,14 +67,15 @@ async def generate_questions(
     level_min: int = 1,
     level_max: int = 15,
     book_name: str | None = None,
+    lesson_start: str | None = None,
+    lesson_end: str | None = None,
+    question_types: list[str] | None = None,
 ) -> list[dict]:
-    """Generate progressive difficulty questions from Rank 1 Lesson 01 → Rank 10.
+    """Generate questions filtered by book, level, and lesson range.
 
-    Questions are ordered from easiest to hardest. Within each rank,
-    words are picked from early and late lessons to help estimate sublevel.
-
-    Each question includes the word's level and lesson for sublevel
-    determination after the test completes.
+    When lesson_start/lesson_end are provided, words are filtered to that
+    lesson range and distributed evenly. Otherwise, progressive difficulty
+    from Rank 1 → Rank 10 is used.
     """
     query = select(Word).where(
         Word.level >= level_min,
@@ -82,7 +83,12 @@ async def generate_questions(
     )
     if book_name:
         query = query.where(Word.book_name == book_name)
-    query = query.order_by(Word.level.asc(), Word.lesson.asc()).limit(1000)
+    if lesson_start and lesson_end:
+        query = query.where(
+            Word.lesson >= lesson_start,
+            Word.lesson <= lesson_end,
+        )
+    query = query.order_by(Word.level.asc(), Word.lesson.asc()).limit(5000)
 
     result = await db.execute(query)
     all_words = list(result.scalars().all())
@@ -99,24 +105,41 @@ async def generate_questions(
     if not levels:
         return []
 
-    # Distribute: 2 questions per level, capped by num_questions
+    # Distribute questions evenly across levels, then fill remaining
+    total_available = sum(len(words_by_level[l]) for l in levels)
     questions_per_level: dict[int, int] = {}
-    remaining = num_questions
-    for level in levels:
-        if remaining <= 0:
-            break
-        count = min(2, len(words_by_level[level]), remaining)
-        questions_per_level[level] = count
-        remaining -= count
+    remaining = min(num_questions, total_available)
 
-    # Distribute remaining budget
+    # First pass: proportional allocation based on available words per level
+    for level in levels:
+        available = len(words_by_level[level])
+        share = max(1, round(remaining * available / total_available)) if total_available > 0 else 0
+        questions_per_level[level] = min(share, available)
+
+    # Adjust to match exact target
+    allocated = sum(questions_per_level.values())
+    remaining = min(num_questions, total_available) - allocated
+
+    # Add more if under-allocated
     for level in levels:
         if remaining <= 0:
             break
         current = questions_per_level.get(level, 0)
-        if current < len(words_by_level[level]):
-            questions_per_level[level] = current + 1
-            remaining -= 1
+        available = len(words_by_level[level])
+        if current < available:
+            add = min(available - current, remaining)
+            questions_per_level[level] = current + add
+            remaining -= add
+
+    # Remove excess if over-allocated
+    if remaining < 0:
+        for level in reversed(levels):
+            if remaining >= 0:
+                break
+            current = questions_per_level.get(level, 0)
+            reduce = min(current - 1, -remaining) if current > 1 else 0
+            questions_per_level[level] = current - reduce
+            remaining += reduce
 
     # Select words: pick from EVENLY SPACED lessons within each level
     # This enables adaptive testing at lesson granularity
@@ -157,27 +180,51 @@ async def generate_questions(
 
         question_words.extend(selected)
 
-    # Pre-group words by korean meaning for O(1) wrong-answer filtering
+    # Pre-group for wrong-answer generation
     words_by_korean: dict[str, list[Word]] = defaultdict(list)
+    unique_english_set: set[str] = set()
     for w in all_words:
         words_by_korean[w.korean].append(w)
-    unique_korean_meanings = [k for k in words_by_korean if True]
+        unique_english_set.add(w.english)
+    unique_korean_meanings = list(words_by_korean.keys())
+    unique_english_words = list(unique_english_set)
+
+    if not question_types:
+        question_types = ["word_meaning"]
 
     # Build questions (ordered easy → hard)
     questions = []
     for i, word in enumerate(question_words):
-        # Pick 3 wrong meanings (exclude correct answer's korean)
-        wrong_meanings = [k for k in unique_korean_meanings if k != word.korean]
-        sampled_meanings = random.sample(wrong_meanings, min(3, len(wrong_meanings)))
+        qtype = question_types[i % len(question_types)]
 
-        choices = [word.korean] + sampled_meanings
+        if qtype == "meaning_word":
+            # Korean → English: show korean meaning, choices are english words
+            wrong_words = [e for e in unique_english_words if e != word.english]
+            sampled = random.sample(wrong_words, min(3, len(wrong_words)))
+            choices = [word.english] + sampled
+            correct = word.english
+        elif qtype == "sentence_blank" and word.example_en:
+            # Sentence blank: choices are english words
+            wrong_words = [e for e in unique_english_words if e != word.english]
+            sampled = random.sample(wrong_words, min(3, len(wrong_words)))
+            choices = [word.english] + sampled
+            correct = word.english
+        else:
+            # word_meaning (default): show english, choices are korean meanings
+            wrong_meanings = [k for k in unique_korean_meanings if k != word.korean]
+            sampled = random.sample(wrong_meanings, min(3, len(wrong_meanings)))
+            choices = [word.korean] + sampled
+            correct = word.korean
+            qtype = "word_meaning"
+
         random.shuffle(choices)
 
         questions.append({
             "question_order": i + 1,
             "word": word,
-            "correct_answer": word.korean,
+            "correct_answer": correct,
             "choices": choices,
+            "question_type": qtype,
         })
 
     return questions

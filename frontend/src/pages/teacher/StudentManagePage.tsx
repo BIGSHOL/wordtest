@@ -233,25 +233,25 @@ export function StudentManagePage() {
               <table className="w-full">
                 <thead>
                   <tr style={{ backgroundColor: '#F8F8F6', height: '44px' }}>
-                    <th className="px-4 text-left text-xs font-semibold text-text-tertiary" style={{ width: '100px' }}>
+                    <th className="px-4 text-left text-xs font-semibold text-text-tertiary whitespace-nowrap" style={{ width: '100px' }}>
                       이름
                     </th>
-                    <th className="px-4 text-left text-xs font-semibold text-text-tertiary" style={{ width: '80px' }}>
+                    <th className="px-4 text-left text-xs font-semibold text-text-tertiary whitespace-nowrap" style={{ width: '120px' }}>
                       학교
                     </th>
-                    <th className="px-4 text-left text-xs font-semibold text-text-tertiary" style={{ width: '50px' }}>
+                    <th className="px-4 text-left text-xs font-semibold text-text-tertiary whitespace-nowrap" style={{ width: '50px' }}>
                       학년
                     </th>
-                    <th className="px-4 text-left text-xs font-semibold text-text-tertiary" style={{ width: '110px' }}>
+                    <th className="px-4 text-left text-xs font-semibold text-text-tertiary whitespace-nowrap" style={{ width: '120px' }}>
                       연락처
                     </th>
-                    <th className="px-4 text-left text-xs font-semibold text-text-tertiary" style={{ width: '100px' }}>
+                    <th className="px-4 text-left text-xs font-semibold text-text-tertiary whitespace-nowrap" style={{ width: '110px' }}>
                       현재 레벨
                     </th>
-                    <th className="px-4 text-left text-xs font-semibold text-text-tertiary" style={{ width: '100px' }}>
+                    <th className="px-4 text-left text-xs font-semibold text-text-tertiary whitespace-nowrap" style={{ width: '100px' }}>
                       마지막 응시
                     </th>
-                    <th className="px-4 text-left text-xs font-semibold text-text-tertiary" style={{ width: '70px' }}>
+                    <th className="px-4 text-left text-xs font-semibold text-text-tertiary whitespace-nowrap" style={{ width: '70px' }}>
                       상태
                     </th>
                     <th className="px-4 text-left text-xs font-semibold text-text-tertiary">관리</th>
@@ -267,21 +267,21 @@ export function StudentManagePage() {
                         style={{ height: '52px' }}
                       >
                         <td className="px-4">
-                          <div className="font-semibold text-text-primary">{student.name}</div>
+                          <div className="font-semibold text-text-primary truncate max-w-[100px]">{student.name}</div>
                         </td>
                         <td className="px-4 text-sm text-text-secondary">
-                          {student.school_name || '-'}
+                          <span className="truncate block max-w-[120px]">{student.school_name || '-'}</span>
                         </td>
-                        <td className="px-4 text-sm text-text-secondary">
+                        <td className="px-4 text-sm text-text-secondary whitespace-nowrap">
                           {student.grade || '-'}
                         </td>
-                        <td className="px-4 text-sm text-text-secondary">
+                        <td className="px-4 text-sm text-text-secondary whitespace-nowrap">
                           {student.phone_number || '-'}
                         </td>
-                        <td className="px-4">
+                        <td className="px-4 whitespace-nowrap">
                           {rankInfo ? (
                             <span
-                              className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white"
+                              className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white whitespace-nowrap"
                               style={{ backgroundColor: rankInfo.bgColor }}
                             >
                               Lv.{student.latest_level} {rankInfo.nameKo}
@@ -290,7 +290,7 @@ export function StudentManagePage() {
                             <span className="text-sm text-text-tertiary">-</span>
                           )}
                         </td>
-                        <td className="px-4 text-sm text-text-secondary">
+                        <td className="px-4 text-sm text-text-secondary whitespace-nowrap">
                           {student.created_at ? formatDate(student.created_at) : '-'}
                         </td>
                         <td className="px-4">

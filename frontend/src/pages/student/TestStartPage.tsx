@@ -1,102 +1,67 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { BookOpen, Hash, Info, Play, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
-import { testConfigService, type TestConfig } from '../../services/testConfig';
+import { BookOpen, Hash, AlertCircle, Loader2, Play } from 'lucide-react';
 import { useTestStore } from '../../stores/testStore';
+
+const CODE_LENGTH = 8;
+const CODE_CHARS = /[^A-HJ-NP-Z2-9]/g;
 
 export function TestStartPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { startTest } = useTestStore();
+  const { startTestByCode } = useTestStore();
   const [testCode, setTestCode] = useState('');
-  const [config, setConfig] = useState<TestConfig | null>(null);
-  const [isValidating, setIsValidating] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const autoStartTriggered = useRef(false);
 
-  // Auto-validate & auto-start from URL query param (e.g. /test/start?code=A3X7K2)
+  // Auto-start from URL query param (e.g. /test/start?code=HKWN3V7P)
   useEffect(() => {
     const codeFromUrl = searchParams.get('code');
-    if (codeFromUrl && codeFromUrl.length === 6 && !autoStartTriggered.current) {
+    if (codeFromUrl && codeFromUrl.length === CODE_LENGTH && !autoStartTriggered.current) {
       autoStartTriggered.current = true;
-      const cleaned = codeFromUrl.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const cleaned = codeFromUrl.toUpperCase().replace(CODE_CHARS, '').slice(0, CODE_LENGTH);
       setTestCode(cleaned);
-      autoValidateAndStart(cleaned);
+      handleStartByCode(cleaned);
     }
   }, [searchParams]);
 
-  const autoValidateAndStart = async (code: string) => {
-    setIsValidating(true);
-    setValidationError(null);
+  const handleStartByCode = async (code: string) => {
+    if (code.length !== CODE_LENGTH) {
+      setError(`테스트 코드는 ${CODE_LENGTH}자리입니다`);
+      return;
+    }
+
+    setIsStarting(true);
+    setError(null);
     try {
-      const result = await testConfigService.getConfigByCode(code);
-      setConfig(result);
-      // Auto-start immediately
-      setIsStarting(true);
-      await startTest(result.test_type, code);
+      await startTestByCode(code);
       navigate('/test', { replace: true });
-    } catch {
-      setValidationError('유효하지 않은 테스트 코드입니다');
-      setConfig(null);
-      setIsStarting(false);
+    } catch (err: any) {
+      const detail = err?.response?.data?.detail;
+      if (detail === 'This test code has already been used') {
+        setError('이미 사용된 테스트 코드입니다');
+      } else if (detail === 'Invalid or inactive test code') {
+        setError('유효하지 않은 테스트 코드입니다');
+      } else {
+        setError('테스트를 시작할 수 없습니다');
+      }
     } finally {
-      setIsValidating(false);
+      setIsStarting(false);
     }
   };
 
   const composingRef = useRef(false);
 
   const handleCodeChange = (value: string) => {
-    if (composingRef.current) return; // IME 조합 중에는 무시
-    // Uppercase, alphanumeric only, max 6 chars
-    const cleaned = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+    if (composingRef.current) return;
+    const cleaned = value.toUpperCase().replace(CODE_CHARS, '').slice(0, CODE_LENGTH);
     setTestCode(cleaned);
-    // Reset validation when code changes
-    if (config) setConfig(null);
-    if (validationError) setValidationError(null);
-  };
-
-  const handleValidate = async () => {
-    if (testCode.length !== 6) {
-      setValidationError('테스트 코드는 6자리입니다');
-      return;
-    }
-
-    setIsValidating(true);
-    setValidationError(null);
-    try {
-      const result = await testConfigService.getConfigByCode(testCode);
-      setConfig(result);
-    } catch {
-      setValidationError('유효하지 않은 테스트 코드입니다');
-      setConfig(null);
-    } finally {
-      setIsValidating(false);
-    }
-  };
-
-  const handleStart = async () => {
-    if (!config) return;
-    setIsStarting(true);
-    try {
-      await startTest(config.test_type, testCode);
-      navigate('/test', { replace: true });
-    } catch {
-      setValidationError('테스트를 시작할 수 없습니다');
-    } finally {
-      setIsStarting(false);
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return s > 0 ? `${m}분 ${s}초` : `${m}분`;
+    if (error) setError(null);
   };
 
   // Show loading overlay when auto-starting from URL param
-  if (autoStartTriggered.current && (isValidating || isStarting) && !validationError) {
+  if (autoStartTriggered.current && isStarting && !error) {
     return (
       <div className="min-h-screen bg-bg-cream flex flex-col items-center justify-center gap-4">
         <div
@@ -120,7 +85,6 @@ export function TestStartPage() {
 
   return (
     <div className="min-h-screen bg-bg-cream flex flex-col items-center md:justify-center lg:justify-center">
-      {/* Center container for PC (480px), tablet (480px), full width on mobile */}
       <div className="flex flex-col w-full md:w-[480px] lg:w-[480px]">
       {/* Top Section */}
       <div className="flex flex-col items-center gap-4 pt-[60px] md:pt-0 lg:pt-0 pb-8 px-6 md:px-8">
@@ -140,7 +104,7 @@ export function TestStartPage() {
           영단어 레벨테스트
         </h1>
         <p className="font-display text-sm font-medium text-text-secondary text-center max-w-[300px]">
-          나의 영어 어휘력 레벨을 확인해보세요
+          선생님이 보내준 테스트 코드를 입력하세요
         </p>
       </div>
 
@@ -151,109 +115,60 @@ export function TestStartPage() {
           <label className="font-display text-sm font-semibold text-text-primary">
             테스트 코드
           </label>
-          <div className="flex gap-2">
-            <div
-              className="flex items-center gap-2.5 h-12 px-4 rounded-xl bg-bg-surface flex-1"
-              style={{ border: `1.5px solid ${validationError ? '#EF4444' : config ? '#22C55E' : '#E5E4E1'}` }}
-            >
-              <Hash className="w-[18px] h-[18px] text-text-tertiary shrink-0" />
-              <input
-                type="text"
-                inputMode="text"
-                autoComplete="off"
-                placeholder="A3X7K2"
-                value={testCode}
-                onChange={(e) => handleCodeChange(e.target.value)}
-                onCompositionStart={() => { composingRef.current = true; }}
-                onCompositionEnd={(e) => { composingRef.current = false; handleCodeChange((e.target as HTMLInputElement).value); }}
-                onKeyDown={(e) => e.key === 'Enter' && !config && handleValidate()}
-                className="font-display text-[15px] text-text-primary placeholder:text-text-tertiary bg-transparent outline-none w-full tracking-[0.2em] font-semibold uppercase"
-                maxLength={6}
-              />
-            </div>
-            <button
-              onClick={handleValidate}
-              disabled={testCode.length !== 6 || isValidating || !!config}
-              className="h-12 px-4 rounded-xl font-display text-sm font-semibold transition-colors disabled:opacity-40"
-              style={{
-                background: config ? '#22C55E' : '#4F46E5',
-                color: 'white',
-              }}
-            >
-              {isValidating ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : config ? (
-                <CheckCircle className="w-5 h-5" />
-              ) : (
-                '확인'
-              )}
-            </button>
+          <div
+            className="flex items-center gap-2.5 h-12 px-4 rounded-xl bg-bg-surface"
+            style={{ border: `1.5px solid ${error ? '#EF4444' : '#E5E4E1'}` }}
+          >
+            <Hash className="w-[18px] h-[18px] text-text-tertiary shrink-0" />
+            <input
+              type="text"
+              inputMode="text"
+              autoComplete="off"
+              placeholder="HKWN3V7P"
+              value={testCode}
+              onChange={(e) => handleCodeChange(e.target.value)}
+              onCompositionStart={() => { composingRef.current = true; }}
+              onCompositionEnd={(e) => { composingRef.current = false; handleCodeChange((e.target as HTMLInputElement).value); }}
+              onKeyDown={(e) => e.key === 'Enter' && testCode.length === CODE_LENGTH && handleStartByCode(testCode)}
+              className="font-display text-[15px] text-text-primary placeholder:text-text-tertiary bg-transparent outline-none w-full tracking-[0.2em] font-semibold uppercase"
+              maxLength={CODE_LENGTH}
+            />
           </div>
-          {validationError && (
+          {error && (
             <div className="flex items-center gap-1.5 text-[13px] text-red-500 font-display">
               <AlertCircle className="w-3.5 h-3.5" />
-              {validationError}
+              {error}
             </div>
           )}
         </div>
 
-        {/* Config Info Card (shown after validation) */}
-        {config && (
-          <div
-            className="flex flex-col gap-3 rounded-2xl bg-bg-surface p-5 w-full animate-in fade-in slide-in-from-top-2 duration-300"
-            style={{ boxShadow: '0 2px 12px #1A191808' }}
-          >
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-[18px] h-[18px] text-green-500" />
-              <span className="font-display text-[15px] font-semibold text-text-primary">
-                {config.name}
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { label: '문제 수', value: `${config.question_count}문제` },
-                { label: '제한 시간', value: formatTime(config.time_limit_seconds) },
-                { label: '레벨 범위', value: `Lv.${config.level_range_min} ~ ${config.level_range_max}` },
-                { label: '교재', value: config.book_name || '전체' },
-              ].map((item) => (
-                <div key={item.label} className="flex flex-col gap-0.5 px-3 py-2 rounded-lg bg-bg-cream">
-                  <span className="font-display text-[11px] text-text-tertiary">{item.label}</span>
-                  <span className="font-display text-[13px] font-semibold text-text-primary">{item.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Rules Card */}
-        {!config && (
-          <div
-            className="flex flex-col gap-3.5 rounded-2xl bg-bg-surface p-5 w-full"
-            style={{ boxShadow: '0 2px 12px #1A191808' }}
-          >
-            <div className="flex items-center gap-2">
-              <Info className="w-[18px] h-[18px] text-accent-indigo" />
-              <span className="font-display text-[15px] font-semibold text-text-primary">
-                테스트 안내
-              </span>
-            </div>
-            <div className="flex flex-col gap-2.5">
-              {[
-                '선생님이 출제한 테스트 코드를 입력하세요',
-                '코드 입력 시 설정된 문제가 자동 로딩됩니다',
-                '정답률에 따라 난이도가 자동 조정됩니다',
-                '테스트 코드는 선생님에게 문의하세요',
-              ].map((rule, i) => (
-                <div key={i} className="flex items-start gap-2.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-text-tertiary mt-1.5 shrink-0" />
-                  <span className="font-display text-[13px] font-medium text-text-secondary leading-relaxed">
-                    {rule}
-                  </span>
-                </div>
-              ))}
-            </div>
+        <div
+          className="flex flex-col gap-3.5 rounded-2xl bg-bg-surface p-5 w-full"
+          style={{ boxShadow: '0 2px 12px #1A191808' }}
+        >
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-[18px] h-[18px] text-accent-indigo" />
+            <span className="font-display text-[15px] font-semibold text-text-primary">
+              테스트 안내
+            </span>
           </div>
-        )}
+          <div className="flex flex-col gap-2.5">
+            {[
+              '선생님이 보내준 8자리 코드를 입력하세요',
+              '코드 입력 후 바로 시험이 시작됩니다',
+              '별도 로그인 없이 코드만으로 시험 가능합니다',
+              '테스트 코드는 1회만 사용할 수 있습니다',
+            ].map((rule, i) => (
+              <div key={i} className="flex items-start gap-2.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-text-tertiary mt-1.5 shrink-0" />
+                <span className="font-display text-[13px] font-medium text-text-secondary leading-relaxed">
+                  {rule}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Spacer (mobile only) */}
@@ -262,12 +177,12 @@ export function TestStartPage() {
       {/* Bottom Section */}
       <div className="flex flex-col items-center gap-4 px-6 md:px-8 pb-10 md:pb-0 md:pt-8 lg:pb-0 lg:pt-8">
         <button
-          onClick={handleStart}
-          disabled={!config || isStarting}
+          onClick={() => handleStartByCode(testCode)}
+          disabled={testCode.length !== CODE_LENGTH || isStarting}
           className="flex items-center justify-center gap-2.5 w-full h-14 rounded-2xl text-white disabled:opacity-40 transition-opacity"
           style={{
             background: 'linear-gradient(90deg, #4F46E5, #7C3AED)',
-            boxShadow: config ? '0 4px 16px #4F46E540' : 'none',
+            boxShadow: testCode.length === CODE_LENGTH ? '0 4px 16px #4F46E540' : 'none',
           }}
         >
           {isStarting ? (
@@ -280,7 +195,7 @@ export function TestStartPage() {
           </span>
         </button>
         <p className="font-display text-xs font-medium text-text-tertiary">
-          {config ? '준비가 완료되었습니다. 시작 버튼을 눌러주세요' : '테스트 코드를 입력하고 확인 버튼을 눌러주세요'}
+          코드를 입력하고 시작 버튼을 눌러주세요
         </p>
       </div>
       </div>{/* end center container */}

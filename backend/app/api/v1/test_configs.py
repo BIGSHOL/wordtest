@@ -11,7 +11,6 @@ from app.schemas.test_config import (
 )
 from app.core.deps import CurrentTeacher, CurrentUser
 from app.models.test_config import TestConfig
-from app.services.test_config import generate_test_code
 
 router = APIRouter(prefix="/test-configs", tags=["test-configs"])
 
@@ -56,12 +55,10 @@ async def create_test_config(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Create a new test config (teacher only)."""
-    test_code = await generate_test_code(db)
-
     new_config = TestConfig(
         teacher_id=teacher.id,
         name=config_in.name,
-        test_code=test_code,
+        test_code=None,
         test_type=config_in.test_type,
         question_count=config_in.question_count,
         time_limit_seconds=config_in.time_limit_seconds,

@@ -28,6 +28,9 @@ class TestAssignment(Base):
     test_session_id: Mapped[Optional[str]] = mapped_column(
         String(36), ForeignKey("test_sessions.id", ondelete="SET NULL"), nullable=True
     )
+    test_code: Mapped[str] = mapped_column(
+        String(8), unique=True, nullable=False
+    )
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="pending"
     )
@@ -48,4 +51,5 @@ class TestAssignment(Base):
         Index("idx_assignment_student_id", "student_id"),
         Index("idx_assignment_teacher_id", "teacher_id"),
         Index("idx_assignment_status", "status"),
+        Index("idx_assignment_test_code", "test_code", unique=True),
     )

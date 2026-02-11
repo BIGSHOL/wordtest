@@ -7,10 +7,12 @@ import { QuizHeader } from '../../components/test/QuizHeader';
 import { GradientProgressBar } from '../../components/test/GradientProgressBar';
 import { TimerBar } from '../../components/test/TimerBar';
 import { WordCard } from '../../components/test/WordCard';
+import { MeaningCard } from '../../components/test/MeaningCard';
 import { SentenceCard } from '../../components/test/SentenceCard';
 import { ChoiceButton } from '../../components/test/ChoiceButton';
 import { FeedbackBanner } from '../../components/test/FeedbackBanner';
 import { useTestStore } from '../../stores/testStore';
+import { useAuthStore } from '../../stores/auth';
 import { useTimer } from '../../hooks/useTimer';
 import { playSound, stopSound } from '../../hooks/useSound';
 import { preloadWordAudio, preloadSentenceAudio, randomizeTtsVoice } from '../../utils/tts';
@@ -152,8 +154,7 @@ export function TestPage() {
   const isLastQuestion = currentIndex >= totalToAnswer - 1;
   const isFinished = answerResult && isLastQuestion;
 
-  // Every 5th question (5, 10, 15, 20) uses sentence format
-  const isSentenceQuestion = (currentIndex + 1) % 5 === 0;
+  const questionType = currentQuestion?.question_type || 'word_meaning';
 
   const handleChoiceClick = (choice: string) => {
     if (answerResult || isSubmitting) return;
@@ -190,12 +191,14 @@ export function TestPage() {
   }
 
   if (error) {
+    const user = useAuthStore.getState().user;
+    const errorHomePath = !user?.username ? '/test/start' : '/student';
     return (
       <div className="min-h-screen bg-bg-cream flex items-center justify-center">
         <div className="text-center space-y-4">
           <p className="text-wrong font-display font-medium">{error}</p>
           <button
-            onClick={() => navigate('/student')}
+            onClick={() => navigate(errorHomePath)}
             className="px-4 py-2 bg-accent-indigo text-white rounded-lg font-display hover:opacity-90 transition-colors"
           >
             돌아가기
@@ -235,11 +238,13 @@ export function TestPage() {
 
         {/* Word Card or Sentence Card */}
         <div className="w-full md:w-[640px] lg:w-[640px]">
-          {isSentenceQuestion && currentQuestion.word.example_en ? (
+          {questionType === 'sentence_blank' && currentQuestion.word.example_en ? (
             <SentenceCard
               sentence={currentQuestion.word.example_en}
               word={currentQuestion.word.english}
             />
+          ) : questionType === 'meaning_word' && currentQuestion.word.korean ? (
+            <MeaningCard korean={currentQuestion.word.korean} />
           ) : (
             <WordCard word={currentQuestion.word.english} />
           )}

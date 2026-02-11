@@ -140,17 +140,17 @@ export function DashboardPage() {
               <table className="w-full">
                 <thead>
                   <tr className="bg-[#F8F8F6] h-11">
-                    <th className="px-4 py-3 text-left text-xs text-text-secondary font-semibold w-20">이름</th>
-                    <th className="px-4 py-3 text-left text-xs text-text-secondary font-semibold w-[70px]">학교</th>
-                    <th className="px-4 py-3 text-left text-xs text-text-secondary font-semibold w-[45px]">학년</th>
-                    <th className="px-4 py-3 text-left text-xs text-text-secondary font-semibold w-[100px]">레벨</th>
-                    <th className="px-4 py-3 text-left text-xs text-text-secondary font-semibold w-[70px]">정답률</th>
-                    <th className="px-4 py-3 text-left text-xs text-text-secondary font-semibold w-[55px]">문제 수</th>
-                    <th className="px-4 py-3 text-left text-xs text-text-secondary font-semibold w-[70px]">틀린 문제</th>
-                    <th className="px-4 py-3 text-left text-xs text-text-secondary font-semibold w-[70px]">정답 시간</th>
-                    <th className="px-4 py-3 text-left text-xs text-text-secondary font-semibold w-[90px]">응시일</th>
-                    <th className="px-4 py-3 text-left text-xs text-text-secondary font-semibold w-[65px]">상태</th>
-                    <th className="px-4 py-3 text-left text-xs text-text-secondary font-semibold">보고서</th>
+                    <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">이름</th>
+                    <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">학교</th>
+                    <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">학년</th>
+                    <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">레벨</th>
+                    <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">정답률</th>
+                    <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">문제 수</th>
+                    <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">틀린 문제</th>
+                    <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">정답 시간</th>
+                    <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">응시일</th>
+                    <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">상태</th>
+                    <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">보고서</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -166,19 +166,19 @@ export function DashboardPage() {
                         key={test.id}
                         className="bg-white border-b border-border-subtle h-[52px] hover:bg-bg-muted transition-colors"
                       >
-                        <td className="px-4 py-3 text-sm font-medium text-text-primary">
+                        <td className="px-4 py-3 text-sm font-medium text-text-primary whitespace-nowrap">
                           {test.student_name}
                         </td>
-                        <td className="px-4 py-3 text-sm text-text-secondary">
+                        <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">
                           {test.student_school || '-'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-text-secondary">
+                        <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">
                           {test.student_grade || '-'}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           {rank ? (
                             <span
-                              className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold"
+                              className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap"
                               style={{
                                 backgroundColor: rank.colors[0] + '20',
                                 color: rank.colors[1]
@@ -190,28 +190,28 @@ export function DashboardPage() {
                             <span className="text-sm text-text-secondary">-</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm font-medium text-text-primary">
+                        <td className="px-4 py-3 text-sm font-medium text-text-primary whitespace-nowrap">
                           {test.score != null ? `${test.score}%` : '-'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-text-secondary">
+                        <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">
                           {test.total_questions || '-'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-text-secondary">
+                        <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">
                           {wrongAnswers != null ? wrongAnswers : '-'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-text-secondary">
+                        <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">
                           {durationMin != null ? `${durationMin}분 ${durationSec}초` : '-'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-text-secondary">
+                        <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">
                           {test.completed_at ? new Date(test.completed_at).toLocaleDateString('ko-KR', { year: '2-digit', month: 'numeric', day: 'numeric' }) : '-'}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <span className="inline-flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-[#5A8F6B]"></span>
                             <span className="text-xs text-text-secondary">완료</span>
                           </span>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <button
                             onClick={() => navigate(`/students/${test.student_id}/results`)}
                             className="inline-flex items-center gap-1 text-sm text-teal hover:text-teal/80 font-medium transition-colors"
