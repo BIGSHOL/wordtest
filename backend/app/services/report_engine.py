@@ -64,24 +64,24 @@ RANK_TO_BOOK: dict[int, str] = {
 # Per-metric interpretive descriptions by rank range
 _METRIC_DESC: dict[str, dict[str, str]] = {
     "vocabulary_level": {
-        "low": "기초적인 어휘를 학습하는 단계입니다. 일상 생활에서 자주 사용하는 기본 단어부터 체계적으로 학습하세요.",
-        "mid": "중급 수준의 어휘력입니다. 학교 교과서에 나오는 단어들을 이해하고 사용할 수 있습니다.",
-        "high": "상급 수준의 어휘력입니다. 다양한 분야의 전문적인 단어를 이해하고 활용할 수 있습니다.",
+        "low": "기초적인 어휘를 학습하는 단계입니다. 초등 수준의 필수 단어부터 체계적으로 익혀야 합니다. 일상 회화에서 자주 사용되는 기본 동사, 명사, 형용사를 중심으로 매일 10~20개씩 반복 학습하면 빠르게 성장할 수 있습니다. 우선 추천 교재의 앞부분부터 차근차근 진행하세요.",
+        "mid": "중급 수준의 어휘력입니다. 학교 교과서에 나오는 단어들을 이해하고 사용할 수 있는 수준으로, 기본적인 독해와 듣기 활동이 가능합니다. 다만 고난도 지문이나 수능 수준의 어휘에는 아직 부족함이 있으므로, 현재 레벨의 교재를 꾸준히 반복하면서 다음 단계 어휘를 조금씩 미리 학습하면 효과적입니다.",
+        "high": "상급 수준의 어휘력입니다. 다양한 분야의 전문적인 단어를 이해하고 활용할 수 있습니다. 수능 및 공인 영어 시험에서 요구하는 핵심 어휘를 대부분 알고 있으며, 학술 텍스트나 영자 신문도 무리 없이 읽을 수 있는 수준입니다. 심화 어휘와 다의어 학습으로 어휘의 깊이를 더해 보세요.",
     },
     "accuracy": {
-        "low": "정답률을 높이기 위해 틀린 단어를 반복 학습하세요. 특히 혼동하기 쉬운 단어들에 집중하면 효과적입니다.",
-        "mid": "안정적인 정답률입니다. 고난도 어휘의 정확도를 높이면 더 큰 성장이 가능합니다.",
-        "high": "매우 높은 정답률입니다. 꾸준한 학습 습관이 좋은 결과로 이어지고 있습니다.",
+        "low": "정답률이 낮은 편입니다. 단어의 뜻을 정확히 기억하지 못하거나, 비슷한 단어끼리 혼동하는 경우가 많은 것으로 보입니다. 틀린 단어를 따로 모아 오답 노트를 만들고, 하루 3~5회 반복 복습하면 정확도가 크게 향상됩니다. 특히 헷갈리는 단어 쌍(예: affect/effect)을 함께 정리하세요.",
+        "mid": "안정적인 정답률을 보이고 있습니다. 기본 어휘는 탄탄하게 잡혀 있으나, 고난도 어휘나 다의어에서 오답이 발생하는 경향이 있습니다. 중급 이상의 단어에서 문맥에 따른 뜻 변화를 학습하고, 예문과 함께 단어를 익히면 정답률을 더 높일 수 있습니다.",
+        "high": "매우 높은 정답률입니다. 꾸준한 학습 습관이 좋은 결과로 이어지고 있습니다. 단어의 뜻을 정확하게 파악하는 능력이 뛰어나며, 오답이 거의 없는 수준입니다. 이 정답률을 유지하면서 더 높은 난이도의 어휘에 도전해 보세요.",
     },
     "speed": {
-        "low": "응답 속도가 느린 편입니다. 단어를 보자마자 뜻이 떠오르도록 반복 연습하세요.",
-        "mid": "적절한 응답 속도입니다. 꾸준한 연습으로 더 빠르게 단어를 인식할 수 있습니다.",
-        "high": "빠른 응답 속도를 보여주고 있습니다. 단어 인식이 자동화되어 있어 효율적인 학습이 가능합니다.",
+        "low": "응답 속도가 느린 편입니다. 단어를 보고 뜻을 떠올리는 데 시간이 오래 걸린다는 것은 아직 단어가 완전히 내재화되지 않았다는 의미입니다. 플래시카드 방식으로 단어를 보자마자 3초 안에 뜻을 말하는 연습을 반복하세요. 타이머를 설정하고 연습하면 자연스럽게 속도가 빨라집니다.",
+        "mid": "적절한 응답 속도를 보이고 있습니다. 대부분의 단어를 무리 없이 인식하지만, 일부 어려운 단어에서 망설이는 경향이 있습니다. 꾸준한 반복 학습으로 더 빠르고 자동적으로 단어를 인식할 수 있도록 연습하면, 실제 시험에서도 시간 여유를 확보할 수 있습니다.",
+        "high": "빠른 응답 속도를 보여주고 있습니다. 단어 인식이 자동화되어 있어 효율적인 학습이 가능합니다. 단어를 보는 즉시 의미를 파악하는 능력이 뛰어나므로, 이 속도를 유지하면서 더 복잡한 문맥(예문, 독해)에서의 어휘 활용 연습을 병행하면 좋습니다.",
     },
     "vocabulary_size": {
-        "low": "학습한 단어 수가 아직 적습니다. 매일 꾸준히 새로운 단어를 학습하면 빠르게 성장할 수 있습니다.",
-        "mid": "적정 수준의 어휘량입니다. 복습과 새 단어 학습을 병행하면 어휘력이 더욱 탄탄해집니다.",
-        "high": "풍부한 어휘량을 보유하고 있습니다. 다양한 맥락에서 단어를 활용하는 연습이 도움됩니다.",
+        "low": "학습한 단어 수가 아직 적습니다. 현재 시험 범위에서 맞춘 단어 수가 전체 대비 낮은 편이므로, 매일 꾸준히 새로운 단어를 학습하면 빠르게 성장할 수 있습니다. 하루 20~30개의 새 단어를 목표로 설정하고, 이전에 학습한 단어를 주기적으로 복습하는 것이 중요합니다.",
+        "mid": "적정 수준의 어휘량을 보유하고 있습니다. 시험 범위에서 중간 정도의 단어를 정확히 알고 있으며, 복습과 새 단어 학습을 병행하면 어휘력이 더욱 탄탄해집니다. 이미 아는 단어의 다양한 의미와 용법을 함께 학습하면 실질적인 어휘력이 더욱 깊어집니다.",
+        "high": "풍부한 어휘량을 보유하고 있습니다. 시험 범위의 대부분의 단어를 정확히 알고 있으며, 다양한 난이도의 어휘를 골고루 습득한 상태입니다. 이제는 양적 확대보다 질적 심화에 집중하여, 동의어/반의어/파생어까지 확장 학습하면 어휘의 활용도가 한층 높아집니다.",
     },
 }
 
@@ -134,17 +134,52 @@ def calculate_accuracy_score(correct: int, total: int) -> float:
 
 
 async def calculate_vocab_size(
-    db: AsyncSession, student_id: str
+    db: AsyncSession, student_id: str,
+    determined_rank: int = 1,
+    test_answers: list[dict] | None = None,
 ) -> tuple[int, float]:
     """Calculate vocabulary size and normalized 0-10 score.
 
-    Combines:
-    1. Mastered words (stage >= 5 in word_mastery)
-    2. Unique correct words from placement tests (test_answers)
+    Uses a level-based estimation approach:
+    1. For ranks below the determined rank, assume ~80% of words are known
+    2. For the determined rank, use actual test accuracy
+    3. Add any mastered words from word_mastery as bonus
 
     Returns (raw_count, normalized_score).
     """
-    # Count mastered words
+    # Count words per level up to determined rank
+    words_below_q = (
+        select(func.count(Word.id))
+        .where(Word.level < determined_rank)
+    )
+    words_below_result = await db.execute(words_below_q)
+    words_below = words_below_result.scalar() or 0
+
+    # Words at the determined rank level
+    words_at_rank_q = (
+        select(func.count(Word.id))
+        .where(Word.level == determined_rank)
+    )
+    words_at_rank_result = await db.execute(words_at_rank_q)
+    words_at_rank = words_at_rank_result.scalar() or 0
+
+    # Calculate accuracy at current rank from test answers
+    current_rank_accuracy = 0.5  # default
+    if test_answers:
+        rank_answers = [
+            a for a in test_answers
+            if a.get("word_level") == determined_rank
+        ]
+        if rank_answers:
+            correct_at_rank = sum(1 for a in rank_answers if a.get("is_correct"))
+            current_rank_accuracy = correct_at_rank / len(rank_answers)
+
+    # Estimate known words
+    estimated_below = int(words_below * 0.8)  # 80% of lower-level words
+    estimated_at_rank = int(words_at_rank * current_rank_accuracy * 0.6)
+    raw_count = estimated_below + estimated_at_rank
+
+    # Add mastered words as bonus (from mastery learning)
     mastered_q = (
         select(func.count(WordMastery.id))
         .where(
@@ -156,34 +191,22 @@ async def calculate_vocab_size(
     )
     mastered_result = await db.execute(mastered_q)
     mastered_count = mastered_result.scalar() or 0
+    raw_count = max(raw_count, raw_count + mastered_count // 2)
 
-    # Count unique correct words from tests
-    correct_words_q = (
-        select(func.count(func.distinct(TestAnswer.word_id)))
-        .join(TestSession, TestAnswer.test_session_id == TestSession.id)
-        .where(
-            and_(
-                TestSession.student_id == student_id,
-                TestAnswer.is_correct == True,  # noqa: E712
-            )
-        )
+    # Also count unique correct words from current test
+    if test_answers:
+        test_correct = sum(1 for a in test_answers if a.get("is_correct"))
+        raw_count = max(raw_count, test_correct)
+
+    # Normalize against total words in the test scope (up to determined rank + 1)
+    scope_words_q = (
+        select(func.count(Word.id))
+        .where(Word.level <= min(determined_rank + 1, 10))
     )
-    correct_result = await db.execute(correct_words_q)
-    correct_count = correct_result.scalar() or 0
+    scope_result = await db.execute(scope_words_q)
+    scope_words = scope_result.scalar() or 1
 
-    # Deduplicate: mastered words are likely also correct in tests,
-    # but we take the larger of (mastered, correct) + some bonus
-    raw_count = max(mastered_count, correct_count)
-    if mastered_count > 0 and correct_count > 0:
-        # Both sources available — union approximation
-        raw_count = max(mastered_count, correct_count) + min(mastered_count, correct_count) // 3
-
-    # Normalize against total words in DB
-    total_words_q = select(func.count(Word.id))
-    total_result = await db.execute(total_words_q)
-    total_words = total_result.scalar() or 1
-
-    normalized = min(10.0, round((raw_count / total_words) * 10, 1))
+    normalized = min(10.0, round((raw_count / scope_words) * 10, 1))
     return raw_count, normalized
 
 

@@ -109,7 +109,7 @@ export function LevelChartTable({ currentRank }: Props) {
               transform: 'translate(-50%, -50%)',
             }}
           >
-            <div className="w-16 h-16 rounded-full border-2 border-[#CC0000] bg-[#CC000015]" />
+            <div className="w-14 h-14 rounded-full border-[5px] border-[#CC0000] bg-[#CC000010]" />
           </div>
         )}
       </div>

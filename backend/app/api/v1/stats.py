@@ -111,9 +111,10 @@ async def get_dashboard_stats(
     avg_time_query = (
         select(
             func.avg(
-                func.extract('epoch', TestSession.completed_at) -
-                func.extract('epoch', TestSession.started_at)
-            ) / func.nullif(TestSession.total_questions, 0)
+                (func.extract('epoch', TestSession.completed_at) -
+                 func.extract('epoch', TestSession.started_at))
+                / func.nullif(TestSession.total_questions, 0)
+            )
         )
         .where(
             and_(
@@ -399,7 +400,7 @@ async def get_enhanced_report(
     )
     speed_score = report_engine.calculate_speed_score(answers)
     vocab_raw, vocab_score = await report_engine.calculate_vocab_size(
-        db, student_id
+        db, student_id, determined_rank=rank, test_answers=answers
     )
 
     radar = RadarMetrics(

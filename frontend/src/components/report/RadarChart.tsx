@@ -57,22 +57,23 @@ export function RadarChart({ metrics }: Props) {
       </h3>
 
       <svg viewBox="0 0 260 240" className="w-[260px] h-[240px]">
-        {/* Grid layers (outer → inner) */}
-        <path d={gridPath(1)} fill="none" stroke="#E0E0E0" strokeWidth={1} />
-        <path d={gridPath(0.75)} fill="none" stroke="#E8E8E8" strokeWidth={1} />
-        <path d={gridPath(0.5)} fill="none" stroke="#EEEEEE" strokeWidth={1} />
+        {/* Grid layers (outer → inner) - thick lines for visibility */}
+        <path d={gridPath(1)} fill="none" stroke="#D0D0D0" strokeWidth={2.5} />
+        <path d={gridPath(0.75)} fill="none" stroke="#DCDCDC" strokeWidth={1.5} />
+        <path d={gridPath(0.5)} fill="none" stroke="#E8E8E8" strokeWidth={1.5} />
         <path d={gridPath(0.25)} fill="none" stroke="#F0F0F0" strokeWidth={1} />
 
         {/* Axes */}
-        <line x1={CX} y1={CY - R} x2={CX} y2={CY + R} stroke="#E0E0E0" strokeWidth={1} />
-        <line x1={CX - R} y1={CY} x2={CX + R} y2={CY} stroke="#E0E0E0" strokeWidth={1} />
+        <line x1={CX} y1={CY - R} x2={CX} y2={CY + R} stroke="#D0D0D0" strokeWidth={1.5} />
+        <line x1={CX - R} y1={CY} x2={CX + R} y2={CY} stroke="#D0D0D0" strokeWidth={1.5} />
 
         {/* Data shape */}
         <path
           d={dataPath(metrics)}
-          fill="#CC000033"
+          fill="#CC000025"
           stroke="#CC0000"
-          strokeWidth={2}
+          strokeWidth={3}
+          strokeLinejoin="round"
         />
 
         {/* Labels + values */}

@@ -87,13 +87,14 @@ export function ResultPage() {
   const { test_session: session, answers } = report;
   const wrongItems =
     wrongAnswers.length > 0
-      ? wrongAnswers
+      ? wrongAnswers.map((w) => ({ ...w, timeTaken: undefined as number | undefined }))
       : answers
           .filter((a) => !a.is_correct)
           .map((a) => ({
             english: a.word_english,
             correctAnswer: a.correct_answer,
             selectedAnswer: a.selected_answer || '',
+            timeTaken: a.time_taken_seconds ?? undefined,
           }));
   const previewWrong = wrongItems.slice(0, 4);
 
@@ -155,9 +156,16 @@ export function ResultPage() {
                       {item.english}
                     </span>
                   </div>
-                  <span className="font-display text-sm text-text-tertiary">
-                    {item.correctAnswer}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    {item.timeTaken != null && (
+                      <span className={`font-display text-xs ${item.timeTaken > 12 ? 'text-wrong font-semibold' : 'text-text-tertiary'}`}>
+                        {item.timeTaken}초
+                      </span>
+                    )}
+                    <span className="font-display text-sm text-text-tertiary">
+                      {item.correctAnswer}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
