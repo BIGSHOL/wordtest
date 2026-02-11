@@ -11,6 +11,7 @@ class AssignTestRequest(BaseModel):
     per_question_time_seconds: int = 15
     question_types: list[str] = ["word_meaning"]
     book_name: Optional[str] = None
+    book_name_end: Optional[str] = None
     lesson_range_start: Optional[str] = None
     lesson_range_end: Optional[str] = None
 

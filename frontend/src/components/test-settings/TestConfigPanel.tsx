@@ -1,6 +1,6 @@
 /**
  * Test configuration panel for test assignment.
- * Matches Pencil editor design: white cards with teal selection style.
+ * Supports cross-book range selection: start book/lesson ~ end book/lesson.
  */
 import { Check, Info } from 'lucide-react';
 import type { LessonInfo } from '../../services/word';
@@ -11,7 +11,8 @@ export interface TestConfigState {
   customQuestionCount: string;
   perQuestionTime: number;
   questionTypes: string[];
-  bookName: string;
+  bookStart: string;
+  bookEnd: string;
   lessonStart: string;
   lessonEnd: string;
 }
@@ -20,7 +21,8 @@ interface Props {
   config: TestConfigState;
   onConfigChange: (config: TestConfigState) => void;
   books: string[];
-  lessons: LessonInfo[];
+  lessonsStart: LessonInfo[];
+  lessonsEnd: LessonInfo[];
 }
 
 const QUESTION_COUNT_OPTIONS = [10, 20, 30, 50];
@@ -66,6 +68,23 @@ function getWordCount(lessons: LessonInfo[], start: string, end: string): number
     if (l.lesson === start) counting = true;
     if (counting) total += l.word_count;
     if (l.lesson === end) break;
+  }
+  return total;
+}
+
+function getTotalLessonWords(lessons: LessonInfo[], fromLesson: string, direction: 'from' | 'to'): number {
+  let total = 0;
+  if (direction === 'from') {
+    let counting = false;
+    for (const l of lessons) {
+      if (l.lesson === fromLesson) counting = true;
+      if (counting) total += l.word_count;
+    }
+  } else {
+    for (const l of lessons) {
+      total += l.word_count;
+      if (l.lesson === fromLesson) break;
+    }
   }
   return total;
 }
@@ -121,7 +140,9 @@ function ConfigCard({
   );
 }
 
-export function TestConfigPanel({ config, onConfigChange, books, lessons }: Props) {
+const selectStyle = { border: '1px solid #E8E8E6' };
+
+export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, lessonsEnd }: Props) {
   const update = (partial: Partial<TestConfigState>) => {
     onConfigChange({ ...config, ...partial });
   };
@@ -139,7 +160,20 @@ export function TestConfigPanel({ config, onConfigChange, books, lessons }: Prop
   };
 
   const isPlacement = config.testType === 'placement';
-  const wordCount = getWordCount(lessons, config.lessonStart, config.lessonEnd);
+  const isSameBook = config.bookStart === config.bookEnd;
+
+  // Word count calculation
+  let wordCount = 0;
+  if (config.bookStart && config.bookEnd && config.lessonStart && config.lessonEnd) {
+    if (isSameBook) {
+      wordCount = getWordCount(lessonsStart, config.lessonStart, config.lessonEnd);
+    } else {
+      // Cross-book: sum from start lesson to end of start book + end book start to end lesson
+      const startWords = getTotalLessonWords(lessonsStart, config.lessonStart, 'from');
+      const endWords = getTotalLessonWords(lessonsEnd, config.lessonEnd, 'to');
+      wordCount = startWords + endWords;
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -275,56 +309,75 @@ export function TestConfigPanel({ config, onConfigChange, books, lessons }: Prop
         )}
       </ConfigCard>
 
-      {/* Scope */}
-      <ConfigCard title="출제 범위" desc="문제를 출제할 단원(레슨) 범위를 설정합니다">
+      {/* Scope - Cross-book range */}
+      <ConfigCard title="출제 범위" desc="시작 교재/레슨부터 종료 교재/레슨까지 범위를 설정합니다">
         <div className="space-y-4">
-          <select
-            value={config.bookName}
-            onChange={(e) => update({ bookName: e.target.value, lessonStart: '', lessonEnd: '' })}
-            className="w-full px-4 py-2.5 rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-teal bg-white"
-            style={{ border: '1px solid #E8E8E6' }}
-          >
-            <option value="">교재 선택</option>
-            {books.map((book) => (
-              <option key={book} value={book}>
-                {book}
-              </option>
-            ))}
-          </select>
-
-          {config.bookName && lessons.length > 0 && (
-            <div className="flex items-center gap-3">
-              <span className="text-[13px] font-medium text-text-secondary shrink-0">시작 레슨</span>
+          {/* Start: book + lesson */}
+          <div>
+            <span className="text-[11px] font-semibold text-text-secondary mb-2 block">시작</span>
+            <div className="flex items-center gap-2">
               <select
-                value={config.lessonStart}
-                onChange={(e) => update({ lessonStart: e.target.value })}
-                className="px-4 py-2 rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-teal bg-white"
-                style={{ border: '1px solid #E8E8E6', width: 100 }}
+                value={config.bookStart}
+                onChange={(e) => update({ bookStart: e.target.value, lessonStart: '', bookEnd: config.bookEnd || e.target.value, lessonEnd: config.bookEnd ? config.lessonEnd : '' })}
+                className="flex-1 min-w-0 px-3 py-2 rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-teal bg-white"
+                style={selectStyle}
               >
-                <option value="">선택</option>
-                {lessons.map((l) => (
-                  <option key={l.lesson} value={l.lesson}>
-                    {l.lesson}
-                  </option>
+                <option value="">교재 선택</option>
+                {books.map((book) => (
+                  <option key={book} value={book}>{book}</option>
                 ))}
               </select>
-              <span className="text-base font-semibold text-text-tertiary">~</span>
-              <span className="text-[13px] font-medium text-text-secondary shrink-0">끝 레슨</span>
-              <select
-                value={config.lessonEnd}
-                onChange={(e) => update({ lessonEnd: e.target.value })}
-                className="px-4 py-2 rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-teal bg-white"
-                style={{ border: '1px solid #E8E8E6', width: 100 }}
-              >
-                <option value="">선택</option>
-                {lessons.map((l) => (
-                  <option key={l.lesson} value={l.lesson}>
-                    {l.lesson}
-                  </option>
-                ))}
-              </select>
+              {config.bookStart && lessonsStart.length > 0 && (
+                <select
+                  value={config.lessonStart}
+                  onChange={(e) => update({ lessonStart: e.target.value })}
+                  className="px-3 py-2 rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-teal bg-white"
+                  style={{ ...selectStyle, width: 80 }}
+                >
+                  <option value="">레슨</option>
+                  {lessonsStart.map((l) => (
+                    <option key={l.lesson} value={l.lesson}>{l.lesson}</option>
+                  ))}
+                </select>
+              )}
             </div>
-          )}
+          </div>
+
+          {/* Separator */}
+          <div className="flex justify-center">
+            <span className="text-base font-bold text-text-tertiary">~</span>
+          </div>
+
+          {/* End: book + lesson */}
+          <div>
+            <span className="text-[11px] font-semibold text-text-secondary mb-2 block">종료</span>
+            <div className="flex items-center gap-2">
+              <select
+                value={config.bookEnd}
+                onChange={(e) => update({ bookEnd: e.target.value, lessonEnd: '' })}
+                className="flex-1 min-w-0 px-3 py-2 rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-teal bg-white"
+                style={selectStyle}
+              >
+                <option value="">교재 선택</option>
+                {books.map((book) => (
+                  <option key={book} value={book}>{book}</option>
+                ))}
+              </select>
+              {config.bookEnd && lessonsEnd.length > 0 && (
+                <select
+                  value={config.lessonEnd}
+                  onChange={(e) => update({ lessonEnd: e.target.value })}
+                  className="px-3 py-2 rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-teal bg-white"
+                  style={{ ...selectStyle, width: 80 }}
+                >
+                  <option value="">레슨</option>
+                  {lessonsEnd.map((l) => (
+                    <option key={l.lesson} value={l.lesson}>{l.lesson}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          </div>
 
           {wordCount > 0 && (
             <div
@@ -333,7 +386,9 @@ export function TestConfigPanel({ config, onConfigChange, books, lessons }: Prop
             >
               <Info className="w-4 h-4 shrink-0" style={{ color: '#B8860B' }} />
               <span className="text-xs font-medium" style={{ color: '#B8860B' }}>
-                {config.lessonStart}~{config.lessonEnd} 범위에서 총 {wordCount}개 단어 중 출제됩니다
+                {isSameBook
+                  ? `${config.bookStart} ${config.lessonStart}~${config.lessonEnd} 범위에서 총 ${wordCount}개 단어 중 출제됩니다`
+                  : `${config.bookStart} ${config.lessonStart} ~ ${config.bookEnd} ${config.lessonEnd} 범위에서 약 ${wordCount}개 단어 중 출제됩니다`}
               </span>
             </div>
           )}

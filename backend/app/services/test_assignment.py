@@ -1,13 +1,22 @@
 """Test assignment service."""
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.test_assignment import TestAssignment
 from app.models.test_config import TestConfig
 from app.models.user import User
+from app.models.word import Word
 from app.schemas.test_assignment import AssignTestRequest, TestAssignmentResponse
 from app.services.test_config import generate_test_code
 from app.core.timezone import now_kst
+
+
+async def _get_book_level(db: AsyncSession, book_name: str) -> int:
+    """Get the word level for a given book name."""
+    result = await db.execute(
+        select(func.min(Word.level)).where(Word.book_name == book_name)
+    )
+    return result.scalar() or 1
 
 
 async def assign_test(
@@ -18,8 +27,18 @@ async def assign_test(
     time_limit = data.per_question_time_seconds * data.question_count
     is_placement = data.test_type == "placement"
 
+    book_end = data.book_name_end or data.book_name
+    is_cross_book = book_end != data.book_name
+
+    # Derive level range from book names
+    level_min = await _get_book_level(db, data.book_name) if data.book_name else 1
+    level_max = await _get_book_level(db, book_end) if book_end else 15
+
     type_label = "적응형" if is_placement else "정기형"
-    config_name = f"{data.book_name} {data.lesson_range_start}-{data.lesson_range_end} ({type_label})"
+    if is_cross_book:
+        config_name = f"{data.book_name} {data.lesson_range_start} ~ {book_end} {data.lesson_range_end} ({type_label})"
+    else:
+        config_name = f"{data.book_name} {data.lesson_range_start}-{data.lesson_range_end} ({type_label})"
 
     config = TestConfig(
         teacher_id=teacher_id,
@@ -30,6 +49,9 @@ async def assign_test(
         time_limit_seconds=time_limit,
         is_active=True,
         book_name=data.book_name,
+        book_name_end=book_end,
+        level_range_min=level_min,
+        level_range_max=level_max,
         per_question_time_seconds=data.per_question_time_seconds,
         question_types=question_types_str,
         lesson_range_start=data.lesson_range_start,
@@ -63,11 +85,12 @@ async def assign_test(
     )
     students_map = {s.id: s for s in student_result.scalars().all()}
 
-    lesson_range = (
-        f"{data.lesson_range_start}-{data.lesson_range_end}"
-        if data.lesson_range_start and data.lesson_range_end
-        else None
-    )
+    if is_cross_book and data.lesson_range_start and data.lesson_range_end:
+        lesson_range = f"{data.book_name} {data.lesson_range_start} ~ {book_end} {data.lesson_range_end}"
+    elif data.lesson_range_start and data.lesson_range_end:
+        lesson_range = f"{data.lesson_range_start}-{data.lesson_range_end}"
+    else:
+        lesson_range = None
 
     responses = []
     for a in assignments:
@@ -109,7 +132,10 @@ async def list_assignments_by_teacher(
     responses = []
     for assignment, config, student in result.all():
         lesson_range = None
-        if config.lesson_range_start and config.lesson_range_end:
+        is_cross = config.book_name_end and config.book_name_end != config.book_name
+        if is_cross and config.lesson_range_start and config.lesson_range_end:
+            lesson_range = f"{config.book_name} {config.lesson_range_start} ~ {config.book_name_end} {config.lesson_range_end}"
+        elif config.lesson_range_start and config.lesson_range_end:
             lesson_range = f"{config.lesson_range_start}-{config.lesson_range_end}"
 
         responses.append(

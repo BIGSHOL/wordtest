@@ -30,6 +30,7 @@ class TestConfig(Base):
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     book_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    book_name_end: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     level_range_min: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     level_range_max: Mapped[int] = mapped_column(Integer, nullable=False, default=15)
     per_question_time_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)

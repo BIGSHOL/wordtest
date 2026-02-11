@@ -10,6 +10,7 @@ export interface AssignTestRequest {
   per_question_time_seconds: number;
   question_types: string[];
   book_name?: string;
+  book_name_end?: string;
   lesson_range_start?: string;
   lesson_range_end?: string;
 }

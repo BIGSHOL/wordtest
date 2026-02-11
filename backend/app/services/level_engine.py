@@ -67,27 +67,42 @@ async def generate_questions(
     level_min: int = 1,
     level_max: int = 15,
     book_name: str | None = None,
+    book_name_end: str | None = None,
     lesson_start: str | None = None,
     lesson_end: str | None = None,
     question_types: list[str] | None = None,
 ) -> list[dict]:
     """Generate questions filtered by book, level, and lesson range.
 
-    When lesson_start/lesson_end are provided, words are filtered to that
-    lesson range and distributed evenly. Otherwise, progressive difficulty
-    from Rank 1 → Rank 10 is used.
+    Supports cross-book ranges: when book_name != book_name_end,
+    lesson_start applies to the start book and lesson_end to the end book.
     """
+    from sqlalchemy import or_, and_ as sa_and
+
     query = select(Word).where(
         Word.level >= level_min,
         Word.level <= level_max,
     )
-    if book_name:
-        query = query.where(Word.book_name == book_name)
-    if lesson_start and lesson_end:
+
+    effective_end = book_name_end or book_name
+    is_cross_book = effective_end and book_name and effective_end != book_name
+
+    if is_cross_book and lesson_start and lesson_end:
+        # Cross-book range: apply lesson constraints at boundaries only
         query = query.where(
-            Word.lesson >= lesson_start,
-            Word.lesson <= lesson_end,
+            or_(
+                sa_and(Word.book_name == book_name, Word.lesson >= lesson_start),
+                sa_and(Word.book_name != book_name, Word.book_name != effective_end),
+                sa_and(Word.book_name == effective_end, Word.lesson <= lesson_end),
+            )
         )
+    elif book_name:
+        query = query.where(Word.book_name == book_name)
+        if lesson_start and lesson_end:
+            query = query.where(
+                Word.lesson >= lesson_start,
+                Word.lesson <= lesson_end,
+            )
     query = query.order_by(Word.level.asc(), Word.lesson.asc()).limit(5000)
 
     result = await db.execute(query)

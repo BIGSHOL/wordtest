@@ -62,18 +62,35 @@ async def _get_assignment_and_config(
 
 
 async def _get_words_for_config(db: AsyncSession, config: TestConfig) -> list[Word]:
-    """Get all words matching a test config's book/lesson range."""
+    """Get all words matching a test config's book/lesson range.
+
+    Supports cross-book ranges when book_name != book_name_end.
+    """
+    from sqlalchemy import or_
+
     query = select(Word).where(
         Word.level >= config.level_range_min,
         Word.level <= config.level_range_max,
     )
-    if config.book_name:
-        query = query.where(Word.book_name == config.book_name)
-    if config.lesson_range_start and config.lesson_range_end:
+
+    effective_end = config.book_name_end or config.book_name
+    is_cross_book = effective_end and config.book_name and effective_end != config.book_name
+
+    if is_cross_book and config.lesson_range_start and config.lesson_range_end:
         query = query.where(
-            Word.lesson >= config.lesson_range_start,
-            Word.lesson <= config.lesson_range_end,
+            or_(
+                and_(Word.book_name == config.book_name, Word.lesson >= config.lesson_range_start),
+                and_(Word.book_name != config.book_name, Word.book_name != effective_end),
+                and_(Word.book_name == effective_end, Word.lesson <= config.lesson_range_end),
+            )
         )
+    elif config.book_name:
+        query = query.where(Word.book_name == config.book_name)
+        if config.lesson_range_start and config.lesson_range_end:
+            query = query.where(
+                Word.lesson >= config.lesson_range_start,
+                Word.lesson <= config.lesson_range_end,
+            )
     query = query.order_by(Word.level.asc(), Word.lesson.asc())
 
     result = await db.execute(query)

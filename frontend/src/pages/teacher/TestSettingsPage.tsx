@@ -1,6 +1,6 @@
 /**
  * Test assignment page for teachers.
- * Matches Pencil editor design layout.
+ * Supports cross-book range selection.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -23,7 +23,8 @@ export function TestSettingsPage() {
   const [students, setStudents] = useState<User[]>([]);
   const [assignments, setAssignments] = useState<TestAssignmentItem[]>([]);
   const [books, setBooks] = useState<string[]>([]);
-  const [lessons, setLessons] = useState<LessonInfo[]>([]);
+  const [lessonsStart, setLessonsStart] = useState<LessonInfo[]>([]);
+  const [lessonsEnd, setLessonsEnd] = useState<LessonInfo[]>([]);
 
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -35,7 +36,8 @@ export function TestSettingsPage() {
     customQuestionCount: '',
     perQuestionTime: 10,
     questionTypes: ['word_meaning'],
-    bookName: '',
+    bookStart: '',
+    bookEnd: '',
     lessonStart: '',
     lessonEnd: '',
   });
@@ -62,23 +64,46 @@ export function TestSettingsPage() {
     load();
   }, []);
 
-  // Load lessons when book changes
+  // Load lessons when start book changes
   useEffect(() => {
-    if (!config.bookName) {
-      setLessons([]);
+    if (!config.bookStart) {
+      setLessonsStart([]);
       return;
     }
     const loadLessons = async () => {
       try {
-        const data = await wordService.listLessons(config.bookName);
-        setLessons(data);
+        const data = await wordService.listLessons(config.bookStart);
+        setLessonsStart(data);
       } catch (error) {
-        logger.error('Failed to load lessons:', error);
-        setLessons([]);
+        logger.error('Failed to load start lessons:', error);
+        setLessonsStart([]);
       }
     };
     loadLessons();
-  }, [config.bookName]);
+  }, [config.bookStart]);
+
+  // Load lessons when end book changes
+  useEffect(() => {
+    if (!config.bookEnd) {
+      setLessonsEnd([]);
+      return;
+    }
+    // If same book, reuse start lessons
+    if (config.bookEnd === config.bookStart) {
+      setLessonsEnd(lessonsStart);
+      return;
+    }
+    const loadLessons = async () => {
+      try {
+        const data = await wordService.listLessons(config.bookEnd);
+        setLessonsEnd(data);
+      } catch (error) {
+        logger.error('Failed to load end lessons:', error);
+        setLessonsEnd([]);
+      }
+    };
+    loadLessons();
+  }, [config.bookEnd, config.bookStart, lessonsStart]);
 
   const handleToggle = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -109,7 +134,7 @@ export function TestSettingsPage() {
 
   const handleAssign = async () => {
     if (selectedIds.size === 0) return;
-    if (!config.bookName || !config.lessonStart || !config.lessonEnd) return;
+    if (!config.bookStart || !config.bookEnd || !config.lessonStart || !config.lessonEnd) return;
     if (config.questionTypes.length === 0) return;
 
     const questionCount = config.questionCount === -1
@@ -125,7 +150,8 @@ export function TestSettingsPage() {
         question_count: questionCount,
         per_question_time_seconds: config.perQuestionTime,
         question_types: config.questionTypes,
-        book_name: config.bookName,
+        book_name: config.bookStart,
+        book_name_end: config.bookEnd !== config.bookStart ? config.bookEnd : undefined,
         lesson_range_start: config.lessonStart,
         lesson_range_end: config.lessonEnd,
       });
@@ -154,7 +180,8 @@ export function TestSettingsPage() {
 
   const canAssign =
     selectedIds.size > 0 &&
-    !!config.bookName &&
+    !!config.bookStart &&
+    !!config.bookEnd &&
     !!config.lessonStart &&
     !!config.lessonEnd &&
     config.questionTypes.length > 0 &&
@@ -208,7 +235,8 @@ export function TestSettingsPage() {
                 config={config}
                 onConfigChange={setConfig}
                 books={books}
-                lessons={lessons}
+                lessonsStart={lessonsStart}
+                lessonsEnd={lessonsEnd}
               />
             </div>
           </div>
