@@ -158,7 +158,7 @@ async def text_to_speech(
         },
     }
 
-    async with httpx.AsyncClient(timeout=10) as client:
+    async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
             f"{GEMINI_TTS_URL}?key={settings.GEMINI_API_KEY}",
             json=payload,

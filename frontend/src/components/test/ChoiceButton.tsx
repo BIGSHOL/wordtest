@@ -79,7 +79,7 @@ export const ChoiceButton = memo(function ChoiceButton({ index, text, state, onC
     <button
       onClick={onClick}
       disabled={isDisabled}
-      className="flex items-center gap-3 w-full h-14 md:h-[60px] px-5 rounded-2xl transition-all duration-200"
+      className="flex items-center gap-3 w-full min-h-14 md:min-h-[60px] px-5 py-3 rounded-2xl transition-all duration-200"
       style={{
         background: s.bg,
         border: `${s.borderWidth}px solid ${s.border}`,
@@ -97,7 +97,7 @@ export const ChoiceButton = memo(function ChoiceButton({ index, text, state, onC
         </span>
       </div>
       <span
-        className="text-[16px]"
+        className="text-[15px] md:text-[16px] leading-snug text-left"
         style={{
           color: s.textColor,
           fontFamily: "'Pretendard Variable', 'Pretendard', sans-serif",

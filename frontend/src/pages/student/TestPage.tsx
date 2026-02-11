@@ -71,8 +71,12 @@ export function TestPage() {
     return () => window.removeEventListener('popstate', blockBack);
   }, []);
 
-  // Reset timer on new question + preload TTS for current & next words
+  // Reset timer on new question + stop lingering sounds + preload TTS
   useEffect(() => {
+    stopSound('correct');
+    stopSound('wrong');
+    stopSound('timer');
+    stopSound('two');
     resetTimer();
     timerSoundPlayed.current = false;
     twoSoundPlayed.current = false;
