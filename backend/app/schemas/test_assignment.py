@@ -27,6 +27,7 @@ class TestAssignmentResponse(BaseModel):
     per_question_time_seconds: Optional[int] = None
     question_types: Optional[str] = None
     lesson_range: Optional[str] = None
+    assignment_type: str = "mastery"
     status: str
     assigned_at: datetime
     test_session_id: Optional[str] = None

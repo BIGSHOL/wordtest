@@ -84,6 +84,10 @@ def parse_xls() -> list[dict]:
         if not english or not korean_raw:
             continue
 
+        # Auto-tag words containing '~' as idiom (숙어) if no POS set
+        if not part_of_speech and "~" in english:
+            part_of_speech = "숙어"
+
         words.append({
             "id": str(uuid.uuid4()),
             "english": english,

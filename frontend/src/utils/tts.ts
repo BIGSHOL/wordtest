@@ -224,6 +224,24 @@ export async function speakSentence(text: string) {
 }
 
 /**
+ * 모든 재생 중인 사운드를 중지
+ */
+export function stopAllSounds() {
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+  // Stop any playing cached audio
+  for (const audio of audioCache.values()) {
+    audio.pause();
+    audio.currentTime = 0;
+  }
+  for (const audio of sentenceCache.values()) {
+    audio.pause();
+    audio.currentTime = 0;
+  }
+}
+
+/**
  * Web Speech API로 발음 (fallback용)
  */
 export function speak(

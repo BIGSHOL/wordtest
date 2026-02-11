@@ -131,14 +131,23 @@ export function AssignmentStatusTable({ assignments, onDelete, onViewResult }: P
                 {formatDate(item.assigned_at)}
               </span>
               <span className="whitespace-nowrap" style={{ width: 60 }}>
-                {item.status === 'pending' ? (
+                {item.status === 'pending' && (
                   <span
                     className="text-[10px] font-semibold rounded-full"
                     style={{ backgroundColor: '#FEF2F2', color: '#EF4444', padding: '3px 8px' }}
                   >
                     미응시
                   </span>
-                ) : (
+                )}
+                {item.status === 'in_progress' && (
+                  <span
+                    className="text-[10px] font-semibold rounded-full"
+                    style={{ backgroundColor: '#EEF2FF', color: '#4F46E5', padding: '3px 8px' }}
+                  >
+                    학습중
+                  </span>
+                )}
+                {item.status === 'completed' && (
                   <span
                     className="text-[10px] font-semibold rounded-full"
                     style={{ backgroundColor: '#E8FAF0', color: '#5A8F6B', padding: '3px 8px' }}

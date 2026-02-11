@@ -22,3 +22,10 @@ export function stopSound(name: 'correct' | 'wrong' | 'timer' | 'two' | 'lvlup' 
     audio.currentTime = 0;
   }
 }
+
+export function stopAllSounds() {
+  stopSound('timer');
+  stopSound('two');
+  stopSound('correct');
+  stopSound('wrong');
+}

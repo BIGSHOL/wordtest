@@ -46,6 +46,7 @@ async def assign_test(
             student_id=student_id,
             teacher_id=teacher_id,
             test_code=individual_code,
+            assignment_type="mastery",
         )
         db.add(assignment)
         assignments.append(assignment)
@@ -84,6 +85,7 @@ async def assign_test(
                 per_question_time_seconds=data.per_question_time_seconds,
                 question_types=question_types_str,
                 lesson_range=lesson_range,
+                assignment_type=a.assignment_type,
                 status=a.status,
                 assigned_at=a.assigned_at,
                 test_session_id=a.test_session_id,
@@ -123,6 +125,7 @@ async def list_assignments_by_teacher(
                 per_question_time_seconds=config.per_question_time_seconds,
                 question_types=config.question_types,
                 lesson_range=lesson_range,
+                assignment_type=assignment.assignment_type,
                 status=assignment.status,
                 assigned_at=assignment.assigned_at,
                 test_session_id=assignment.test_session_id,

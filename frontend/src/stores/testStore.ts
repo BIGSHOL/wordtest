@@ -226,10 +226,12 @@ export const useTestStore = create<TestStore>()((set, get) => ({
 
   submitAnswer: async (elapsedSeconds?: number) => {
     const { session, questions, currentIndex, selectedAnswer } = get();
-    if (!session || !selectedAnswer) return;
+    if (!session) return;
 
     const question = questions[currentIndex];
-    const isCorrect = selectedAnswer === question.correct_answer;
+    // If no answer selected (timeout), treat as wrong
+    const answer = selectedAnswer ?? '';
+    const isCorrect = answer !== '' && answer === question.correct_answer;
     const localResult: SubmitAnswerResponse = {
       is_correct: isCorrect,
       correct_answer: question.correct_answer,
@@ -269,7 +271,7 @@ export const useTestStore = create<TestStore>()((set, get) => ({
               {
                 english: question.word.english,
                 correctAnswer: question.correct_answer,
-                selectedAnswer,
+                selectedAnswer: answer,
               },
             ],
       };
@@ -278,7 +280,7 @@ export const useTestStore = create<TestStore>()((set, get) => ({
     // Fire API in background (non-blocking) for server-side recording
     testService.submitAnswer(session.id, {
       word_id: question.word.id,
-      selected_answer: selectedAnswer,
+      selected_answer: answer,
       question_order: question.question_order,
     }).catch(() => {});
   },

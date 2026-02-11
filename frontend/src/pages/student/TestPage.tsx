@@ -14,7 +14,7 @@ import { FeedbackBanner } from '../../components/test/FeedbackBanner';
 import { useTestStore } from '../../stores/testStore';
 import { useAuthStore } from '../../stores/auth';
 import { useTimer } from '../../hooks/useTimer';
-import { playSound, stopSound } from '../../hooks/useSound';
+import { playSound, stopSound, stopAllSounds } from '../../hooks/useSound';
 import { preloadWordAudio, preloadSentenceAudio, randomizeTtsVoice } from '../../utils/tts';
 
 const TIMER_SECONDS = 15;
@@ -38,6 +38,7 @@ export function TestPage() {
 
   const handleTimeout = () => {
     if (!answerResult && !isSubmitting) {
+      stopAllSounds();
       submitAnswer(TIMER_SECONDS);
     }
   };
@@ -73,10 +74,7 @@ export function TestPage() {
 
   // Reset timer on new question + stop lingering sounds + preload TTS
   useEffect(() => {
-    stopSound('correct');
-    stopSound('wrong');
-    stopSound('timer');
-    stopSound('two');
+    stopAllSounds();
     resetTimer();
     timerSoundPlayed.current = false;
     twoSoundPlayed.current = false;
@@ -130,10 +128,9 @@ export function TestPage() {
   useEffect(() => {
     if (!answerResult) return;
 
-    // Immediately pause timer and stop countdown sounds
+    // Immediately pause timer and stop all lingering sounds
     pauseTimer();
-    stopSound('timer');
-    stopSound('two');
+    stopAllSounds();
 
     // Play feedback sound
     playSound(answerResult.is_correct ? 'correct' : 'wrong');
@@ -162,6 +159,7 @@ export function TestPage() {
 
   const handleChoiceClick = (choice: string) => {
     if (answerResult || isSubmitting) return;
+    stopAllSounds();
     selectAnswer(choice);
     submitAnswer(TIMER_SECONDS - secondsLeft);
   };

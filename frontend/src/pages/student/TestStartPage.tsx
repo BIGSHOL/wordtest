@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BookOpen, Hash, AlertCircle, Loader2, Play } from 'lucide-react';
 import { useTestStore } from '../../stores/testStore';
+import { useMasteryStore } from '../../stores/masteryStore';
 
 const CODE_LENGTH = 8;
 const CODE_CHARS = /[^A-Z0-9]/g;
@@ -10,6 +11,7 @@ export function TestStartPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { startTestByCode } = useTestStore();
+  const { startByCode: startMasteryByCode } = useMasteryStore();
   const [testCode, setTestCode] = useState('');
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +37,13 @@ export function TestStartPage() {
     setIsStarting(true);
     setError(null);
     try {
+      // Try mastery first (new system)
+      const response = await startMasteryByCode(code);
+      if (response.assignment_type === 'mastery') {
+        navigate('/mastery', { replace: true });
+        return;
+      }
+      // Fallback: legacy test system
       await startTestByCode(code);
       navigate('/test', { replace: true });
     } catch (err: any) {
@@ -42,9 +51,16 @@ export function TestStartPage() {
       if (detail === 'This test code has already been used') {
         setError('이미 사용된 테스트 코드입니다');
       } else if (detail === 'Invalid or inactive test code') {
-        setError('유효하지 않은 테스트 코드입니다');
+        // Try legacy test start-by-code as fallback
+        try {
+          await startTestByCode(code);
+          navigate('/test', { replace: true });
+          return;
+        } catch {
+          setError('유효하지 않은 테스트 코드입니다');
+        }
       } else {
-        setError('테스트를 시작할 수 없습니다');
+        setError('학습을 시작할 수 없습니다');
       }
     } finally {
       setIsStarting(false);
@@ -101,10 +117,10 @@ export function TestStartPage() {
           className="font-display text-[26px] font-bold text-text-primary"
           style={{ letterSpacing: -0.5 }}
         >
-          영단어 레벨테스트
+          영단어 학습
         </h1>
         <p className="font-display text-sm font-medium text-text-secondary text-center max-w-[300px]">
-          선생님이 보내준 테스트 코드를 입력하세요
+          선생님이 보내준 학습 코드를 입력하세요
         </p>
       </div>
 

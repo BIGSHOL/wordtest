@@ -36,6 +36,7 @@ const TestStartPage = lazyRetry(() => import('./pages/student/TestStartPage'));
 const TestPage = lazyRetry(() => import('./pages/student/TestPage'));
 const ResultPage = lazyRetry(() => import('./pages/student/ResultPage'));
 const WrongWordsPage = lazyRetry(() => import('./pages/student/WrongWordsPage'));
+const MasteryPage = lazyRetry(() => import('./pages/student/MasteryPage'));
 
 function PageLoader() {
   return (
@@ -125,6 +126,14 @@ function App() {
           <Route
             path="/test/start"
             element={<TestStartPage />}
+          />
+          <Route
+            path="/mastery"
+            element={
+              <RouteGuard roles={['student']}>
+                <MasteryPage />
+              </RouteGuard>
+            }
           />
           <Route
             path="/test"
