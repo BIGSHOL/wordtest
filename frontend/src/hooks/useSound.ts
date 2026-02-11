@@ -9,9 +9,13 @@ function getAudio(src: string): HTMLAudioElement {
   return audio;
 }
 
-export function playSound(name: 'correct' | 'wrong' | 'timer' | 'two' | 'lvlup' | 'lvldown' | 'perfect') {
+export function playSound(
+  name: 'correct' | 'wrong' | 'timer' | 'two' | 'lvlup' | 'lvldown' | 'perfect',
+  options?: { volume?: number; startAt?: number },
+) {
   const audio = getAudio(`/sounds/${name}.mp3`);
-  audio.currentTime = 0;
+  audio.currentTime = options?.startAt ?? 0;
+  audio.volume = options?.volume ?? 1.0;
   audio.play().catch(() => {});
 }
 

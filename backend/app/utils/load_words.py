@@ -31,6 +31,94 @@ BOOK_LEVEL_MAP = {
 }
 
 
+# --- Multi-word expression classifier ---
+_PARTICLES = {
+    "up", "down", "out", "in", "on", "off", "away", "back", "over",
+    "through", "along", "about", "around", "apart", "together",
+    "ahead", "forth", "aside", "behind",
+}
+
+_PHRASAL_VERBS = {
+    "add", "ask", "back", "blow", "break", "bring", "burn", "call",
+    "carry", "catch", "check", "cheer", "clean", "clear", "close",
+    "come", "cool", "cross", "cut", "die", "do", "draw", "dress",
+    "drop", "eat", "end", "fall", "figure", "fill", "find", "fly",
+    "follow", "get", "give", "go", "grow", "hand", "hang", "help",
+    "hit", "hold", "hurry", "jump", "keep", "kick", "knock", "lay",
+    "leave", "let", "light", "line", "live", "lock", "log", "look",
+    "make", "mess", "mix", "move", "open", "opt", "pass", "pay",
+    "pick", "play", "point", "pull", "push", "put", "reach", "rip",
+    "roll", "rule", "run", "sell", "send", "set", "settle", "show",
+    "shut", "sign", "sing", "sit", "slow", "sort", "speak", "speed",
+    "split", "stand", "start", "step", "stick", "stop", "sum",
+    "switch", "take", "tear", "tell", "think", "throw", "tie", "tip",
+    "touch", "trade", "try", "turn", "use", "wait", "wake", "walk",
+    "warm", "wash", "watch", "wear", "wind", "wipe", "work", "wrap",
+    "write", "act", "calm", "chop", "count", "head", "hear", "iron",
+    "mark", "narrow", "phase", "plug", "pop", "print", "ring", "rub", "scale", "shake",
+    "shape", "shore", "size", "snap", "spell", "stamp", "stir",
+    "sleep", "spend", "stay", "stress", "strip", "stumble", "suck",
+    "swear", "teach", "tidy", "tone", "top", "track", "water",
+    "weed", "whip", "zero", "zoom", "feel", "miss",
+}
+
+_COLLOCATION_VERBS = {
+    "go", "take", "make", "get", "give", "have", "do", "be",
+    "come", "put", "keep", "let", "set", "run", "pay", "play",
+    "enjoy", "bring", "carry", "leave", "lose", "hold",
+}
+
+# Words that start 2-word 숙어 (not compound nouns)
+_IDIOM_STARTERS = {
+    # Prepositions / adverbs / determiners
+    "a", "an", "at", "by", "of", "in", "on", "for", "to", "over",
+    "from", "so", "no", "as", "or", "all", "each", "per", "off",
+    "these", "this", "that", "those", "one", "every", "above",
+    "what's", "can't", "won't", "don't", "couldn't", "shouldn't",
+    "after", "before", "under", "beyond", "within", "beside",
+    "up", "and", "high",
+    # Adverbs / adjectives commonly starting idioms
+    "right", "far", "well", "ever", "even", "once", "long",
+    "millions", "thousands", "hundreds",
+}
+
+
+def classify_expression(english: str) -> str | None:
+    """Classify a multi-word expression: 구동사 / 관용구 / 숙어 / None.
+
+    Returns None if uncertain (e.g. possible compound noun like 'home run').
+    Only expressions with '~' or matching known verb patterns are classified.
+    """
+    has_tilde = "~" in english
+    words = english.lower().replace("~", "").strip().split()
+
+    if len(words) < 2:
+        return "숙어" if has_tilde else None
+
+    # 구동사: [known verb] + [particle] (exactly 2 words)
+    if len(words) == 2 and words[0] in _PHRASAL_VERBS and words[1] in _PARTICLES:
+        return "구동사"
+
+    # 관용구: starts with common verb + longer phrase (3+ words)
+    if len(words) >= 3 and words[0] in _COLLOCATION_VERBS:
+        return "관용구"
+
+    # With ~: always an expression → 숙어
+    if has_tilde:
+        return "숙어"
+
+    # 3+ words without known verb → likely 숙어
+    if len(words) >= 3:
+        return "숙어"
+
+    # 2 words: check if starts with known idiom pattern or has a known verb
+    if words[0] in _IDIOM_STARTERS or words[0] in _PHRASAL_VERBS or words[0] in _COLLOCATION_VERBS:
+        return "숙어"
+
+    # 2 words, no pattern match → might be compound noun → skip
+    return None
+
+
 def normalize_lesson(lesson: str) -> str:
     """Normalize lesson name format: 'DAY 01' → 'Day 01'."""
     stripped = lesson.strip()
@@ -84,9 +172,9 @@ def parse_xls() -> list[dict]:
         if not english or not korean_raw:
             continue
 
-        # Auto-tag words containing '~' as idiom (숙어) if no POS set
-        if not part_of_speech and "~" in english:
-            part_of_speech = "숙어"
+        # Auto-classify multi-word expressions if no POS set
+        if not part_of_speech and ("~" in english or " " in english):
+            part_of_speech = classify_expression(english) or part_of_speech
 
         words.append({
             "id": str(uuid.uuid4()),

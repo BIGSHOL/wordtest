@@ -13,7 +13,8 @@ import { useMasteryStore } from '../../stores/masteryStore';
 import { useTimer } from '../../hooks/useTimer';
 import { STAGE_CONFIG } from '../../types/mastery';
 import type { StageNumber } from '../../types/mastery';
-import { preloadWordAudio, stopAllSounds, randomizeTtsVoice } from '../../utils/tts';
+import { preloadWordAudio, stopAllSounds as stopTtsSounds, randomizeTtsVoice } from '../../utils/tts';
+import { playSound, stopSound } from '../../hooks/useSound';
 
 // Components
 import { MasteryHeader } from '../../components/mastery/MasteryHeader';
@@ -30,7 +31,8 @@ import { SentenceBlankCard } from '../../components/mastery/SentenceBlankCard';
 import { StageTransition } from '../../components/mastery/StageTransition';
 import { Loader2 } from 'lucide-react';
 
-const FEEDBACK_DELAY = 800;
+const FEEDBACK_DELAY_CORRECT = 800;
+const FEEDBACK_DELAY_WRONG = 1800;
 const SENTENCE_REVIEW_DELAY = 3000;
 
 export function MasteryPage() {
@@ -47,12 +49,21 @@ export function MasteryPage() {
   const stageConfig = STAGE_CONFIG[currentStage as StageNumber];
   const timerSeconds = stageConfig?.timer ?? 5;
   const isTypingStage = currentStage === 3 || currentStage === 5;
+  const submittingRef = useRef(false);
+  const timerSoundPlayed = useRef(false);
+  const twoSoundPlayed = useRef(false);
+
+  // Timer warning: 15s→10초부터, 10s→7초부터, 5s→바로 재생
+  const timerWarnAt = timerSeconds <= 5 ? timerSeconds : timerSeconds <= 10 ? 7 : 10;
+  const timerAudioStart = Math.max(0, 10 - timerWarnAt);
 
   // Timer
   const handleTimeout = useCallback(() => {
-    if (!answerResult && currentQuestion) {
-      // Auto-submit on timeout
-      store.submitAnswer(timerSeconds).catch(() => {});
+    if (!answerResult && currentQuestion && !submittingRef.current) {
+      submittingRef.current = true;
+      store.submitAnswer(timerSeconds).catch(() => {
+        submittingRef.current = false;
+      });
     }
   }, [answerResult, currentQuestion, timerSeconds]);
 
@@ -65,7 +76,11 @@ export function MasteryPage() {
     if (qid && qid !== prevQuestionRef.current) {
       prevQuestionRef.current = qid;
       timer.reset();
-      stopAllSounds();
+      stopTtsSounds();
+      stopSound('timer');
+      stopSound('two');
+      timerSoundPlayed.current = false;
+      twoSoundPlayed.current = false;
 
       // Preload TTS for current + next questions
       if (currentQuestion?.word.english) {
@@ -78,6 +93,19 @@ export function MasteryPage() {
     }
   }, [currentQuestion?.word_mastery_id]);
 
+  // Timer warning sounds
+  useEffect(() => {
+    if (answerResult) return;
+    if (timer.secondsLeft === timerWarnAt && timer.secondsLeft > 0 && !timerSoundPlayed.current) {
+      playSound('timer', { startAt: timerAudioStart });
+      timerSoundPlayed.current = true;
+    }
+    if (timer.secondsLeft === 2 && !twoSoundPlayed.current) {
+      playSound('two', { volume: 0.5 });
+      twoSoundPlayed.current = true;
+    }
+  }, [timer.secondsLeft, answerResult]);
+
   // Initialize TTS voice
   useEffect(() => {
     randomizeTtsVoice();
@@ -87,49 +115,64 @@ export function MasteryPage() {
     window.addEventListener('popstate', onPopState);
     return () => {
       window.removeEventListener('popstate', onPopState);
-      stopAllSounds();
+      stopTtsSounds();
     };
   }, []);
 
   // Handle answer submission for choice stages
   const handleChoiceClick = useCallback(
     (choice: string) => {
-      if (answerResult) return;
+      if (answerResult || submittingRef.current) return;
       store.selectAnswer(choice);
       timer.pause();
-
+      submittingRef.current = true;
       const elapsed = timerSeconds - timer.secondsLeft;
-      store.submitAnswer(elapsed).then(() => {
-        // Auto-advance after feedback delay
-        setTimeout(() => {
-          if (useMasteryStore.getState().showSentenceReview) {
-            // Wait for sentence review dismissal
-            return;
-          }
-          store.nextQuestion();
-        }, FEEDBACK_DELAY);
-      }).catch(() => {});
+      store.submitAnswer(elapsed).catch(() => {
+        submittingRef.current = false;
+      });
     },
     [answerResult, timerSeconds, timer.secondsLeft],
   );
 
   // Handle typing submission
   const handleTypingSubmit = useCallback(() => {
-    if (answerResult || !typedAnswer.trim()) return;
+    if (answerResult || !typedAnswer.trim() || submittingRef.current) return;
     timer.pause();
-
+    submittingRef.current = true;
     const elapsed = timerSeconds - timer.secondsLeft;
-    store.submitAnswer(elapsed).then(() => {
-      setTimeout(() => {
-        store.nextQuestion();
-      }, FEEDBACK_DELAY);
-    }).catch(() => {});
+    store.submitAnswer(elapsed).catch(() => {
+      submittingRef.current = false;
+    });
   }, [answerResult, typedAnswer, timerSeconds, timer.secondsLeft]);
+
+  // Central auto-advance: play feedback sound and advance after delay
+  useEffect(() => {
+    if (!answerResult) {
+      submittingRef.current = false;
+      return;
+    }
+    timer.pause();
+    stopTtsSounds();
+    stopSound('timer');
+    stopSound('two');
+    playSound(answerResult.is_correct ? 'correct' : 'wrong');
+
+    // If sentence review is shown, let that handler manage advancement
+    if (useMasteryStore.getState().showSentenceReview) return;
+
+    const delay = answerResult.is_correct ? FEEDBACK_DELAY_CORRECT : FEEDBACK_DELAY_WRONG;
+    const t = setTimeout(() => {
+      submittingRef.current = false;
+      store.nextQuestion();
+    }, delay);
+    return () => clearTimeout(t);
+  }, [answerResult]);
 
   // Sentence review auto-dismiss
   useEffect(() => {
     if (showSentenceReview) {
       const t = setTimeout(() => {
+        submittingRef.current = false;
         store.dismissSentenceReview();
         store.nextQuestion();
       }, SENTENCE_REVIEW_DELAY);

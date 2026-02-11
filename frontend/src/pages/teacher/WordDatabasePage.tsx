@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { TeacherLayout } from '../../components/layout/TeacherLayout';
 import { wordService, type Word, type CreateWordRequest, type LessonInfo } from '../../services/word';
-import { Search, Plus, Pencil, Trash2, X, Upload, Volume2 } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, X, Upload, Volume2, BookOpen, ChevronDown } from 'lucide-react';
 import { logger } from '../../utils/logger';
 import { getLevelRank } from '../../types/rank';
 import { speakWord, speakSentence } from '../../utils/tts';
@@ -371,61 +371,77 @@ export function WordDatabasePage() {
 
         {/* Word Table */}
         <div className="bg-surface border border-border-subtle rounded-xl overflow-hidden">
-          {/* Lesson Tab Bar */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
-            <div className="flex items-center gap-2 flex-wrap">
+          {/* Row 1: Book Filter */}
+          <div className="flex items-center justify-between px-5 py-3 border-b border-border-subtle">
+            <div className="flex items-center gap-3">
+              <BookOpen className="w-4 h-4 text-text-tertiary shrink-0" />
+              <span className="text-[13px] font-semibold text-text-secondary whitespace-nowrap">교재</span>
+              <div className="relative">
+                <select
+                  value={bookFilter}
+                  onChange={(e) => {
+                    setBookFilter(e.target.value);
+                    setLessonFilter('');
+                    setPage(0);
+                  }}
+                  className="appearance-none pl-3 pr-8 py-1.5 rounded-lg border border-border-subtle bg-white text-sm text-text-primary focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal cursor-pointer"
+                  style={{ minWidth: 180 }}
+                >
+                  <option value="">전체 교재</option>
+                  {bookOptions.map((book) => (
+                    <option key={book} value={book}>{book}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary pointer-events-none" />
+              </div>
+            </div>
+            <span
+              className="text-[11px] font-semibold rounded-full shrink-0"
+              style={{ backgroundColor: '#EBF8FA', color: '#2D9CAE', padding: '4px 12px' }}
+            >
+              총 {filteredTotal.toLocaleString()}개 단어
+            </span>
+          </div>
+
+          {/* Row 2: Lesson Filter (only when book selected) */}
+          {bookFilter && lessonOptions.length > 0 && (
+            <div className="flex items-center gap-1.5 px-5 py-2.5 border-b border-border-subtle bg-[#FAFAF8] overflow-x-auto">
+              <span className="text-[11px] font-semibold text-text-tertiary whitespace-nowrap mr-1">레슨</span>
               <button
                 onClick={() => {
-                  setBookFilter('');
                   setLessonFilter('');
                   setPage(0);
                 }}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  !bookFilter && !lessonFilter
-                    ? 'bg-teal text-white'
-                    : 'bg-transparent text-text-secondary hover:bg-bg-muted'
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+                  !lessonFilter
+                    ? 'bg-teal text-white shadow-sm'
+                    : 'bg-white text-text-secondary border border-border-subtle hover:bg-bg-muted'
                 }`}
               >
                 전체
               </button>
-              {bookOptions.map((book) => (
-                <button
-                  key={book}
-                  onClick={() => {
-                    setBookFilter(book);
-                    setLessonFilter('');
-                    setPage(0);
-                  }}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                    bookFilter === book && !lessonFilter
-                      ? 'bg-teal text-white'
-                      : 'bg-transparent text-text-secondary hover:bg-bg-muted'
-                  }`}
-                >
-                  {book}
-                </button>
-              ))}
-              {bookFilter && lessonOptions.map((lesson) => (
-                <button
-                  key={lesson.lesson}
-                  onClick={() => {
-                    setLessonFilter(lesson.lesson);
-                    setPage(0);
-                  }}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                    lessonFilter === lesson.lesson
-                      ? 'bg-teal text-white'
-                      : 'bg-transparent text-text-secondary hover:bg-bg-muted'
-                  }`}
-                >
-                  {lesson.lesson}
-                </button>
-              ))}
+              {lessonOptions.map((lesson) => {
+                const shortName = lesson.lesson.replace(/^Lesson\s*/i, '');
+                return (
+                  <button
+                    key={lesson.lesson}
+                    onClick={() => {
+                      setLessonFilter(lesson.lesson);
+                      setPage(0);
+                    }}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+                      lessonFilter === lesson.lesson
+                        ? 'bg-teal text-white shadow-sm'
+                        : 'bg-white text-text-secondary border border-border-subtle hover:bg-bg-muted'
+                    }`}
+                  >
+                    {shortName}
+                    <span className="ml-1 text-[10px] opacity-60">({lesson.word_count})</span>
+                  </button>
+                );
+              })}
             </div>
-            <div className="text-xs text-text-tertiary whitespace-nowrap ml-4">
-              총 {filteredTotal}개 단어
-            </div>
-          </div>
+          )}
 
           {isLoading ? (
             <div className="py-16 text-center text-text-tertiary">로딩 중...</div>

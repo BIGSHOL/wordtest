@@ -1,4 +1,4 @@
-﻿/**
+/**
  * LoginPage component tests.
  * Tests the login form with test code functionality.
  */
@@ -42,14 +42,14 @@ describe('LoginPage', () => {
       expect(screen.getByPlaceholderText(/코드 입력 시 바로 테스트 시작/i)).toBeInTheDocument();
     });
 
-    it('auto-converts input to uppercase and limits to 6 chars', async () => {
+    it('auto-converts input to uppercase and limits to 8 chars', async () => {
       const user = userEvent.setup();
       renderLoginPage();
       const input = screen.getByLabelText(/테스트 코드/i) as HTMLInputElement;
 
-      await user.type(input, 'abc123xy');
+      await user.type(input, 'abc123xyzz');
 
-      expect(input).toHaveValue('ABC123');  // 6 chars max, uppercase
+      expect(input).toHaveValue('ABC123XY');  // 8 chars max, uppercase
     });
 
     it('filters out non-alphanumeric characters', async () => {
@@ -62,7 +62,7 @@ describe('LoginPage', () => {
       expect(input).toHaveValue('A1B2C3');  // Only alphanumeric, uppercase
     });
 
-    it('changes button text when 6-char code is entered', async () => {
+    it('changes button text when 8-char code is entered', async () => {
       const user = userEvent.setup();
       renderLoginPage();
       const codeInput = screen.getByLabelText(/테스트 코드/i);
@@ -70,11 +70,10 @@ describe('LoginPage', () => {
       // Before code entry - default button text
       expect(screen.getByRole('button', { name: /^로그인$/i })).toBeInTheDocument();
 
-      // Enter 6-char code
-      await user.type(codeInput, 'A3X7K2');
+      // Enter 8-char code (no username → shows "테스트 코드로 시작")
+      await user.type(codeInput, 'A3X7K2PP');
 
-      // Button text should change
-      expect(screen.getByRole('button', { name: /로그인 & 테스트 시작/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /테스트 코드로 시작/i })).toBeInTheDocument();
     });
 
     it('navigates to test start with code after successful login', async () => {
@@ -88,7 +87,7 @@ describe('LoginPage', () => {
 
       await user.type(usernameInput, 'st2000423');
       await user.type(passwordInput, 'password123');
-      await user.type(codeInput, 'A3X7K2');
+      await user.type(codeInput, 'A3X7K2PP');
 
       const submitButton = screen.getByRole('button', { name: /로그인 & 테스트 시작/i });
       await user.click(submitButton);
@@ -96,7 +95,7 @@ describe('LoginPage', () => {
       // Should navigate with code param after successful login
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenCalledWith(
-          '/test/start?code=A3X7K2',
+          '/test/start?code=A3X7K2PP',
           expect.objectContaining({ replace: true })
         );
       }, { timeout: 5000 });

@@ -1,6 +1,7 @@
 /**
  * TestStartPage component tests.
  * Tests auto-start from URL param and error handling.
+ * Uses mastery-first flow with legacy fallback.
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -9,6 +10,7 @@ import { http, HttpResponse } from 'msw';
 import { server } from '../../mocks/server';
 import TestStartPage from '../../pages/student/TestStartPage';
 import { useTestStore } from '../../stores/testStore';
+import { mockTestSession, mockQuestions } from '../../mocks/data/tests';
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async () => {
@@ -25,6 +27,16 @@ beforeEach(() => {
   mockNavigate.mockReset();
   localStorage.setItem('access_token', 'mock-access-token');
   useTestStore.getState().reset();
+
+  // Default: mastery API returns 404 (fallback to legacy test flow)
+  server.use(
+    http.post(`${BASE_URL}/api/v1/mastery/start-by-code`, () => {
+      return HttpResponse.json(
+        { detail: 'Invalid or inactive test code' },
+        { status: 404 },
+      );
+    }),
+  );
 });
 
 function renderWithCode(code: string) {
@@ -46,54 +58,35 @@ function renderWithoutCode() {
 describe('TestStartPage', () => {
   describe('Auto-start from URL param', () => {
     it('shows loading state with valid code param', async () => {
-      // Add handler for config lookup that delays to ensure we see loading
+      // Mastery API delays to ensure we see loading
       server.use(
-        http.get(`${BASE_URL}/api/v1/test-configs/code/:code`, async () => {
+        http.post(`${BASE_URL}/api/v1/mastery/start-by-code`, async () => {
           await new Promise((r) => setTimeout(r, 500));
-          return HttpResponse.json({
-            id: 'config-001',
-            teacher_id: '355c2ee6-cdab-41cf-8b76-a703f8b00ea0',
-            name: 'Test Config',
-            test_code: 'A3X7K2',
-            test_type: 'placement',
-            question_count: 20,
-            time_limit_seconds: 600,
-            is_active: true,
-            book_name: null,
-            level_range_min: 1,
-            level_range_max: 15,
-            created_at: '2026-01-01T00:00:00Z',
-            updated_at: '2026-01-01T00:00:00Z',
-          });
+          return HttpResponse.json(
+            { detail: 'Invalid or inactive test code' },
+            { status: 404 },
+          );
         }),
       );
 
-      renderWithCode('A3X7K2');
+      renderWithCode('A3X7K2PP');
       expect(screen.getByText(/테스트 준비 중/)).toBeInTheDocument();
     });
 
-    it('navigates to /test on successful auto-start', async () => {
+    it('navigates to /test on successful legacy auto-start', async () => {
+      // Mastery fails → legacy start-by-code succeeds
       server.use(
-        http.get(`${BASE_URL}/api/v1/test-configs/code/:code`, () => {
+        http.post(`${BASE_URL}/api/v1/tests/start-by-code`, () => {
           return HttpResponse.json({
-            id: 'config-001',
-            teacher_id: '355c2ee6-cdab-41cf-8b76-a703f8b00ea0',
-            name: 'Test Config',
-            test_code: 'A3X7K2',
-            test_type: 'placement',
-            question_count: 20,
-            time_limit_seconds: 600,
-            is_active: true,
-            book_name: null,
-            level_range_min: 1,
-            level_range_max: 15,
-            created_at: '2026-01-01T00:00:00Z',
-            updated_at: '2026-01-01T00:00:00Z',
+            access_token: 'mock-jwt-token',
+            test_session: mockTestSession,
+            questions: mockQuestions,
+            student_name: 'Test Student',
           });
         }),
       );
 
-      renderWithCode('A3X7K2');
+      renderWithCode('A3X7K2PP');
       await waitFor(
         () => {
           expect(mockNavigate).toHaveBeenCalledWith('/test', { replace: true });
@@ -103,16 +96,17 @@ describe('TestStartPage', () => {
     });
 
     it('shows error message on invalid code', async () => {
+      // Both mastery and legacy fail
       server.use(
-        http.get(`${BASE_URL}/api/v1/test-configs/code/:code`, () => {
+        http.post(`${BASE_URL}/api/v1/tests/start-by-code`, () => {
           return HttpResponse.json(
-            { detail: 'Test config not found' },
+            { detail: 'Invalid or inactive test code' },
             { status: 404 },
           );
         }),
       );
 
-      renderWithCode('BADCOD');
+      renderWithCode('BADCODE1');
       await waitFor(
         () => {
           expect(screen.getByText(/유효하지 않은 테스트 코드/)).toBeInTheDocument();
@@ -125,8 +119,8 @@ describe('TestStartPage', () => {
   describe('Manual flow', () => {
     it('renders test code input and start button without URL param', () => {
       renderWithoutCode();
-      expect(screen.getByText(/영단어 레벨테스트/)).toBeInTheDocument();
-      expect(screen.getByPlaceholderText('A3X7K2')).toBeInTheDocument();
+      expect(screen.getByText(/영단어 학습/)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('HKWN3V7P')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /테스트 시작/i })).toBeDisabled();
     });
   });

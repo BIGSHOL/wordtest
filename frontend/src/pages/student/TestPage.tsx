@@ -15,7 +15,7 @@ import { useTestStore } from '../../stores/testStore';
 import { useAuthStore } from '../../stores/auth';
 import { useTimer } from '../../hooks/useTimer';
 import { playSound, stopSound, stopAllSounds } from '../../hooks/useSound';
-import { preloadWordAudio, preloadSentenceAudio, randomizeTtsVoice } from '../../utils/tts';
+import { preloadWordAudio, preloadSentenceAudio, batchPreloadPool, randomizeTtsVoice } from '../../utils/tts';
 
 const TIMER_SECONDS = 15;
 const FEEDBACK_DELAY_MS = 800;
@@ -24,7 +24,9 @@ export function TestPage() {
   const navigate = useNavigate();
   const timerSoundPlayed = useRef(false);
   const twoSoundPlayed = useRef(false);
+  const poolPreloaded = useRef(false);
   const session = useTestStore((s) => s.session);
+  const questionPool = useTestStore((s) => s.questionPool);
   const questions = useTestStore((s) => s.questions);
   const currentIndex = useTestStore((s) => s.currentIndex);
   const selectedAnswer = useTestStore((s) => s.selectedAnswer);
@@ -61,6 +63,13 @@ export function TestPage() {
       useTestStore.getState().reset();
     };
   }, []);
+
+  // Batch preload entire question pool TTS on test start
+  useEffect(() => {
+    if (poolPreloaded.current || questionPool.length === 0) return;
+    poolPreloaded.current = true;
+    batchPreloadPool(questionPool.map((q) => q.word));
+  }, [questionPool]);
 
   // Block browser back button during test
   useEffect(() => {

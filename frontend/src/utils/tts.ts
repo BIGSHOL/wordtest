@@ -170,6 +170,26 @@ export function randomizeTtsVoice() {
   sessionVoice = TTS_VOICES[Math.floor(Math.random() * TTS_VOICES.length)];
 }
 
+/**
+ * 전체 문항 풀 배치 프리로드 (5개씩, 300ms 간격)
+ * 테스트 시작 시 호출하여 모든 후보 단어의 TTS를 사전 로드
+ */
+export function batchPreloadPool(
+  words: { english: string; example_en?: string | null }[],
+) {
+  const BATCH_SIZE = 5;
+  const BATCH_DELAY = 300;
+  for (let i = 0; i < words.length; i += BATCH_SIZE) {
+    const batch = words.slice(i, i + BATCH_SIZE);
+    setTimeout(() => {
+      for (const w of batch) {
+        preloadWordAudio(w.english);
+        if (w.example_en) preloadSentenceAudio(w.example_en);
+      }
+    }, (i / BATCH_SIZE) * BATCH_DELAY);
+  }
+}
+
 // Sentence preload cache
 const sentenceCache = new Map<string, HTMLAudioElement>();
 
