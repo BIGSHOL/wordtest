@@ -59,6 +59,40 @@ class WordStatsResponse(BaseModel):
     slowest_response: list[WordStat]
 
 
+class RadarMetrics(BaseModel):
+    vocabulary_level: float  # 어휘수준 0-10
+    accuracy: float          # 정답률 0-10
+    speed: float             # 속도 0-10
+    vocabulary_size: float   # 어휘사이즈 0-10
+
+
+class MetricDetail(BaseModel):
+    key: str        # "vocabulary_level" | "accuracy" | "speed" | "vocabulary_size"
+    name: str       # "어휘수준" | "정답률" | "속도" | "어휘사이즈"
+    my_score: float
+    avg_score: float
+    description: str
+    raw_value: Optional[str] = None
+
+
+class PeerRanking(BaseModel):
+    percentile: int
+    total_peers: int
+
+
+class EnhancedTestReport(BaseModel):
+    test_session: "TestSessionResponse"  # forward ref
+    answers: list["AnswerDetail"]        # forward ref
+    radar_metrics: RadarMetrics
+    metric_details: list[MetricDetail]
+    peer_ranking: Optional[PeerRanking] = None
+    grade_level: str
+    vocab_description: str
+    recommended_book: str
+    total_time_seconds: Optional[int] = None
+    category_times: dict[str, int] = {}
+
+
 class DashboardStats(BaseModel):
     total_students: int
     total_words: int

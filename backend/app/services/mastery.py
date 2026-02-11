@@ -1,5 +1,6 @@
-"""Mastery learning service - session management, answer processing, stage transitions."""
+"""Mastery learning service - session management, answer processing, adaptive level."""
 import uuid
+import random
 from datetime import timedelta
 
 from sqlalchemy import select, func, and_
@@ -14,12 +15,13 @@ from app.models.test_config import TestConfig
 from app.models.user import User
 from app.core.timezone import now_kst
 from app.services.mastery_engine import (
-    generate_stage_questions, check_typing_answer,
+    generate_stage_questions, generate_mixed_questions, check_typing_answer,
 )
-from app.schemas.mastery import StageSummary, MasteryQuestion
+from app.schemas.mastery import StageSummary, MasteryQuestion, STAGE_TIMERS
 
 
-BATCH_SIZE_DEFAULT = 10
+SEGMENT_SIZE = 10  # Questions per segment (5 segments = 50 total)
+BATCH_SIZE_DEFAULT = 50
 # SRS review intervals (days after mastering)
 REVIEW_INTERVALS = [3, 7, 30]
 
@@ -40,6 +42,7 @@ def get_required_streak(word_level: int) -> int:
         return 5
     else:  # 13-15
         return 6
+
 
 
 async def _get_assignment_and_config(
@@ -141,11 +144,11 @@ async def _compute_stage_summary(
 
 async def start_session_by_code(
     db: AsyncSession, code: str
-) -> tuple[LearningSession, list[MasteryQuestion], list[WordMastery], list[Word], TestAssignment, str]:
+) -> tuple[LearningSession, list[MasteryQuestion], list[WordMastery], list[Word], TestAssignment, str, int]:
     """Start or resume a mastery learning session by test code.
 
     Returns:
-        (session, first_batch_questions, all_masteries, all_words, assignment, student_name)
+        (session, first_batch_questions, all_masteries, all_words, assignment, student_name, current_level)
     """
     lookup = await _get_assignment_and_config(db, code)
     if not lookup:
@@ -202,60 +205,113 @@ async def start_session_by_code(
         db.add(session)
         await db.flush()
 
-    # Generate first batch for the lowest non-empty stage
+    # Generate multi-level question pool (current_level + up to 4 more levels)
     words_map = {w.id: w for w in all_words}
-    first_batch = await get_next_batch(
-        db, session, masteries, words_map, all_words, BATCH_SIZE_DEFAULT
+    first_batch = await get_question_pool(
+        db, session, masteries, words_map, all_words,
+        per_level=SEGMENT_SIZE,
+        max_levels=5,
     )
 
     await db.commit()
 
-    return (session, first_batch, masteries, all_words, assignment, student.name or "학생")
+    return (session, first_batch, masteries, all_words, assignment, student.name or "학생", session.current_level)
 
 
-async def get_next_batch(
+async def get_question_pool(
     db: AsyncSession,
     session: LearningSession,
     masteries: list[WordMastery],
     words_map: dict[str, Word],
     all_words: list[Word],
-    batch_size: int = BATCH_SIZE_DEFAULT,
-    target_stage: int | None = None,
+    per_level: int = 10,
+    max_levels: int = 5,
 ) -> list[MasteryQuestion]:
-    """Get the next batch of questions.
+    """Generate a multi-level question pool for adaptive level progression.
 
-    Finds the lowest stage with unmastered words and generates questions.
+    Returns questions from current_level to current_level + max_levels - 1,
+    with per_level questions per level. Frontend manages pool switching
+    based on real-time XP tracking.
+
+    Questions include word.level so frontend can sort them into level pools.
     """
-    # Group masteries by stage (exclude mastered)
-    by_stage: dict[int, list[WordMastery]] = {1: [], 2: [], 3: [], 4: [], 5: []}
+    start_level = session.current_level
+    all_questions: list[MasteryQuestion] = []
+
+    for i in range(max_levels):
+        level = start_level + i
+        if level > 15:
+            break
+
+        level_masteries = [
+            m for m in masteries
+            if not m.mastered_at
+            and words_map.get(m.word_id)
+            and words_map[m.word_id].level == level
+        ]
+        level_masteries.sort(
+            key=lambda m: words_map.get(m.word_id).lesson if words_map.get(m.word_id) else ""
+        )
+
+        batch = level_masteries[:per_level]
+        if not batch:
+            continue
+
+        questions = generate_mixed_questions(batch, words_map, all_words)
+        random.shuffle(questions)
+        all_questions.extend(questions)
+
+    return all_questions
+
+
+async def get_level_questions(
+    db: AsyncSession,
+    session: LearningSession,
+    masteries: list[WordMastery],
+    words_map: dict[str, Word],
+    all_words: list[Word],
+    target_level: int,
+    batch_size: int = SEGMENT_SIZE,
+) -> list[MasteryQuestion]:
+    """Get questions for a specific level with fallback to adjacent levels.
+
+    Prioritizes target_level, but if not enough words exist there,
+    expands to adjacent levels (target+1, target-1, target+2, etc.).
+    """
+    # Separate masteries by level proximity
+    target_masteries = []
+    other_masteries = []
+
     for m in masteries:
-        if not m.mastered_at and m.stage in by_stage:
-            by_stage[m.stage].append(m)
+        if m.mastered_at:
+            continue
+        word = words_map.get(m.word_id)
+        if not word:
+            continue
+        if word.level == target_level:
+            target_masteries.append(m)
+        else:
+            other_masteries.append(m)
 
-    # Find target stage (lowest stage with words, or specified)
-    stage = target_stage
-    if stage is None:
-        for s in range(1, 6):
-            if by_stage[s]:
-                stage = s
-                break
+    # Sort target by lesson order
+    target_masteries.sort(
+        key=lambda m: words_map[m.word_id].lesson if words_map.get(m.word_id) else ""
+    )
+    # Sort others by proximity to target level
+    other_masteries.sort(
+        key=lambda m: abs(words_map[m.word_id].level - target_level)
+    )
 
-    if stage is None:
-        return []  # All words mastered
+    batch = target_masteries[:batch_size]
+    if len(batch) < batch_size:
+        batch.extend(other_masteries[:batch_size - len(batch)])
 
-    # Update session current stage
-    session.current_stage = stage
+    if not batch:
+        return []
 
-    # Get batch from this stage
-    stage_words = by_stage[stage]
-    # Sort by level/lesson for adaptive ordering
-    stage_words.sort(key=lambda m: (
-        words_map.get(m.word_id, Word()).level if words_map.get(m.word_id) else 0,
-        words_map.get(m.word_id, Word()).lesson if words_map.get(m.word_id) else "",
-    ))
-    batch = stage_words[:batch_size]
-
-    return generate_stage_questions(batch, words_map, stage, all_words)
+    questions = generate_mixed_questions(batch, words_map, all_words)
+    random.shuffle(questions)
+    return questions
 
 
 async def submit_answer(
@@ -381,6 +437,52 @@ async def submit_answer(
         "required_streak": required,
         "example_en": word.example_en if stage == 1 else None,
         "example_ko": word.example_ko if stage == 1 else None,
+        "current_level": session.current_level if session else 1,
+    }
+
+
+async def complete_batch(
+    db: AsyncSession,
+    session_id: str,
+    final_level: int,
+) -> dict:
+    """Save the frontend-determined final level after all 50 questions.
+
+    The XP-based level progression is computed on the frontend in real-time.
+    This endpoint persists the final level to the DB and computes overall accuracy.
+    """
+    session_result = await db.execute(
+        select(LearningSession).where(LearningSession.id == session_id)
+    )
+    session = session_result.scalar_one_or_none()
+    if not session:
+        raise ValueError("Session not found")
+
+    previous_level = session.current_level
+    new_level = max(1, min(final_level, 15))
+
+    # Compute overall session accuracy
+    answers_result = await db.execute(
+        select(
+            func.count(LearningAnswer.id),
+            func.sum(func.cast(LearningAnswer.is_correct, int)),
+        ).where(LearningAnswer.session_id == session_id)
+    )
+    row = answers_result.one()
+    total_count = row[0] or 0
+    correct_count = row[1] or 0
+    accuracy = round((correct_count / total_count * 100) if total_count > 0 else 0, 1)
+
+    # Save final level + mark session completed
+    session.current_level = new_level
+    session.completed_at = now_kst()
+    await db.commit()
+
+    return {
+        "current_level": new_level,
+        "previous_level": previous_level,
+        "level_changed": new_level != previous_level,
+        "accuracy": accuracy,
     }
 
 

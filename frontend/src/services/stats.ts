@@ -2,6 +2,7 @@
  * Statistics/analytics API service.
  */
 import api from './api';
+import type { EnhancedTestReport } from '../types/report';
 
 export interface DashboardStats {
   total_students: number;
@@ -53,6 +54,13 @@ export const statsService = {
 
   async getStudentHistory(studentId: string): Promise<TestHistoryResponse> {
     const response = await api.get<TestHistoryResponse>(`/api/v1/stats/student/${studentId}/history`);
+    return response.data;
+  },
+
+  async getEnhancedReport(studentId: string, testId: string): Promise<EnhancedTestReport> {
+    const response = await api.get<EnhancedTestReport>(
+      `/api/v1/stats/student/${studentId}/report/${testId}`,
+    );
     return response.data;
   },
 };

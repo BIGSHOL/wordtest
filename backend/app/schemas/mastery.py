@@ -24,7 +24,7 @@ class StartMasteryByCodeRequest(BaseModel):
 
 class MasteryBatchRequest(BaseModel):
     session_id: str
-    stage: int
+    level: Optional[int] = None  # explicit level for lazy loading
     batch_size: int = 10
 
 
@@ -87,12 +87,16 @@ class StartMasteryResponse(BaseModel):
     access_token: Optional[str] = None
     student_name: Optional[str] = None
     assignment_type: str = "mastery"
+    current_level: int = 1
 
 
 class MasteryBatchResponse(BaseModel):
     questions: list[MasteryQuestion]
     remaining_in_stage: int
     stage_summary: StageSummary
+    current_level: int = 1
+    previous_level: int = 1
+    level_changed: bool = False
 
 
 class MasteryAnswerResult(BaseModel):
@@ -106,6 +110,7 @@ class MasteryAnswerResult(BaseModel):
     required_streak: int = 2      # needed to advance
     example_en: Optional[str] = None
     example_ko: Optional[str] = None
+    current_level: int = 1
 
 
 class WordMasteryDetail(BaseModel):

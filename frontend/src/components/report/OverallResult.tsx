@@ -1,0 +1,60 @@
+/**
+ * Overall result section - level badge, recommended book, 3 info badges.
+ * Matches Pencil design node sVrdK.
+ */
+import type { EnhancedTestReport } from '../../types/report';
+
+interface Props {
+  report: EnhancedTestReport;
+}
+
+export function OverallResult({ report }: Props) {
+  const level = report.test_session.determined_level || 1;
+
+  return (
+    <div className="flex-1 border border-[#E8E8E8] rounded-sm p-5 space-y-4">
+      <h3 className="text-base font-semibold text-[#0D0D0D]">종합 평가 결과</h3>
+
+      {/* Level badge + Book info */}
+      <div className="flex items-center gap-4">
+        {/* Book info */}
+        <div className="flex-1 space-y-1">
+          <p className="text-[10px] text-[#7A7A7A]">추천 교재</p>
+          <p className="text-sm font-semibold text-[#CC0000]">
+            {report.recommended_book}
+          </p>
+        </div>
+
+        {/* Level badge */}
+        <div className="w-16 h-16 rounded-full border-2 border-[#CC0000] flex items-center justify-center">
+          <span className="text-[#CC0000] text-lg font-bold">Lv.{level}</span>
+        </div>
+      </div>
+
+      {/* 3 info badges */}
+      <div className="flex gap-2">
+        <InfoBadge title="학년수준" value={report.grade_level} />
+        <InfoBadge title="어휘수준" value={report.vocab_description} />
+        <InfoBadge
+          title="동학년순위"
+          value={
+            report.peer_ranking
+              ? `상위 ${report.peer_ranking.percentile}%`
+              : '-'
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
+function InfoBadge({ title, value }: { title: string; value: string }) {
+  return (
+    <div className="flex-1 border border-[#CC0000] rounded p-2 text-center space-y-1">
+      <p className="text-[10px] font-semibold text-[#CC0000]">{title}</p>
+      <p className="text-[10px] font-medium text-[#0D0D0D] leading-tight">
+        {value}
+      </p>
+    </div>
+  );
+}

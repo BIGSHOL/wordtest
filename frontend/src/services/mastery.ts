@@ -1,5 +1,10 @@
 /**
  * Mastery learning API service.
+ *
+ * - startByCode: returns multi-level question pool
+ * - fetchLevelQuestions: lazy load for a specific level (when pool runs out)
+ * - submitAnswer: submit answer + internal mastery processing
+ * - completeBatch: save final level after all 50 questions
  */
 import api from './api';
 import type {
@@ -7,6 +12,7 @@ import type {
   MasteryBatchResponse,
   MasteryAnswerResult,
   MasteryProgressResponse,
+  CompleteBatchResponse,
 } from '../types/mastery';
 
 export const masteryService = {
@@ -18,14 +24,15 @@ export const masteryService = {
     return response.data;
   },
 
-  async getBatch(
+  /** Lazy load more questions for a specific level when pool runs out. */
+  async fetchLevelQuestions(
     sessionId: string,
-    stage: number,
+    level: number,
     batchSize = 10,
   ): Promise<MasteryBatchResponse> {
     const response = await api.post<MasteryBatchResponse>(
       '/api/v1/mastery/batch',
-      { session_id: sessionId, stage, batch_size: batchSize },
+      { session_id: sessionId, level, batch_size: batchSize },
     );
     return response.data;
   },
@@ -42,6 +49,18 @@ export const masteryService = {
     const response = await api.post<MasteryAnswerResult>(
       `/api/v1/mastery/${sessionId}/answer`,
       data,
+    );
+    return response.data;
+  },
+
+  /** Save the frontend-determined final level after 50 questions. */
+  async completeBatch(
+    sessionId: string,
+    finalLevel: number,
+  ): Promise<CompleteBatchResponse> {
+    const response = await api.post<CompleteBatchResponse>(
+      '/api/v1/mastery/complete-batch',
+      { session_id: sessionId, final_level: finalLevel },
     );
     return response.data;
   },

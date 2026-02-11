@@ -1,7 +1,6 @@
 /**
- * Mastery session header - reuses QuizHeader rank badge style.
- * Shows level rank badge with dynamic gradient + level change animations.
- * Also shows combo counter for streaks.
+ * Mastery session header - adaptive level display with XP bar.
+ * Shows rank badge with gradient + level change animations + XP progress.
  */
 import { useEffect, useRef, useState, memo } from 'react';
 import {
@@ -16,22 +15,24 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 interface MasteryHeaderProps {
-  level: number;
-  lesson?: string;
-  stage: number;
+  level: number;          // rank (1-10)
   currentIndex: number;
   totalInBatch: number;
   combo: number;
+  xp: number;             // current XP in this lesson
+  lessonXp: number;        // XP needed for this lesson
+  levelLabel: string;      // "1-3" format
   onExit: () => void;
 }
 
 export const MasteryHeader = memo(function MasteryHeader({
   level,
-  lesson,
-  stage,
   currentIndex,
   totalInBatch,
   combo,
+  xp,
+  lessonXp,
+  levelLabel,
   onExit,
 }: MasteryHeaderProps) {
   const rank = getLevelRank(level);
@@ -53,7 +54,6 @@ export const MasteryHeader = memo(function MasteryHeader({
   const isUp = flashDelta > 0;
   const isDown = flashDelta < 0;
   const absDelta = Math.abs(flashDelta);
-  const lessonNum = lesson ? parseInt(lesson.replace(/\D/g, ''), 10) || 1 : 1;
 
   // Scale effect by magnitude
   const badgeScale = isUp
@@ -71,6 +71,8 @@ export const MasteryHeader = memo(function MasteryHeader({
     : isDown
     ? `#EF4444${absDelta >= 3 ? 'A0' : absDelta >= 2 ? '80' : '60'}`
     : `${rank.colors[0]}30`;
+
+  const xpFraction = lessonXp > 0 ? Math.min(xp / lessonXp, 1) : 0;
 
   return (
     <>
@@ -107,9 +109,9 @@ export const MasteryHeader = memo(function MasteryHeader({
           <ArrowLeft className="w-[22px] h-[22px] text-text-primary" />
         </button>
 
-        {/* Center: rank badge + combo */}
+        {/* Center: rank badge + XP bar + combo */}
         <div className="flex items-center gap-2">
-          <div className="relative">
+          <div className="relative flex flex-col items-center gap-1">
             {/* Badge */}
             <div
               className="flex items-center gap-[5px] rounded-full px-3.5 py-[5px] transition-all duration-300"
@@ -125,8 +127,22 @@ export const MasteryHeader = memo(function MasteryHeader({
             >
               <RankIcon className="w-3.5 h-3.5 text-white" />
               <span className="font-display text-[13px] font-bold text-white">
-                {rank.name} {level}-{lessonNum}
+                {rank.name}
               </span>
+              <span className="font-display text-[11px] font-medium text-white/70">
+                Lv.{levelLabel}
+              </span>
+            </div>
+
+            {/* XP Progress Bar */}
+            <div className="w-24 h-1.5 rounded-full bg-white/20 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{
+                  width: `${xpFraction * 100}%`,
+                  background: `linear-gradient(90deg, ${rank.colors[0]}, ${rank.colors[1]})`,
+                }}
+              />
             </div>
 
             {/* Floating delta indicator */}
@@ -167,15 +183,10 @@ export const MasteryHeader = memo(function MasteryHeader({
           {combo >= 2 && <ComboCounter combo={combo} />}
         </div>
 
-        {/* Right: stage + counter */}
-        <div className="flex items-center gap-3">
-          <span className="font-display text-xs font-medium text-text-tertiary bg-bg-muted rounded-full px-2.5 py-1">
-            {stage}단계
-          </span>
-          <span className="font-display text-[15px] font-semibold text-text-secondary">
-            {currentIndex + 1} / {totalInBatch}
-          </span>
-        </div>
+        {/* Right: counter */}
+        <span className="font-display text-[15px] font-semibold text-text-secondary">
+          {currentIndex + 1} / {totalInBatch}
+        </span>
       </div>
     </>
   );

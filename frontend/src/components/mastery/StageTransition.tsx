@@ -53,7 +53,9 @@ export const StageTransition = memo(function StageTransition({
         <p className="font-display text-sm text-text-secondary text-center">
           {allDone
             ? `${wordsMastered}개 단어를 완전 마스터했어요!`
-            : `${wordsAdvanced}개 단어가 다음 단계로 승급했어요`
+            : wordsAdvanced > 0
+            ? `${wordsAdvanced}개 단어가 다음 단계로 승급했어요`
+            : '연속 정답을 쌓으면 다음 단계로 승급해요'
           }
         </p>
       </div>

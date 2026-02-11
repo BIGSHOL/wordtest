@@ -1,20 +1,60 @@
 /**
- * 5-Stage Word Mastery System types & configuration.
+ * Adaptive Mastery Learning System types.
  *
- * Visual metaphor: Seed → Sprout → Sapling → Tree → Fruit
+ * - No visible stages to users
+ * - 50 questions per batch, mixed question types
+ * - Adaptive level progression (Level 1-15)
+ * - Question types determined by internal mastery stage (invisible to user)
  */
 
-// --- Stage configuration ---
+// --- Question type configuration ---
 
-export const STAGE_CONFIG = {
-  1: { name: '단어 뜻 고르기', icon: 'seed', timer: 5, type: 'choice' as const, color: '#9CA3AF', label: '씨앗' },
-  2: { name: '영단어 고르기', icon: 'sprout', timer: 5, type: 'choice' as const, color: '#10B981', label: '새싹' },
-  3: { name: '발음 듣고 쓰기', icon: 'sapling', timer: 15, type: 'typing' as const, color: '#3B82F6', label: '묘목' },
-  4: { name: '발음 듣고 뜻 고르기', icon: 'tree', timer: 10, type: 'choice' as const, color: '#F59E0B', label: '나무' },
-  5: { name: '뜻 보고 영단어 쓰기', icon: 'fruit', timer: 15, type: 'typing' as const, color: '#EF4444', label: '열매' },
-} as const;
+export type QuestionType =
+  | 'word_to_meaning'    // English → pick Korean (choice)
+  | 'meaning_to_word'    // Korean → pick English (choice)
+  | 'listen_and_type'    // Listen → type English
+  | 'listen_to_meaning'  // Listen → pick Korean (choice)
+  | 'meaning_and_type';  // Korean → type English
+
+export function isTypingQuestion(type: string): boolean {
+  return type === 'listen_and_type' || type === 'meaning_and_type';
+}
+
+export function isListenQuestion(type: string): boolean {
+  return type === 'listen_and_type' || type === 'listen_to_meaning';
+}
+
+export function isChoiceQuestion(type: string): boolean {
+  return type === 'word_to_meaning' || type === 'meaning_to_word' || type === 'listen_to_meaning';
+}
+
+/** Get timer for a question type */
+export function getQuestionTimer(type: string): number {
+  switch (type) {
+    case 'word_to_meaning':
+    case 'meaning_to_word':
+      return 5;
+    case 'listen_to_meaning':
+      return 10;
+    case 'listen_and_type':
+    case 'meaning_and_type':
+      return 15;
+    default:
+      return 5;
+  }
+}
+
+// --- Stage config (internal only, kept for backward compat) ---
 
 export type StageNumber = 1 | 2 | 3 | 4 | 5;
+
+export const STAGE_CONFIG = {
+  1: { name: '단어 뜻 고르기', timer: 5, type: 'choice' as const },
+  2: { name: '영단어 고르기', timer: 5, type: 'choice' as const },
+  3: { name: '발음 듣고 쓰기', timer: 15, type: 'typing' as const },
+  4: { name: '발음 듣고 뜻 고르기', timer: 10, type: 'choice' as const },
+  5: { name: '뜻 보고 영단어 쓰기', timer: 15, type: 'typing' as const },
+} as const;
 
 // --- API response types ---
 
@@ -68,12 +108,23 @@ export interface StartMasteryResponse {
   access_token?: string;
   student_name?: string;
   assignment_type: string;
+  current_level: number;
 }
 
 export interface MasteryBatchResponse {
   questions: MasteryQuestion[];
   remaining_in_stage: number;
   stage_summary: StageSummary;
+  current_level: number;
+  previous_level: number;
+  level_changed: boolean;
+}
+
+export interface CompleteBatchResponse {
+  current_level: number;
+  previous_level: number;
+  level_changed: boolean;
+  accuracy: number;
 }
 
 export interface MasteryAnswerResult {
@@ -87,6 +138,7 @@ export interface MasteryAnswerResult {
   required_streak: number;
   example_en?: string;
   example_ko?: string;
+  current_level: number;
 }
 
 export interface MasteryProgressResponse {

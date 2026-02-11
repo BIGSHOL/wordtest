@@ -23,6 +23,7 @@ class LearningSession(Base):
         String(36), ForeignKey("test_assignments.id", ondelete="CASCADE"), nullable=False
     )
     current_stage: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    current_level: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     words_practiced: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     words_advanced: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     words_demoted: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

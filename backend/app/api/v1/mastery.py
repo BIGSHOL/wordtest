@@ -2,6 +2,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -21,12 +22,13 @@ from app.schemas.mastery import (
 )
 from app.services.mastery import (
     start_session_by_code,
-    get_next_batch,
+    get_level_questions,
     submit_answer,
+    complete_batch,
     get_mastery_progress,
     _compute_stage_summary,
     _get_words_for_config,
-    _ensure_mastery_records,
+    SEGMENT_SIZE,
 )
 from app.models.word_mastery import WordMastery
 from app.models.learning_session import LearningSession
@@ -53,7 +55,7 @@ async def start_mastery_by_code(
     body: StartMasteryByCodeRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Start a mastery learning session using only a test code (no auth required)."""
+    """Start a mastery session. Returns multi-level question pool."""
     code = body.test_code.strip().upper()
     if not code:
         raise HTTPException(
@@ -62,7 +64,7 @@ async def start_mastery_by_code(
         )
 
     try:
-        session, questions, masteries, all_words, assignment, student_name = \
+        session, questions, masteries, all_words, assignment, student_name, current_level = \
             await start_session_by_code(db, code)
     except ValueError as e:
         msg = str(e)
@@ -70,9 +72,7 @@ async def start_mastery_by_code(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg)
 
-    # Issue JWT for subsequent requests
     access_token = create_access_token(subject=assignment.student_id)
-
     summary = await _compute_stage_summary(masteries)
 
     return StartMasteryResponse(
@@ -83,6 +83,7 @@ async def start_mastery_by_code(
         access_token=access_token,
         student_name=student_name,
         assignment_type="mastery",
+        current_level=current_level,
     )
 
 
@@ -92,8 +93,7 @@ async def get_batch(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Get next batch of questions for a specific stage."""
-    # Load session
+    """Fetch more questions at a specific level (lazy loading when pool runs out)."""
     session_result = await db.execute(
         select(LearningSession).where(LearningSession.id == body.session_id)
     )
@@ -116,7 +116,6 @@ async def get_batch(
     if not config:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Config not found")
 
-    # Get all words + masteries
     all_words = await _get_words_for_config(db, config)
     words_map = {w.id: w for w in all_words}
     word_ids = [w.id for w in all_words]
@@ -129,24 +128,46 @@ async def get_batch(
     )
     masteries = list(mastery_result.scalars().all())
 
-    # Generate batch
-    questions = await get_next_batch(
+    # Use explicit level if provided, else session.current_level
+    target_level = body.level if body.level else session.current_level
+
+    questions = await get_level_questions(
         db, session, masteries, words_map, all_words,
+        target_level=target_level,
         batch_size=body.batch_size,
-        target_stage=body.stage,
     )
 
-    # Compute remaining in this stage
-    remaining = sum(1 for m in masteries if not m.mastered_at and m.stage == body.stage) - len(questions)
     summary = await _compute_stage_summary(masteries)
-
     await db.commit()
 
     return MasteryBatchResponse(
         questions=questions,
-        remaining_in_stage=max(0, remaining),
+        remaining_in_stage=0,
         stage_summary=summary,
+        current_level=session.current_level,
+        previous_level=session.current_level,
+        level_changed=False,
     )
+
+
+class CompleteBatchRequest(BaseModel):
+    session_id: str
+    final_level: int = 1
+
+
+@router.post("/complete-batch")
+async def complete_batch_endpoint(
+    body: CompleteBatchRequest,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Save frontend-determined final level after all 50 questions."""
+    try:
+        result = await complete_batch(db, body.session_id, body.final_level)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    return result
 
 
 @router.post("/{session_id}/answer", response_model=MasteryAnswerResult)
@@ -156,7 +177,7 @@ async def submit_mastery_answer(
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Submit an answer and process stage transition."""
+    """Submit an answer and process word mastery stage transition."""
     try:
         result = await submit_answer(
             db,

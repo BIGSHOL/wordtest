@@ -8,7 +8,11 @@ from app.db.session import get_db
 from app.services.level_engine import format_rank_label
 from app.schemas.stats import (
     DashboardStats,
+    EnhancedTestReport,
     LevelDistribution,
+    MetricDetail,
+    PeerRanking,
+    RadarMetrics,
     RecentTest,
     ScoreTrend,
     TestHistoryItem,
@@ -16,12 +20,15 @@ from app.schemas.stats import (
     WordStat,
     WordStatsResponse,
 )
+from app.schemas.test import TestSessionResponse, AnswerDetail
 from app.core.deps import CurrentTeacher, CurrentUser
 from app.models.user import User
 from app.models.word import Word
 from app.models.test_session import TestSession
 from app.models.test_answer import TestAnswer
 from app.core.timezone import now_kst
+from app.services.test import get_test_result
+from app.services import report_engine
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
@@ -291,3 +298,136 @@ async def get_student_history(
         )
 
     return TestHistoryResponse(history=history)
+
+
+@router.get(
+    "/student/{student_id}/report/{test_id}",
+    response_model=EnhancedTestReport,
+)
+async def get_enhanced_report(
+    student_id: str,
+    test_id: str,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Get enhanced test report matching Pencil design (E6YZM).
+
+    Combines basic test result with radar metrics, peer ranking,
+    grade-level mappings, and interpretive descriptions.
+    """
+    # Authorization
+    if current_user.role == "student" and current_user.id != student_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized",
+        )
+    if current_user.role == "teacher":
+        student_check = await db.execute(
+            select(User).where(User.id == student_id)
+        )
+        student = student_check.scalar_one_or_none()
+        if not student or student.teacher_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized",
+            )
+    else:
+        student_check = await db.execute(
+            select(User).where(User.id == student_id)
+        )
+        student = student_check.scalar_one_or_none()
+
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    # Load test result
+    result = await get_test_result(db, test_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Test not found")
+
+    session, answers = result
+
+    if session.student_id != student_id:
+        raise HTTPException(status_code=403, detail="Test does not belong to student")
+
+    # Build session response
+    rank_label = None
+    if session.determined_level and session.determined_sublevel:
+        rank_label = format_rank_label(
+            session.determined_level, session.determined_sublevel
+        )
+    from app.api.v1.tests import _session_response
+    session_resp = _session_response(session)
+
+    # Calculate metrics
+    rank = session.determined_level or 1
+    score = session.score or 0
+
+    # Radar metrics
+    accuracy_score = report_engine.calculate_accuracy_score(
+        session.correct_count, session.total_questions
+    )
+    speed_score = report_engine.calculate_speed_score(answers)
+    vocab_raw, vocab_score = await report_engine.calculate_vocab_size(
+        db, student_id
+    )
+
+    radar = RadarMetrics(
+        vocabulary_level=float(rank),
+        accuracy=accuracy_score,
+        speed=speed_score,
+        vocabulary_size=vocab_score,
+    )
+
+    # Peer ranking
+    peer = await report_engine.calculate_peer_ranking(
+        db, student_id, score, student.grade
+    )
+    peer_ranking = PeerRanking(**peer) if peer else None
+
+    # Member averages
+    teacher_id = student.teacher_id or current_user.id
+    avg_metrics = await report_engine.calculate_member_averages(db, teacher_id)
+
+    # Metric details with descriptions
+    metrics_dict = {
+        "vocabulary_level": float(rank),
+        "accuracy": accuracy_score,
+        "speed": speed_score,
+        "vocabulary_size": vocab_score,
+    }
+    details_raw = report_engine.get_metric_descriptions(rank, metrics_dict)
+
+    # Fill avg_score and raw_value
+    raw_values = {
+        "vocabulary_level": f"Lv.{rank}",
+        "accuracy": f"{score}%",
+        "speed": f"{speed_score}/10",
+        "vocabulary_size": f"{vocab_raw:,}단어",
+    }
+    metric_details = []
+    for d in details_raw:
+        d["avg_score"] = avg_metrics.get(d["key"], 5.0)
+        d["raw_value"] = raw_values.get(d["key"])
+        metric_details.append(MetricDetail(**d))
+
+    # Time breakdown
+    total_time, cat_times = report_engine.calculate_time_breakdown(answers)
+
+    # Mappings
+    grade_level = report_engine.RANK_TO_GRADE.get(rank, "미정")
+    vocab_desc = report_engine.RANK_TO_VOCAB_DESC.get(rank, "")
+    recommended_book = report_engine.RANK_TO_BOOK.get(rank, "")
+
+    return EnhancedTestReport(
+        test_session=session_resp,
+        answers=[AnswerDetail(**a) for a in answers],
+        radar_metrics=radar,
+        metric_details=metric_details,
+        peer_ranking=peer_ranking,
+        grade_level=grade_level,
+        vocab_description=vocab_desc,
+        recommended_book=recommended_book,
+        total_time_seconds=total_time,
+        category_times=cat_times,
+    )

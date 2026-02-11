@@ -1,19 +1,16 @@
 /**
- * Mastery learning page - 5-stage word mastery system.
+ * Adaptive Mastery learning page.
  *
- * Stage 1: English word → pick Korean meaning (5s) + sentence review
- * Stage 2: Korean meaning → pick English word (5s)
- * Stage 3: Listen pronunciation → type English word (15s)
- * Stage 4: Listen pronunciation → pick Korean meaning (10s)
- * Stage 5: Korean meaning → type English word (15s)
+ * - 50 questions total, XP-based level progression
+ * - Mixed question types based on word's internal mastery stage
+ * - Real-time adaptive level display
+ * - No visible stage transitions
  */
 import { useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMasteryStore } from '../../stores/masteryStore';
+import { useMasteryStore, useCurrentQuestion, useLessonXp, useLevelLabel } from '../../stores/masteryStore';
 import { useTimer } from '../../hooks/useTimer';
-import { STAGE_CONFIG } from '../../types/mastery';
-import type { StageNumber } from '../../types/mastery';
-import { wordLevelToRank } from '../../types/rank';
+import { isTypingQuestion, isListenQuestion } from '../../types/mastery';
 import { preloadWordAudio, stopAllSounds as stopTtsSounds, randomizeTtsVoice } from '../../utils/tts';
 import { playSound, stopSound } from '../../hooks/useSound';
 
@@ -27,34 +24,37 @@ import { MeaningCard } from '../../components/test/MeaningCard';
 import { ChoiceButton } from '../../components/test/ChoiceButton';
 import { ListenCard } from '../../components/mastery/ListenCard';
 import { TypingInput } from '../../components/mastery/TypingInput';
-import { SentenceReview } from '../../components/mastery/SentenceReview';
 import { SentenceBlankCard } from '../../components/mastery/SentenceBlankCard';
-import { StageTransition } from '../../components/mastery/StageTransition';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Trophy } from 'lucide-react';
+import { getLevelRank } from '../../types/rank';
 
 const FEEDBACK_DELAY_CORRECT = 800;
 const FEEDBACK_DELAY_WRONG = 1800;
-const SENTENCE_REVIEW_DELAY = 3000;
+const TOTAL_QUESTIONS = 50;
 
 export function MasteryPage() {
   const navigate = useNavigate();
   const store = useMasteryStore();
   const {
-    session, stageSummary, currentStage, questions,
-    currentIndex, selectedAnswer, typedAnswer, answerResult,
-    showSentenceReview, combo, isLoading, isTransitioning,
-    batchComplete,
+    session, globalIndex,
+    selectedAnswer, typedAnswer, answerResult,
+    combo, isLoading, isComplete, finalResult,
+    currentBook, displayRank, correctCount, totalAnswered,
+    xp, lastXpChange,
   } = store;
 
-  const currentQuestion = questions[currentIndex];
-  const stageConfig = STAGE_CONFIG[currentStage as StageNumber];
-  const timerSeconds = stageConfig?.timer ?? 5;
-  const isTypingStage = currentStage === 3 || currentStage === 5;
+  const currentQuestion = useCurrentQuestion();
+  const lessonXp = useLessonXp();
+  const levelLabel = useLevelLabel();
+  const questionType = currentQuestion?.question_type || 'word_to_meaning';
+  const timerSeconds = currentQuestion?.timer_seconds ?? 5;
+  const isTyping = isTypingQuestion(questionType);
+  const isListen = isListenQuestion(questionType);
   const submittingRef = useRef(false);
   const timerSoundPlayed = useRef(false);
   const twoSoundPlayed = useRef(false);
 
-  // Timer warning: 15s→10초부터, 10s→7초부터, 5s→바로 재생
+  // Timer warning: 15s->10초부터, 10s->7초부터, 5s->바로 재생
   const timerWarnAt = timerSeconds <= 5 ? timerSeconds : timerSeconds <= 10 ? 7 : 10;
   const timerAudioStart = Math.max(0, 10 - timerWarnAt);
 
@@ -83,13 +83,9 @@ export function MasteryPage() {
       timerSoundPlayed.current = false;
       twoSoundPlayed.current = false;
 
-      // Preload TTS for current + next questions
+      // Preload TTS for current question
       if (currentQuestion?.word.english) {
         preloadWordAudio(currentQuestion.word.english);
-      }
-      const next = questions[currentIndex + 1];
-      if (next?.word.english) {
-        preloadWordAudio(next.word.english);
       }
     }
   }, [currentQuestion?.word_mastery_id]);
@@ -120,7 +116,7 @@ export function MasteryPage() {
     };
   }, []);
 
-  // Handle answer submission for choice stages
+  // Handle answer submission for choice questions
   const handleChoiceClick = useCallback(
     (choice: string) => {
       if (answerResult || submittingRef.current) return;
@@ -146,7 +142,7 @@ export function MasteryPage() {
     });
   }, [answerResult, typedAnswer, timerSeconds, timer.secondsLeft]);
 
-  // Central auto-advance: play feedback sound and advance after delay
+  // Auto-advance after answer
   useEffect(() => {
     if (!answerResult) {
       submittingRef.current = false;
@@ -158,9 +154,6 @@ export function MasteryPage() {
     stopSound('two');
     playSound(answerResult.is_correct ? 'correct' : 'wrong');
 
-    // If sentence review is shown, let that handler manage advancement
-    if (useMasteryStore.getState().showSentenceReview) return;
-
     const delay = answerResult.is_correct ? FEEDBACK_DELAY_CORRECT : FEEDBACK_DELAY_WRONG;
     const t = setTimeout(() => {
       submittingRef.current = false;
@@ -169,54 +162,11 @@ export function MasteryPage() {
     return () => clearTimeout(t);
   }, [answerResult]);
 
-  // Sentence review auto-dismiss
-  useEffect(() => {
-    if (showSentenceReview) {
-      const t = setTimeout(() => {
-        submittingRef.current = false;
-        store.dismissSentenceReview();
-        store.nextQuestion();
-      }, SENTENCE_REVIEW_DELAY);
-      return () => clearTimeout(t);
-    }
-  }, [showSentenceReview]);
-
-  // Handle batch completion → stage transition or next batch
-  useEffect(() => {
-    if (batchComplete && !isTransitioning) {
-      store.setTransitioning(true);
-    }
-  }, [batchComplete, isTransitioning]);
-
   // Handle exit
   const handleExit = useCallback(() => {
     store.reset();
     navigate('/student', { replace: true });
   }, [navigate]);
-
-  // Handle stage transition continue
-  const handleTransitionContinue = useCallback(() => {
-    // Find next stage with words
-    if (!stageSummary) return;
-
-    const stageKeys = ['stage_1', 'stage_2', 'stage_3', 'stage_4', 'stage_5'] as const;
-    let nextStage: number | null = null;
-
-    for (let s = 1; s <= 5; s++) {
-      const key = stageKeys[s - 1];
-      if ((stageSummary[key] ?? 0) > 0) {
-        nextStage = s;
-        break;
-      }
-    }
-
-    if (nextStage) {
-      store.loadBatch(nextStage);
-    } else {
-      // All done - navigate to result
-      navigate('/student', { replace: true });
-    }
-  }, [stageSummary, navigate]);
 
   // Loading state
   if (isLoading && !session) {
@@ -228,7 +178,7 @@ export function MasteryPage() {
     );
   }
 
-  if (!session || !stageSummary) {
+  if (!session) {
     return (
       <div className="min-h-screen bg-bg-cream flex flex-col items-center justify-center gap-4">
         <p className="font-display text-sm text-text-secondary">세션을 찾을 수 없습니다.</p>
@@ -239,27 +189,70 @@ export function MasteryPage() {
     );
   }
 
-  // Stage transition screen
-  if (isTransitioning) {
-    const stageKeys = ['stage_1', 'stage_2', 'stage_3', 'stage_4', 'stage_5'] as const;
-    let nextStage: number | null = null;
-    for (let s = 1; s <= 5; s++) {
-      if ((stageSummary[stageKeys[s - 1]] ?? 0) > 0) {
-        nextStage = s;
-        break;
-      }
-    }
+  // Test complete screen
+  if (isComplete) {
+    const rank = getLevelRank(displayRank);
+    const accuracy = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 0;
 
     return (
-      <div className="min-h-screen bg-bg-cream">
-        <StageTransition
-          completedStage={currentStage}
-          nextStage={nextStage}
-          wordsAdvanced={store.wordsAdvanced}
-          wordsMastered={store.wordsMastered}
-          summary={stageSummary}
-          onContinue={handleTransitionContinue}
-        />
+      <div className="min-h-screen bg-bg-cream flex flex-col items-center justify-center gap-6 px-6">
+        <div className="flex items-center gap-3">
+          <Trophy className="w-10 h-10 text-amber-500" />
+          <h2 className="font-display text-2xl font-bold text-text-primary">학습 완료!</h2>
+        </div>
+
+        {/* Level result */}
+        <div
+          className="flex items-center gap-2 rounded-full px-5 py-2.5"
+          style={{ background: `linear-gradient(90deg, ${rank.colors[0]}, ${rank.colors[1]})` }}
+        >
+          <span className="font-display text-lg font-bold text-white">
+            {rank.name} (Level {currentBook})
+          </span>
+        </div>
+
+        {/* Stats */}
+        <div className="flex gap-6 text-center">
+          <div>
+            <p className="font-display text-2xl font-bold text-accent-indigo">{accuracy}%</p>
+            <p className="font-display text-xs text-text-tertiary">정답률</p>
+          </div>
+          <div>
+            <p className="font-display text-2xl font-bold text-accent-indigo">{correctCount}/{totalAnswered}</p>
+            <p className="font-display text-xs text-text-tertiary">정답</p>
+          </div>
+          <div>
+            <p className="font-display text-2xl font-bold text-accent-indigo">{store.bestCombo}</p>
+            <p className="font-display text-xs text-text-tertiary">최대 콤보</p>
+          </div>
+        </div>
+
+        {finalResult && finalResult.level_changed && (
+          <p className="font-display text-sm text-text-secondary">
+            레벨 {finalResult.previous_level} → {finalResult.current_level}
+            {finalResult.current_level > finalResult.previous_level ? ' 레벨 업!' : ' 레벨 다운'}
+          </p>
+        )}
+
+        <button
+          onClick={handleExit}
+          className="flex items-center justify-center gap-2 h-12 px-8 rounded-2xl text-white font-display text-[15px] font-semibold"
+          style={{
+            background: 'linear-gradient(90deg, #4F46E5, #7C3AED)',
+            boxShadow: '0 4px 16px #4F46E540',
+          }}
+        >
+          돌아가기
+        </button>
+      </div>
+    );
+  }
+
+  // Loading between pool fetches
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-bg-cream flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-accent-indigo animate-spin" />
       </div>
     );
   }
@@ -282,21 +275,63 @@ export function MasteryPage() {
     return 'disabled';
   };
 
+  // Determine which card to show based on question_type
+  const isSentence = currentQuestion.context_mode === 'sentence' && currentQuestion.sentence_blank;
+
+  const renderQuestionCard = () => {
+    if (isSentence) {
+      if (isListen) {
+        return (
+          <ListenCard
+            word={currentQuestion.word.english}
+            stage={currentQuestion.stage}
+            contextMode="sentence"
+            sentenceBlank={currentQuestion.sentence_blank}
+            sentenceEn={currentQuestion.word.example_en}
+          />
+        );
+      }
+      return (
+        <SentenceBlankCard
+          sentenceBlank={currentQuestion.sentence_blank!}
+          sentenceKo={currentQuestion.word.example_ko || undefined}
+          sentenceEn={currentQuestion.word.example_en || undefined}
+          stage={currentQuestion.stage}
+        />
+      );
+    }
+
+    // Word-based question
+    switch (questionType) {
+      case 'word_to_meaning':
+        return <WordCard word={currentQuestion.word.english} />;
+      case 'meaning_to_word':
+      case 'meaning_and_type':
+        return <MeaningCard korean={currentQuestion.word.korean || ''} />;
+      case 'listen_and_type':
+      case 'listen_to_meaning':
+        return <ListenCard word={currentQuestion.word.english} stage={currentQuestion.stage} />;
+      default:
+        return <WordCard word={currentQuestion.word.english} />;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-bg-cream flex flex-col">
-      {/* Header */}
+      {/* Header - adaptive level display */}
       <MasteryHeader
-        level={currentQuestion ? wordLevelToRank(currentQuestion.word.level) : 1}
-        lesson={currentQuestion?.word.lesson}
-        stage={currentStage}
-        currentIndex={currentIndex}
-        totalInBatch={questions.length}
+        level={displayRank}
+        currentIndex={globalIndex}
+        totalInBatch={TOTAL_QUESTIONS}
         combo={combo}
+        xp={xp}
+        lessonXp={lessonXp}
+        levelLabel={levelLabel}
         onExit={handleExit}
       />
 
-      {/* Progress Bar */}
-      <GradientProgressBar current={currentIndex + 1} total={questions.length} />
+      {/* Progress Bar - global 1-50 */}
+      <GradientProgressBar current={globalIndex + 1} total={TOTAL_QUESTIONS} />
 
       {/* Content Area */}
       <div className="flex-1 flex flex-col justify-center items-center gap-6 px-5 py-6 md:px-8 md:gap-7">
@@ -313,96 +348,55 @@ export function MasteryPage() {
 
         {/* Question card */}
         <div className="w-full md:w-[640px]">
-          {currentQuestion.context_mode === 'sentence' && currentQuestion.sentence_blank ? (
-            <>
-              {(currentStage === 1 || currentStage === 2 || currentStage === 5) && (
-                <SentenceBlankCard
-                  sentenceBlank={currentQuestion.sentence_blank}
-                  sentenceKo={currentQuestion.word.example_ko || undefined}
-                  sentenceEn={currentQuestion.word.example_en || undefined}
-                  stage={currentStage}
-                />
-              )}
-              {(currentStage === 3 || currentStage === 4) && (
-                <ListenCard
-                  word={currentQuestion.word.english}
-                  stage={currentStage}
-                  contextMode="sentence"
-                  sentenceBlank={currentQuestion.sentence_blank}
-                  sentenceEn={currentQuestion.word.example_en}
-                />
-              )}
-            </>
-          ) : (
-            <>
-              {currentStage === 1 && (
-                <WordCard word={currentQuestion.word.english} />
-              )}
-              {currentStage === 2 && (
-                <MeaningCard korean={currentQuestion.word.korean || ''} />
-              )}
-              {(currentStage === 3 || currentStage === 4) && (
-                <ListenCard word={currentQuestion.word.english} stage={currentStage} />
-              )}
-              {currentStage === 5 && (
-                <MeaningCard korean={currentQuestion.word.korean || ''} />
-              )}
-            </>
-          )}
+          {renderQuestionCard()}
         </div>
 
-        {/* Sentence review overlay (stage 1 only) */}
-        {showSentenceReview && answerResult && (
-          <SentenceReview
-            english={currentQuestion.word.english}
-            word={currentQuestion.word.english}
-            exampleEn={answerResult.example_en}
-            exampleKo={answerResult.example_ko}
-            partOfSpeech={currentQuestion.word.part_of_speech}
-            onDismiss={() => {
-              store.dismissSentenceReview();
-              store.nextQuestion();
-            }}
-          />
-        )}
-
         {/* Answer area */}
-        {!showSentenceReview && (
-          <div className="w-full md:w-[640px]">
-            {isTypingStage ? (
-              <TypingInput
-                value={typedAnswer}
-                onChange={store.setTypedAnswer}
-                onSubmit={handleTypingSubmit}
-                disabled={!!answerResult}
-              />
-            ) : (
-              <div className="flex flex-col gap-3 w-full">
-                {currentQuestion.choices?.map((choice, i) => (
-                  <ChoiceButton
-                    key={choice}
-                    index={i}
-                    text={choice}
-                    state={getChoiceState(choice) as any}
-                    onClick={() => handleChoiceClick(choice)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+        <div className="w-full md:w-[640px]">
+          {isTyping ? (
+            <TypingInput
+              value={typedAnswer}
+              onChange={store.setTypedAnswer}
+              onSubmit={handleTypingSubmit}
+              disabled={!!answerResult}
+            />
+          ) : (
+            <div className="flex flex-col gap-3 w-full">
+              {currentQuestion.choices?.map((choice, i) => (
+                <ChoiceButton
+                  key={choice}
+                  index={i}
+                  text={choice}
+                  state={getChoiceState(choice) as any}
+                  onClick={() => handleChoiceClick(choice)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Footer: feedback banner (matches original design - fixed at bottom) */}
+      {/* Footer: feedback banner + XP indicator */}
       <div className="h-[70px] px-5 md:px-8 flex items-center">
-        {answerResult && !showSentenceReview && (
+        {answerResult && (
           <div className="w-full md:w-[640px] md:mx-auto">
-            <FeedbackBanner
-              isCorrect={answerResult.is_correct}
-              correctAnswer={answerResult.correct_answer}
-              stageStreak={answerResult.stage_streak}
-              requiredStreak={answerResult.required_streak}
-            />
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <FeedbackBanner
+                  isCorrect={answerResult.is_correct}
+                  correctAnswer={answerResult.correct_answer}
+                  stageStreak={answerResult.stage_streak}
+                  requiredStreak={answerResult.required_streak}
+                />
+              </div>
+              {/* XP change indicator */}
+              <span
+                className="font-display text-sm font-bold whitespace-nowrap"
+                style={{ color: lastXpChange >= 0 ? '#22C55E' : '#EF4444' }}
+              >
+                {lastXpChange >= 0 ? '+' : ''}{lastXpChange} XP
+              </span>
+            </div>
             {answerResult.almost_correct && (
               <div className="flex items-center gap-2.5 rounded-2xl bg-amber-50 border border-amber-200 px-5 py-3.5 w-full mt-2">
                 <span className="font-display text-sm font-semibold text-amber-700">

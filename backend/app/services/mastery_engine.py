@@ -158,6 +158,115 @@ def generate_stage_questions(
     return questions
 
 
+def generate_mixed_questions(
+    masteries: list[WordMastery],
+    words_map: dict[str, Word],
+    all_words: list[Word],
+) -> list[MasteryQuestion]:
+    """Generate mixed-type questions based on each word's internal mastery stage.
+
+    Stages are internal only - not shown to user. Question types are mixed:
+    - Stage 1-2: randomly word_to_meaning OR meaning_to_word (50:50), timer=5s
+    - Stage 3: listen_and_type, timer=15s
+    - Stage 4: listen_to_meaning, timer=10s
+    - Stage 5: meaning_and_type, timer=15s
+
+    Sentence mode based on word level (higher = more sentences).
+    """
+    if not masteries or not all_words:
+        return []
+
+    # Pre-compute distractor pools
+    unique_korean = list({w.korean for w in all_words if w.korean})
+    unique_english = list({w.english for w in all_words})
+
+    questions: list[MasteryQuestion] = []
+
+    for mastery in masteries:
+        word = words_map.get(mastery.word_id)
+        if not word:
+            continue
+
+        # Get internal stage from mastery
+        stage = mastery.stage
+
+        # Decide context mode based on word level
+        prob = _sentence_probability(word.level)
+        has_example = bool(word.example_en and word.example_ko)
+        use_sentence = has_example and (random.random() < prob)
+
+        # Pre-compute sentence blank if using sentence mode
+        sentence_blank = None
+        if use_sentence and word.example_en:
+            sentence_blank = _make_sentence_blank(word.example_en, word.english)
+            if not sentence_blank:
+                use_sentence = False  # fallback to word mode
+
+        context_mode = "sentence" if use_sentence else "word"
+
+        choices = None
+        correct_answer = ""
+        question_type = ""
+        timer = 5
+
+        # Determine question type based on internal stage
+        if stage == 1 or stage == 2:
+            # Randomly choose between word_to_meaning OR meaning_to_word
+            if random.random() < 0.5:
+                # word_to_meaning: English → Korean meaning (4 choices)
+                question_type = "word_to_meaning"
+                correct_answer = word.korean
+                wrong = [k for k in unique_korean if k != word.korean]
+                sampled = random.sample(wrong, min(3, len(wrong)))
+                choices = [correct_answer] + sampled
+                random.shuffle(choices)
+            else:
+                # meaning_to_word: Korean meaning → English word (4 choices)
+                question_type = "meaning_to_word"
+                correct_answer = word.english
+                wrong = [e for e in unique_english if e != word.english]
+                sampled = random.sample(wrong, min(3, len(wrong)))
+                choices = [correct_answer] + sampled
+                random.shuffle(choices)
+            timer = 5
+
+        elif stage == 3:
+            # listen_and_type: Listen → Type English word
+            question_type = "listen_and_type"
+            correct_answer = word.english
+            timer = 15
+
+        elif stage == 4:
+            # listen_to_meaning: Listen → Korean meaning (4 choices)
+            question_type = "listen_to_meaning"
+            correct_answer = word.korean
+            wrong = [k for k in unique_korean if k != word.korean]
+            sampled = random.sample(wrong, min(3, len(wrong)))
+            choices = [correct_answer] + sampled
+            random.shuffle(choices)
+            timer = 10
+
+        elif stage == 5:
+            # meaning_and_type: Korean meaning → Type English word
+            question_type = "meaning_and_type"
+            correct_answer = word.english
+            timer = 15
+
+        questions.append(MasteryQuestion(
+            word_mastery_id=mastery.id,
+            word=_word_response(word),
+            stage=stage,
+            question_type=question_type,
+            choices=choices,
+            correct_answer=correct_answer,
+            timer_seconds=timer,
+            context_mode=context_mode,
+            sentence_blank=sentence_blank,
+        ))
+
+    return questions
+
+
 def edit_distance(s1: str, s2: str) -> int:
     """Compute Levenshtein edit distance between two strings."""
     if len(s1) < len(s2):
