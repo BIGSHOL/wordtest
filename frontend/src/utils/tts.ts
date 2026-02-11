@@ -60,6 +60,11 @@ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
   ensureVoices();
 }
 
+/** TTS 전송 전 텍스트 정리: ~ 제거, 양쪽 공백 trim */
+function cleanForTts(text: string): string {
+  return text.replace(/~/g, '').replace(/\s+/g, ' ').trim();
+}
+
 // Preloaded audio cache: word → HTMLAudioElement (ready to play instantly)
 const audioCache = new Map<string, HTMLAudioElement>();
 const preloadingWords = new Set<string>();
@@ -87,8 +92,9 @@ function addToCache(cache: Map<string, HTMLAudioElement>, key: string, value: HT
  * 백그라운드에서 Dictionary API → Gemini TTS 순서로 음원을 미리 로드
  */
 export function preloadWordAudio(word: string) {
-  const key = word.toLowerCase();
-  if (audioCache.has(key) || preloadingWords.has(key)) return;
+  const cleaned = cleanForTts(word);
+  const key = cleaned.toLowerCase();
+  if (!key || audioCache.has(key) || preloadingWords.has(key)) return;
   preloadingWords.add(key);
 
   const controller = new AbortController();
@@ -114,7 +120,7 @@ export function preloadWordAudio(word: string) {
     .then((result) => {
       // Dictionary API에 음원이 없으면 Gemini TTS로 프리로드
       if (!result && !audioCache.has(key)) {
-        return fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(word)}&voice=${sessionVoice}`)
+        return fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(cleaned)}&voice=${sessionVoice}`)
           .then((r) => r.ok ? r.blob() : null)
           .then((blob) => {
             if (!blob) return;
@@ -133,7 +139,8 @@ export function preloadWordAudio(word: string) {
  * 단어 발음 재생: 프리로드된 음원 → Gemini TTS → Web Speech API
  */
 export async function speakWord(word: string) {
-  const key = word.toLowerCase();
+  const cleaned = cleanForTts(word);
+  const key = cleaned.toLowerCase();
   const cached = audioCache.get(key);
   if (cached) {
     cached.currentTime = 0;
@@ -143,7 +150,7 @@ export async function speakWord(word: string) {
 
   // Gemini TTS for single word
   try {
-    const resp = await fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(word)}&voice=${sessionVoice}`);
+    const resp = await fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(cleaned)}&voice=${sessionVoice}`);
     if (resp.ok) {
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);
@@ -155,7 +162,7 @@ export async function speakWord(word: string) {
   } catch { /* fall through */ }
 
   // Web Speech API fallback
-  speak(word, 'en-US', { rate: 0.85 });
+  speak(cleaned, 'en-US', { rate: 0.85 });
 }
 
 /**

@@ -101,9 +101,6 @@ export function AssignmentStatusTable({ assignments, onDelete, onViewResult }: P
                   </td>
                   <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
                     {item.lesson_range || '-'}
-                    {item.test_type === 'placement' && (
-                      <span className="text-[9px] font-semibold ml-1" style={{ color: '#4F46E5' }}>적응</span>
-                    )}
                   </td>
                   <td className="text-[11px] text-text-tertiary px-2 whitespace-nowrap">
                     {formatDate(item.assigned_at)}

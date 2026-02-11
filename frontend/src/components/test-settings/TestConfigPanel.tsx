@@ -1,5 +1,6 @@
 /**
  * Test configuration panel for test assignment.
+ * Unified card design with sectioned layout.
  * Supports cross-book range selection: start book/lesson ~ end book/lesson.
  */
 import { Check, Info } from 'lucide-react';
@@ -89,7 +90,7 @@ function getTotalLessonWords(lessons: LessonInfo[], fromLesson: string, directio
   return total;
 }
 
-/** Styled option pill - matches Pencil design */
+/** Styled option pill */
 function OptionPill({
   selected,
   onClick,
@@ -102,9 +103,9 @@ function OptionPill({
   return (
     <button
       onClick={onClick}
-      className="flex items-center justify-center rounded-[10px] text-[13px] transition-all"
+      className="flex items-center justify-center rounded-lg text-[13px] transition-all"
       style={{
-        padding: '10px 20px',
+        padding: '8px 16px',
         backgroundColor: selected ? '#EBF8FA' : '#F8F8F6',
         border: selected ? '2px solid #2D9CAE' : '1px solid #E8E8E6',
         color: selected ? '#2D9CAE' : '#6D6C6A',
@@ -116,28 +117,9 @@ function OptionPill({
   );
 }
 
-/** Config card wrapper */
-function ConfigCard({
-  title,
-  desc,
-  children,
-}: {
-  title: string;
-  desc: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className="bg-white rounded-2xl"
-      style={{ padding: '24px 28px', border: '1px solid #E8E8E6' }}
-    >
-      <div className="mb-5">
-        <h3 className="text-base font-bold text-text-primary font-display">{title}</h3>
-        <p className="text-xs text-text-secondary mt-1.5">{desc}</p>
-      </div>
-      {children}
-    </div>
-  );
+/** Section divider */
+function Divider() {
+  return <div style={{ borderTop: '1px solid #F0F0EE', margin: '0 24px' }} />;
 }
 
 const selectStyle = { border: '1px solid #E8E8E6' };
@@ -159,7 +141,6 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
     if (types.length > 0) update({ questionTypes: types });
   };
 
-  const isPlacement = config.testType === 'placement';
   const isSameBook = config.bookStart === config.bookEnd;
 
   // Word count calculation
@@ -168,7 +149,6 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
     if (isSameBook) {
       wordCount = getWordCount(lessonsStart, config.lessonStart, config.lessonEnd);
     } else {
-      // Cross-book: sum from start lesson to end of start book + end book start to end lesson
       const startWords = getTotalLessonWords(lessonsStart, config.lessonStart, 'from');
       const endWords = getTotalLessonWords(lessonsEnd, config.lessonEnd, 'to');
       wordCount = startWords + endWords;
@@ -176,10 +156,23 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
   }
 
   return (
-    <div className="space-y-5">
-      {/* Question Count */}
-      <ConfigCard title="문제 수 설정" desc="학생에게 출제할 문제 수를 설정합니다">
-        <div className="flex flex-wrap gap-3">
+    <div className="bg-white rounded-2xl overflow-hidden" style={{ border: '1px solid #E8E8E6' }}>
+      {/* Panel header */}
+      <div
+        className="flex items-center gap-3"
+        style={{ padding: '16px 24px', borderBottom: '1px solid #E8E8E6', backgroundColor: '#FAFAF9' }}
+      >
+        <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#2D9CAE' }} />
+        <div>
+          <h2 className="text-[15px] font-bold text-text-primary font-display">테스트 설정</h2>
+          <p className="text-[11px] text-text-secondary mt-0.5">출제할 테스트의 세부 옵션을 설정합니다</p>
+        </div>
+      </div>
+
+      {/* Section: Question Count */}
+      <div style={{ padding: '18px 24px' }}>
+        <h3 className="text-[13px] font-bold text-text-primary mb-3">문제 수</h3>
+        <div className="flex flex-wrap gap-2">
           {QUESTION_COUNT_OPTIONS.map((count) => (
             <OptionPill
               key={count}
@@ -204,18 +197,18 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
             value={config.customQuestionCount}
             onChange={(e) => update({ customQuestionCount: e.target.value })}
             placeholder="문제 수 입력"
-            className="mt-4 w-32 px-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal"
+            className="mt-3 w-28 px-3 py-1.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal"
             style={{ backgroundColor: '#F8F8F6', border: '1px solid #E8E8E6' }}
           />
         )}
-      </ConfigCard>
+      </div>
 
-      {/* Per-Question Time */}
-      <ConfigCard
-        title="문제당 제한 시간"
-        desc="각 문제에 주어지는 답변 시간을 설정합니다 (총 시간 = 문제 수 × 제한 시간)"
-      >
-        <div className="flex flex-wrap gap-3">
+      <Divider />
+
+      {/* Section: Per-Question Time */}
+      <div style={{ padding: '18px 24px' }}>
+        <h3 className="text-[13px] font-bold text-text-primary mb-3">문제당 제한 시간</h3>
+        <div className="flex flex-wrap gap-2">
           {TIME_OPTIONS.map((option) => (
             <OptionPill
               key={option.value}
@@ -228,21 +221,24 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
         </div>
         {effectiveCount > 0 && (
           <div
-            className="flex items-center gap-2 rounded-lg mt-4"
-            style={{ backgroundColor: '#EBF8FA', padding: '12px 16px' }}
+            className="flex items-center gap-2 rounded-lg mt-3"
+            style={{ backgroundColor: '#EBF8FA', padding: '10px 14px' }}
           >
-            <Info className="w-4 h-4 shrink-0" style={{ color: '#2D9CAE' }} />
-            <span className="text-xs font-medium" style={{ color: '#2D9CAE' }}>
-              현재 설정: {effectiveCount}문제 × {config.perQuestionTime}초 = 총{' '}
-              {effectiveCount * config.perQuestionTime}초 ({formatTotalTime(effectiveCount, config.perQuestionTime)})
+            <Info className="w-3.5 h-3.5 shrink-0" style={{ color: '#2D9CAE' }} />
+            <span className="text-[11px] font-medium" style={{ color: '#2D9CAE' }}>
+              {effectiveCount}문제 × {config.perQuestionTime}초 = 총{' '}
+              {formatTotalTime(effectiveCount, config.perQuestionTime)}
             </span>
           </div>
         )}
-      </ConfigCard>
+      </div>
 
-      {/* Question Types */}
-      <ConfigCard title="문제 유형" desc="출제할 문제 유형을 선택합니다 (복수 선택 가능)">
-        <div className="space-y-3">
+      <Divider />
+
+      {/* Section: Question Types */}
+      <div style={{ padding: '18px 24px' }}>
+        <h3 className="text-[13px] font-bold text-text-primary mb-3">문제 유형</h3>
+        <div className="space-y-2">
           {QUESTION_TYPE_OPTIONS.map((option) => {
             const isSelected = config.questionTypes.includes(option.value);
             return (
@@ -251,70 +247,46 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
                 onClick={() => toggleType(option.value)}
                 className="w-full flex items-center gap-3 rounded-xl transition-all text-left"
                 style={{
-                  padding: '16px 20px',
+                  padding: '12px 16px',
                   backgroundColor: isSelected ? '#EBF8FA' : '#F8F8F6',
                   border: isSelected ? '2px solid #2D9CAE' : '1px solid #E8E8E6',
                 }}
               >
                 <span
-                  className="w-5 h-5 rounded flex items-center justify-center shrink-0"
+                  className="rounded flex items-center justify-center shrink-0"
                   style={{
+                    width: 18,
+                    height: 18,
                     backgroundColor: isSelected ? '#2D9CAE' : 'transparent',
                     border: isSelected ? 'none' : '2px solid #E8E8E6',
                   }}
                 >
-                  {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                  {isSelected && <Check className="w-3 h-3 text-white" />}
                 </span>
                 <div className="flex-1 min-w-0">
                   <div
-                    className="text-sm font-bold"
+                    className="text-[12px] font-bold"
                     style={{ color: isSelected ? '#2D9CAE' : '#3D3D3C' }}
                   >
                     {option.label}
                   </div>
-                  <div className="text-xs text-text-secondary mt-1">{option.desc}</div>
+                  <div className="text-[11px] text-text-secondary mt-0.5">{option.desc}</div>
                 </div>
               </button>
             );
           })}
         </div>
-      </ConfigCard>
+      </div>
 
-      {/* Test Type */}
-      <ConfigCard title="테스트 유형" desc="문제 출제 방식을 선택합니다">
-        <div className="flex gap-3">
-          <OptionPill
-            selected={config.testType === 'periodic'}
-            onClick={() => update({ testType: 'periodic' })}
-          >
-            정기형
-          </OptionPill>
-          <OptionPill
-            selected={config.testType === 'placement'}
-            onClick={() => update({ testType: 'placement' })}
-          >
-            적응형
-          </OptionPill>
-        </div>
-        {isPlacement && (
-          <div
-            className="flex items-center gap-2 rounded-lg mt-4"
-            style={{ backgroundColor: '#EEF2FF', padding: '12px 16px' }}
-          >
-            <Info className="w-4 h-4 shrink-0" style={{ color: '#4F46E5' }} />
-            <span className="text-xs font-medium" style={{ color: '#4F46E5' }}>
-              적응형 모드에서는 정답률과 응답 속도에 따라 문제 난이도가 자동 조절됩니다.
-            </span>
-          </div>
-        )}
-      </ConfigCard>
+      <Divider />
 
-      {/* Scope - Cross-book range */}
-      <ConfigCard title="출제 범위" desc="시작 교재/레슨부터 종료 교재/레슨까지 범위를 설정합니다">
-        <div className="space-y-4">
+      {/* Section: Scope */}
+      <div style={{ padding: '18px 24px' }}>
+        <h3 className="text-[13px] font-bold text-text-primary mb-3">출제 범위</h3>
+        <div className="space-y-3">
           {/* Start: book + lesson */}
           <div>
-            <span className="text-[11px] font-semibold text-text-secondary mb-2 block">시작</span>
+            <span className="text-[11px] font-semibold text-text-secondary mb-1.5 block">시작</span>
             <div className="flex items-center gap-2">
               <select
                 value={config.bookStart}
@@ -345,12 +317,12 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
 
           {/* Separator */}
           <div className="flex justify-center">
-            <span className="text-base font-bold text-text-tertiary">~</span>
+            <span className="text-sm font-bold text-text-tertiary">~</span>
           </div>
 
           {/* End: book + lesson */}
           <div>
-            <span className="text-[11px] font-semibold text-text-secondary mb-2 block">종료</span>
+            <span className="text-[11px] font-semibold text-text-secondary mb-1.5 block">종료</span>
             <div className="flex items-center gap-2">
               <select
                 value={config.bookEnd}
@@ -382,18 +354,18 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
           {wordCount > 0 && (
             <div
               className="flex items-center gap-2 rounded-lg"
-              style={{ backgroundColor: '#FFF8DC', padding: '12px 16px' }}
+              style={{ backgroundColor: '#FFF8DC', padding: '10px 14px' }}
             >
-              <Info className="w-4 h-4 shrink-0" style={{ color: '#B8860B' }} />
-              <span className="text-xs font-medium" style={{ color: '#B8860B' }}>
+              <Info className="w-3.5 h-3.5 shrink-0" style={{ color: '#B8860B' }} />
+              <span className="text-[11px] font-medium" style={{ color: '#B8860B' }}>
                 {isSameBook
-                  ? `${config.bookStart} ${config.lessonStart}~${config.lessonEnd} 범위에서 총 ${wordCount}개 단어 중 출제됩니다`
-                  : `${config.bookStart} ${config.lessonStart} ~ ${config.bookEnd} ${config.lessonEnd} 범위에서 약 ${wordCount}개 단어 중 출제됩니다`}
+                  ? `${config.bookStart} ${config.lessonStart}~${config.lessonEnd} 범위에서 총 ${wordCount}개 단어`
+                  : `${config.bookStart} ${config.lessonStart} ~ ${config.bookEnd} ${config.lessonEnd} 범위에서 약 ${wordCount}개 단어`}
               </span>
             </div>
           )}
         </div>
-      </ConfigCard>
+      </div>
     </div>
   );
 }

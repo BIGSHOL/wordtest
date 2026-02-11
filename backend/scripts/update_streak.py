@@ -46,7 +46,7 @@ async def main():
                 "time_limit_seconds = 1000, "
                 "question_types = :qt "
                 "WHERE id = :id"
-            ), {"qt": "word_meaning,meaning_word,listening", "id": row[0]})
+            ), {"qt": "word_meaning,meaning_word,sentence_blank", "id": row[0]})
             print("[OK] TEST0213 updated: 100Q, 10s/Q, 3 question types")
         else:
             print("[ERROR] TEST0213 config not found")

@@ -31,7 +31,7 @@ export function TestSettingsPage() {
 
   // Config
   const [config, setConfig] = useState<TestConfigState>({
-    testType: 'periodic',
+    testType: 'placement',
     questionCount: 20,
     customQuestionCount: '',
     perQuestionTime: 10,
@@ -211,25 +211,20 @@ export function TestSettingsPage() {
           </button>
         </div>
 
-        {/* Two-column layout */}
+        {/* Two-column layout: Student selection + Config */}
         <div className="flex gap-6">
-          {/* Left Column */}
-          <div className="flex-1 min-w-0 space-y-5">
+          {/* Left Column: Student Selection */}
+          <div className="flex-1 min-w-0">
             <StudentSelectionCard
               students={students}
               selectedIds={selectedIds}
               onToggle={handleToggle}
               onToggleAll={handleToggleAll}
             />
-            <AssignmentStatusTable
-              assignments={assignments}
-              onDelete={handleDelete}
-              onViewResult={handleViewResult}
-            />
           </div>
 
-          {/* Right Column */}
-          <div className="w-[380px] shrink-0">
+          {/* Right Column: Config Panel */}
+          <div className="w-[460px] shrink-0">
             <div className="sticky top-6">
               <TestConfigPanel
                 config={config}
@@ -241,6 +236,13 @@ export function TestSettingsPage() {
             </div>
           </div>
         </div>
+
+        {/* Full-width Assignment Table */}
+        <AssignmentStatusTable
+          assignments={assignments}
+          onDelete={handleDelete}
+          onViewResult={handleViewResult}
+        />
       </div>
     </TeacherLayout>
   );

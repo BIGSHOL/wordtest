@@ -172,10 +172,13 @@ class CompleteBatchRequest(BaseModel):
 @router.post("/complete-batch")
 async def complete_batch_endpoint(
     body: CompleteBatchRequest,
-    current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Save frontend-determined final level after all 50 questions."""
+    """Save frontend-determined final level after all 50 questions.
+
+    No auth required: session_id (UUID) acts as auth token.
+    This prevents JWT expiry from blocking test completion.
+    """
     try:
         result = await complete_batch(db, body.session_id, body.final_level)
     except ValueError as e:

@@ -3,7 +3,7 @@ import uuid
 import random
 from datetime import timedelta
 
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, Integer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.word import Word
@@ -500,7 +500,7 @@ async def complete_batch(
     answers_result = await db.execute(
         select(
             func.count(LearningAnswer.id),
-            func.sum(func.cast(LearningAnswer.is_correct, int)),
+            func.sum(func.cast(LearningAnswer.is_correct, Integer)),
         ).where(LearningAnswer.session_id == session_id)
     )
     row = answers_result.one()

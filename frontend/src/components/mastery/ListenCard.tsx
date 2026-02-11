@@ -89,10 +89,15 @@ export const ListenCard = memo(function ListenCard({
         <Volume2 className="w-10 h-10 text-white" />
       </button>
 
-      {/* Korean sentence translation in sentence mode */}
-      {isSentence && (sentenceKo || korean) && (
+      {/* Korean sentence translation (normal) + word meaning (bold) in sentence mode */}
+      {isSentence && sentenceKo && (
+        <p className="font-display text-[14px] font-normal text-text-secondary text-center">
+          {sentenceKo}
+        </p>
+      )}
+      {isSentence && korean && (
         <p className="font-display text-[15px] font-bold text-accent-indigo text-center">
-          {sentenceKo || korean}
+          {korean}
         </p>
       )}
 

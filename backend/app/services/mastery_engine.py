@@ -54,6 +54,30 @@ def _make_sentence_blank(sentence: str, target_word: str) -> str | None:
     return None
 
 
+def _is_phrase(text: str) -> bool:
+    """Check if a word entry is a phrase/idiom (contains spaces)."""
+    return ' ' in text.strip()
+
+
+def _pick_english_distractors(
+    correct: str, all_english: list[str], count: int = 3,
+) -> list[str]:
+    """Pick distractors that match the correct answer's type (phrase vs single word).
+
+    If the correct answer is a phrase/idiom, prefer other phrases as distractors.
+    If the correct answer is a single word, prefer other single words.
+    Falls back to the full pool if not enough same-type distractors exist.
+    """
+    is_correct_phrase = _is_phrase(correct)
+    same_type = [e for e in all_english if e != correct and _is_phrase(e) == is_correct_phrase]
+    if len(same_type) >= count:
+        return random.sample(same_type, count)
+    # Not enough same-type distractors: use what we have + fill from other type
+    other_type = [e for e in all_english if e != correct and _is_phrase(e) != is_correct_phrase]
+    pool = same_type + other_type
+    return random.sample(pool, min(count, len(pool)))
+
+
 def _word_response(word: Word) -> MasteryQuestionWord:
     return MasteryQuestionWord(
         id=word.id,
@@ -112,18 +136,24 @@ def generate_stage_questions(
         correct_answer = ""
 
         if stage == 1:
-            # English → Korean meaning (4 choices)
-            correct_answer = word.korean
-            wrong = [k for k in unique_korean if k != word.korean]
-            sampled = random.sample(wrong, min(3, len(wrong)))
-            choices = [correct_answer] + sampled
-            random.shuffle(choices)
+            if use_sentence:
+                # Sentence blank → always English word choices
+                correct_answer = word.english
+                sampled = _pick_english_distractors(word.english, unique_english)
+                choices = [correct_answer] + sampled
+                random.shuffle(choices)
+            else:
+                # English → Korean meaning (4 choices)
+                correct_answer = word.korean
+                wrong = [k for k in unique_korean if k != word.korean]
+                sampled = random.sample(wrong, min(3, len(wrong)))
+                choices = [correct_answer] + sampled
+                random.shuffle(choices)
 
         elif stage == 2:
             # Korean meaning → English word (4 choices)
             correct_answer = word.english
-            wrong = [e for e in unique_english if e != word.english]
-            sampled = random.sample(wrong, min(3, len(wrong)))
+            sampled = _pick_english_distractors(word.english, unique_english)
             choices = [correct_answer] + sampled
             random.shuffle(choices)
 
@@ -132,12 +162,19 @@ def generate_stage_questions(
             correct_answer = word.english
 
         elif stage == 4:
-            # Listen → Korean meaning (4 choices)
-            correct_answer = word.korean
-            wrong = [k for k in unique_korean if k != word.korean]
-            sampled = random.sample(wrong, min(3, len(wrong)))
-            choices = [correct_answer] + sampled
-            random.shuffle(choices)
+            if use_sentence:
+                # Sentence blank → always English word choices
+                correct_answer = word.english
+                sampled = _pick_english_distractors(word.english, unique_english)
+                choices = [correct_answer] + sampled
+                random.shuffle(choices)
+            else:
+                # Listen → Korean meaning (4 choices)
+                correct_answer = word.korean
+                wrong = [k for k in unique_korean if k != word.korean]
+                sampled = random.sample(wrong, min(3, len(wrong)))
+                choices = [correct_answer] + sampled
+                random.shuffle(choices)
 
         elif stage == 5:
             # Korean meaning → Type English word
@@ -211,8 +248,14 @@ def generate_mixed_questions(
 
         # Determine question type based on internal stage
         if stage == 1 or stage == 2:
-            # Randomly choose between word_to_meaning OR meaning_to_word
-            if random.random() < 0.5:
+            if use_sentence:
+                # Sentence blank → always English word choices
+                question_type = "meaning_to_word"
+                correct_answer = word.english
+                sampled = _pick_english_distractors(word.english, unique_english)
+                choices = [correct_answer] + sampled
+                random.shuffle(choices)
+            elif random.random() < 0.5:
                 # word_to_meaning: English → Korean meaning (4 choices)
                 question_type = "word_to_meaning"
                 correct_answer = word.korean
@@ -224,8 +267,7 @@ def generate_mixed_questions(
                 # meaning_to_word: Korean meaning → English word (4 choices)
                 question_type = "meaning_to_word"
                 correct_answer = word.english
-                wrong = [e for e in unique_english if e != word.english]
-                sampled = random.sample(wrong, min(3, len(wrong)))
+                sampled = _pick_english_distractors(word.english, unique_english)
                 choices = [correct_answer] + sampled
                 random.shuffle(choices)
             timer = 5
@@ -237,13 +279,21 @@ def generate_mixed_questions(
             timer = 15
 
         elif stage == 4:
-            # listen_to_meaning: Listen → Korean meaning (4 choices)
-            question_type = "listen_to_meaning"
-            correct_answer = word.korean
-            wrong = [k for k in unique_korean if k != word.korean]
-            sampled = random.sample(wrong, min(3, len(wrong)))
-            choices = [correct_answer] + sampled
-            random.shuffle(choices)
+            if use_sentence:
+                # Sentence blank → always English word choices
+                question_type = "listen_to_meaning"
+                correct_answer = word.english
+                sampled = _pick_english_distractors(word.english, unique_english)
+                choices = [correct_answer] + sampled
+                random.shuffle(choices)
+            else:
+                # listen_to_meaning: Listen → Korean meaning (4 choices)
+                question_type = "listen_to_meaning"
+                correct_answer = word.korean
+                wrong = [k for k in unique_korean if k != word.korean]
+                sampled = random.sample(wrong, min(3, len(wrong)))
+                choices = [correct_answer] + sampled
+                random.shuffle(choices)
             timer = 10
 
         elif stage == 5:

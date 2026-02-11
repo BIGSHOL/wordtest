@@ -20,10 +20,10 @@ interface SentenceBlankCardProps {
 }
 
 const STAGE_PROMPTS: Record<number, string> = {
-  1: '빈칸에 들어갈 단어의 뜻은?',
+  1: '빈칸에 들어갈 영단어는?',
   2: '빈칸에 들어갈 영단어는?',
   3: '문장을 듣고 빈칸의 단어를 입력하세요',
-  4: '문장을 듣고 빈칸 단어의 뜻을 고르세요',
+  4: '문장을 듣고 빈칸의 영단어를 고르세요',
   5: '빈칸에 들어갈 영단어를 입력하세요',
 };
 
@@ -34,8 +34,6 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
   sentenceEn,
   stage,
 }: SentenceBlankCardProps) {
-  // Prefer full sentence translation; fall back to word meaning
-  const hintText = sentenceKo || korean;
   // Split sentence around ____ and render with highlight
   const parts = sentenceBlank.split('____');
 
@@ -67,10 +65,15 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
         {parts[1]}
       </p>
 
-      {/* Korean sentence translation (or word meaning as fallback) */}
-      {hintText && (
-        <p className="font-display text-[17px] font-bold text-accent-indigo text-center mt-1">
-          {hintText}
+      {/* Korean sentence translation (normal) + word meaning (bold) */}
+      {sentenceKo && (
+        <p className="font-display text-[15px] font-normal text-text-secondary text-center mt-1">
+          {sentenceKo}
+        </p>
+      )}
+      {korean && (
+        <p className="font-display text-[17px] font-bold text-accent-indigo text-center mt-0.5">
+          {korean}
         </p>
       )}
 
