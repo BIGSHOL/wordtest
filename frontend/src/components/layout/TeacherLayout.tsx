@@ -4,7 +4,7 @@ import {
   LayoutDashboard,
   Users,
   BookOpen,
-  Settings,
+  ClipboardList,
   BarChart3,
   LogOut,
   GraduationCap,
@@ -18,7 +18,7 @@ const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: '대시보드' },
   { to: '/students', icon: Users, label: '학생 관리' },
   { to: '/words', icon: BookOpen, label: '단어 DB' },
-  { to: '/test-settings', icon: Settings, label: '테스트 설정' },
+  { to: '/test-settings', icon: ClipboardList, label: '테스트 출제' },
   { to: '/statistics', icon: BarChart3, label: '통계' },
 ];
 

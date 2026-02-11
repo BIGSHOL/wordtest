@@ -81,6 +81,22 @@ async def list_books(
     return [row[0] for row in result.all()]
 
 
+@router.get("/lessons")
+async def list_lessons(
+    book_name: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """Return distinct lessons with word count for a given book."""
+    result = await db.execute(
+        select(Word.lesson, func.count().label("word_count"))
+        .where(Word.book_name == book_name, Word.lesson != "")
+        .group_by(Word.lesson)
+        .order_by(Word.lesson)
+    )
+    return [{"lesson": row[0], "word_count": row[1]} for row in result.all()]
+
+
 @router.post("", response_model=WordResponse, status_code=status.HTTP_201_CREATED)
 async def create_word(
     word_in: CreateWordRequest,

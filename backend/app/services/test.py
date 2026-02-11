@@ -14,6 +14,7 @@ from app.services.level_engine import (
     RANK_NAMES, format_rank_label,
 )
 from app.services.test_config import get_config_by_code
+from app.models.test_assignment import TestAssignment
 
 
 async def _expire_stale_sessions(db: AsyncSession, student_id: str) -> None:
@@ -197,6 +198,20 @@ async def submit_answer(
         session.determined_sublevel = sublevel
         session.rank_name = RANK_NAMES.get(rank, f"Rank {rank}")
         session.score = calculate_score(correct_total, session.total_questions)
+
+        # Update linked TestAssignment if exists
+        if session.test_config_id:
+            assign_result = await db.execute(
+                select(TestAssignment).where(
+                    TestAssignment.test_config_id == session.test_config_id,
+                    TestAssignment.student_id == session.student_id,
+                )
+            )
+            linked_assignment = assign_result.scalar_one_or_none()
+            if linked_assignment:
+                linked_assignment.status = "completed"
+                linked_assignment.completed_at = now_kst()
+                linked_assignment.test_session_id = session.id
 
     await db.commit()
 

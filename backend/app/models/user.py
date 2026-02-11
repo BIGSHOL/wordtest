@@ -30,6 +30,7 @@ class User(Base):
     )
     school_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     grade: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    phone_number: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         TZDateTime(), default=now_kst, nullable=False
     )

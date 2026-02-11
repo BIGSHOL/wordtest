@@ -46,6 +46,11 @@ export interface WordListResponse {
   total: number;
 }
 
+export interface LessonInfo {
+  lesson: string;
+  word_count: number;
+}
+
 export const wordService = {
   async listWords(params?: {
     level?: number;
@@ -60,6 +65,13 @@ export const wordService = {
 
   async listBooks(): Promise<string[]> {
     const response = await api.get<string[]>('/api/v1/words/books');
+    return response.data;
+  },
+
+  async listLessons(bookName: string): Promise<LessonInfo[]> {
+    const response = await api.get<LessonInfo[]>('/api/v1/words/lessons', {
+      params: { book_name: bookName },
+    });
     return response.data;
   },
 

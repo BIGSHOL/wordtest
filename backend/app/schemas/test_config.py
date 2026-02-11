@@ -15,6 +15,10 @@ class TestConfigResponse(BaseModel):
     book_name: Optional[str] = None
     level_range_min: int
     level_range_max: int
+    per_question_time_seconds: Optional[int] = None
+    question_types: Optional[str] = None
+    lesson_range_start: Optional[str] = None
+    lesson_range_end: Optional[str] = None
     created_at: str
     updated_at: str
 
@@ -31,6 +35,10 @@ class CreateTestConfigRequest(BaseModel):
     book_name: Optional[str] = None
     level_range_min: int = 1
     level_range_max: int = 15
+    per_question_time_seconds: Optional[int] = None
+    question_types: Optional[str] = None
+    lesson_range_start: Optional[str] = None
+    lesson_range_end: Optional[str] = None
 
 
 class UpdateTestConfigRequest(BaseModel):
@@ -42,3 +50,7 @@ class UpdateTestConfigRequest(BaseModel):
     book_name: Optional[str] = None
     level_range_min: Optional[int] = None
     level_range_max: Optional[int] = None
+    per_question_time_seconds: Optional[int] = None
+    question_types: Optional[str] = None
+    lesson_range_start: Optional[str] = None
+    lesson_range_end: Optional[str] = None

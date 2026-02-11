@@ -16,6 +16,13 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # auth_tokens already created in initial_schema; skip if exists
+    bind = op.get_bind()
+    result = bind.execute(sa.text(
+        "SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='auth_tokens'"
+    ))
+    if result.fetchone():
+        return
     op.create_table(
         'auth_tokens',
         sa.Column('id', sa.String(length=36), primary_key=True),

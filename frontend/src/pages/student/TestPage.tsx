@@ -36,11 +36,11 @@ export function TestPage() {
 
   const handleTimeout = () => {
     if (!answerResult && !isSubmitting) {
-      submitAnswer();
+      submitAnswer(TIMER_SECONDS);
     }
   };
 
-  const { secondsLeft, fraction, urgency, reset: resetTimer } = useTimer(TIMER_SECONDS, handleTimeout);
+  const { secondsLeft, fraction, urgency, reset: resetTimer, pause: pauseTimer } = useTimer(TIMER_SECONDS, handleTimeout);
 
   useEffect(() => {
     const state = useTestStore.getState();
@@ -48,7 +48,14 @@ export function TestPage() {
       state.reset();
       state.startTest('placement').catch(() => {});
     }
-    return () => useTestStore.getState().reset();
+    // Cleanup: stop all sounds and reset store on unmount
+    return () => {
+      stopSound('timer');
+      stopSound('two');
+      stopSound('correct');
+      stopSound('wrong');
+      useTestStore.getState().reset();
+    };
   }, []);
 
   // Block browser back button during test
@@ -89,11 +96,16 @@ export function TestPage() {
     }
   }, [secondsLeft, answerResult]);
 
-  // Play correct/wrong sound + auto-advance
+  // When answer is submitted: pause timer, stop sounds, play feedback, auto-advance
   useEffect(() => {
     if (!answerResult) return;
+
+    // Immediately pause timer and stop countdown sounds
+    pauseTimer();
     stopSound('timer');
     stopSound('two');
+
+    // Play feedback sound
     playSound(answerResult.is_correct ? 'correct' : 'wrong');
 
     const timer = setTimeout(() => {
@@ -106,9 +118,10 @@ export function TestPage() {
       }
     }, FEEDBACK_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [answerResult, navigate, nextQuestion]);
+  }, [answerResult, navigate, nextQuestion, pauseTimer]);
 
   const adaptiveLevel = useTestStore((s) => s.adaptiveLevel);
+  const adaptiveLesson = useTestStore((s) => s.adaptiveLesson);
 
   const currentQuestion = questions[currentIndex];
   const totalToAnswer = session?.total_questions ?? questions.length;
@@ -121,7 +134,7 @@ export function TestPage() {
   const handleChoiceClick = (choice: string) => {
     if (answerResult || isSubmitting) return;
     selectAnswer(choice);
-    submitAnswer();
+    submitAnswer(TIMER_SECONDS - secondsLeft);
   };
 
   const handleNext = () => {
@@ -175,6 +188,7 @@ export function TestPage() {
       {/* Header */}
       <QuizHeader
         level={adaptiveLevel}
+        lesson={adaptiveLesson}
         currentIndex={currentIndex}
         totalQuestions={totalToAnswer}
       />

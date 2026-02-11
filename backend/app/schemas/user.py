@@ -13,6 +13,7 @@ class UserResponse(BaseModel):
     teacher_id: Optional[str] = None
     school_name: Optional[str] = None
     grade: Optional[str] = None
+    phone_number: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

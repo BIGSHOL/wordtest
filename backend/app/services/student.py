@@ -11,7 +11,12 @@ async def get_student_by_username(db: AsyncSession, username: str) -> User | Non
 
 
 async def create_student(
-    db: AsyncSession, username: str, password: str, name: str, teacher_id: str
+    db: AsyncSession,
+    username: str,
+    password: str,
+    name: str,
+    teacher_id: str,
+    phone_number: str | None = None,
 ) -> User:
     student = User(
         username=username,
@@ -19,6 +24,7 @@ async def create_student(
         name=name,
         role="student",
         teacher_id=teacher_id,
+        phone_number=phone_number,
     )
     db.add(student)
     await db.commit()
@@ -41,12 +47,18 @@ async def get_student_by_id(db: AsyncSession, student_id: str) -> User | None:
 
 
 async def update_student(
-    db: AsyncSession, student: User, name: str | None = None, password: str | None = None
+    db: AsyncSession,
+    student: User,
+    name: str | None = None,
+    password: str | None = None,
+    phone_number: str | None = None,
 ) -> User:
     if name is not None:
         student.name = name
     if password is not None:
         student.password_hash = await get_password_hash_async(password)
+    if phone_number is not None:
+        student.phone_number = phone_number
     await db.commit()
     await db.refresh(student)
     return student

@@ -7,6 +7,8 @@ interface UseTimerReturn {
   fraction: number;
   urgency: TimerUrgency;
   reset: () => void;
+  pause: () => void;
+  resume: () => void;
 }
 
 const URGENCY_CONFIG: Record<TimerUrgency, { color: string; barColors: [string, string] }> = {
@@ -27,29 +29,60 @@ function getUrgency(fraction: number): TimerUrgency {
 
 export function useTimer(totalSeconds: number, onTimeout?: () => void): UseTimerReturn {
   const [secondsLeft, setSecondsLeft] = useState(totalSeconds);
+  const [paused, setPaused] = useState(false);
   const onTimeoutRef = useRef(onTimeout);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   onTimeoutRef.current = onTimeout;
 
   const fraction = totalSeconds > 0 ? secondsLeft / totalSeconds : 0;
   const urgency = getUrgency(fraction);
 
+  // Start/stop interval based on paused state
   useEffect(() => {
-    const id = setInterval(() => {
+    if (paused) {
+      // Clear interval when paused
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return;
+    }
+
+    // Start interval when not paused
+    intervalRef.current = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
-          clearInterval(id);
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+          }
           onTimeoutRef.current?.();
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-    return () => clearInterval(id);
-  }, []); // interval은 한 번만 생성, reset()으로 재시작
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [paused]);
 
   const reset = useCallback(() => {
     setSecondsLeft(totalSeconds);
+    setPaused(false);
   }, [totalSeconds]);
 
-  return { secondsLeft, fraction, urgency, reset };
+  const pause = useCallback(() => {
+    setPaused(true);
+  }, []);
+
+  const resume = useCallback(() => {
+    setPaused(false);
+  }, []);
+
+  return { secondsLeft, fraction, urgency, reset, pause, resume };
 }

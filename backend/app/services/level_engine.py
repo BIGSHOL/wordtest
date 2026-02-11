@@ -118,8 +118,8 @@ async def generate_questions(
             questions_per_level[level] = current + 1
             remaining -= 1
 
-    # Select words: pick from EARLY and LATE lessons within each level
-    # This allows sublevel estimation (did they know early-lesson or late-lesson words?)
+    # Select words: pick from EVENLY SPACED lessons within each level
+    # This enables adaptive testing at lesson granularity
     question_words: list[Word] = []
     for level in levels:
         count = questions_per_level.get(level, 0)
@@ -134,17 +134,16 @@ async def generate_questions(
         lessons_sorted = sorted(by_lesson.keys())
         selected: list[Word] = []
 
-        if count >= 2 and len(lessons_sorted) >= 2:
-            # Pick from early lesson and late lesson
-            early_lesson = lessons_sorted[0]
-            late_lesson = lessons_sorted[-1]
-            selected.append(random.choice(by_lesson[early_lesson]))
-            selected.append(random.choice(by_lesson[late_lesson]))
-        else:
-            # Pick sequentially
+        if len(lessons_sorted) <= count:
+            # Fewer lessons than needed: pick one from each lesson
             for lesson in lessons_sorted:
-                if len(selected) >= count:
-                    break
+                selected.append(random.choice(by_lesson[lesson]))
+        else:
+            # Pick from evenly spaced lessons across the range
+            step = len(lessons_sorted) / count
+            for i in range(count):
+                idx = int(i * step)
+                lesson = lessons_sorted[min(idx, len(lessons_sorted) - 1)]
                 selected.append(random.choice(by_lesson[lesson]))
 
         # Fill remaining if needed

@@ -66,13 +66,15 @@ export function StudentMainPage() {
             <Hash className="w-5 h-5 text-text-tertiary flex-shrink-0" />
             <input
               type="text"
+              inputMode="latin"
+              autoComplete="off"
               placeholder="테스트 코드 입력"
               value={testCode}
               onChange={(e) => handleCodeChange(e.target.value)}
               onCompositionStart={() => { composingRef.current = true; }}
               onCompositionEnd={(e) => { composingRef.current = false; handleCodeChange((e.target as HTMLInputElement).value); }}
               onKeyDown={(e) => e.key === 'Enter' && handleStart()}
-              className="flex-1 bg-transparent text-text-primary placeholder:text-text-tertiary outline-none text-sm font-display tracking-[0.15em] font-semibold"
+              className="flex-1 bg-transparent text-text-primary placeholder:text-text-tertiary outline-none text-sm font-display tracking-[0.15em] font-semibold uppercase"
               maxLength={6}
             />
           </div>

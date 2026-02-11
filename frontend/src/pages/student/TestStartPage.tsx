@@ -159,13 +159,15 @@ export function TestStartPage() {
               <Hash className="w-[18px] h-[18px] text-text-tertiary shrink-0" />
               <input
                 type="text"
+                inputMode="latin"
+                autoComplete="off"
                 placeholder="A3X7K2"
                 value={testCode}
                 onChange={(e) => handleCodeChange(e.target.value)}
                 onCompositionStart={() => { composingRef.current = true; }}
                 onCompositionEnd={(e) => { composingRef.current = false; handleCodeChange((e.target as HTMLInputElement).value); }}
                 onKeyDown={(e) => e.key === 'Enter' && !config && handleValidate()}
-                className="font-display text-[15px] text-text-primary placeholder:text-text-tertiary bg-transparent outline-none w-full tracking-[0.2em] font-semibold"
+                className="font-display text-[15px] text-text-primary placeholder:text-text-tertiary bg-transparent outline-none w-full tracking-[0.2em] font-semibold uppercase"
                 maxLength={6}
               />
             </div>

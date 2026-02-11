@@ -24,6 +24,7 @@ class TestQuestionWord(BaseModel):
     english: str
     example_en: Optional[str] = None
     level: int = 1  # word DB level (1-15)
+    lesson: str = ""  # lesson name within book
 
 
 class TestQuestion(BaseModel):

@@ -1,7 +1,9 @@
 /**
  * Level test store using Zustand.
- * Supports adaptive level testing: questions are selected from a pool
- * based on the student's current performance level.
+ * Supports adaptive level+lesson testing: pool is sorted by level→lesson,
+ * cursor advances through lessons/levels based on correctness and response time.
+ *
+ * Progression: Level 1 Lesson 1 → correct+fast → skip ahead → ... → next level
  */
 import { create } from 'zustand';
 import testService, {
@@ -11,30 +13,24 @@ import testService, {
 } from '../services/test';
 import { getErrorMessage } from '../utils/error';
 
-/** Map word DB level (1-15) to rank (1-10), matching backend logic. */
-function wordLevelToRank(wordLevel: number): number {
-  return Math.min(wordLevel, 10);
-}
-
-/** Pick the best question from pool for the target adaptive level. */
-function pickFromPool(
-  pool: TestQuestion[],
+/**
+ * Pick the unused pool question whose index is closest to targetIdx.
+ * Pool is pre-sorted by level→lesson, so index ≈ difficulty.
+ */
+function pickClosest(
+  poolSize: number,
   usedIndices: Set<number>,
-  targetLevel: number,
+  targetIdx: number,
 ): number {
-  for (let delta = 0; delta <= 10; delta++) {
-    const levels = delta === 0
-      ? [targetLevel]
-      : [targetLevel + delta, targetLevel - delta];
-    for (const level of levels) {
-      if (level < 1 || level > 10) continue;
-      const idx = pool.findIndex(
-        (q, i) => !usedIndices.has(i) && wordLevelToRank(q.word.level) === level,
-      );
-      if (idx !== -1) return idx;
+  const clamped = Math.max(0, Math.min(poolSize - 1, Math.round(targetIdx)));
+  // Search outward from clamped target
+  for (let delta = 0; delta < poolSize; delta++) {
+    for (const dir of [0, 1, -1]) {
+      const idx = clamped + delta * (dir || 1);
+      if (idx >= 0 && idx < poolSize && !usedIndices.has(idx)) return idx;
     }
   }
-  return pool.findIndex((_, i) => !usedIndices.has(i));
+  return -1;
 }
 
 export interface WrongAnswer {
@@ -49,6 +45,9 @@ interface TestStore {
   questions: TestQuestion[];
   currentIndex: number;
   adaptiveLevel: number;
+  adaptiveLesson: string;
+  /** Continuous difficulty cursor (float, maps to pool index) */
+  difficultyCursor: number;
   usedPoolIndices: Set<number>;
   selectedAnswer: string | null;
   answerResult: SubmitAnswerResponse | null;
@@ -59,19 +58,29 @@ interface TestStore {
 
   startTest: (testType: 'placement' | 'periodic', testCode?: string) => Promise<void>;
   selectAnswer: (answer: string) => void;
-  submitAnswer: () => Promise<void>;
+  submitAnswer: (elapsedSeconds?: number) => Promise<void>;
   nextQuestion: () => void;
   reset: () => void;
 }
 
-const ADAPTIVE_START_LEVEL = 3;
+// Time-based step sizes for lesson→level progression
+// Pool sorted by level→lesson (~6 questions per level, 60 total)
+// Correct + fast = big advance, correct + slow = small advance, wrong = go back
+function getStepUp(elapsedSeconds: number): number {
+  if (elapsedSeconds < 4) return 3;   // Very fast → skip ~half a level
+  if (elapsedSeconds < 8) return 2;   // Normal → advance ~1/3 level
+  return 1;                            // Slow → advance ~1 lesson
+}
+const STEP_DOWN = 1;
 
 export const useTestStore = create<TestStore>()((set, get) => ({
   session: null,
   questionPool: [],
   questions: [],
   currentIndex: 0,
-  adaptiveLevel: ADAPTIVE_START_LEVEL,
+  adaptiveLevel: 1,
+  adaptiveLesson: '',
+  difficultyCursor: 0,
   usedPoolIndices: new Set<number>(),
   selectedAnswer: null,
   answerResult: null,
@@ -91,9 +100,10 @@ export const useTestStore = create<TestStore>()((set, get) => ({
       const isAdaptive = !response.test_session.test_config_id;
 
       if (isAdaptive && pool.length > response.test_session.total_questions) {
-        // Adaptive mode: pick first question from starting level
+        // Pool is sorted by level→lesson from backend.
+        // Start at the very beginning (level 1, lesson 1)
         const usedIndices = new Set<number>();
-        const firstIdx = pickFromPool(pool, usedIndices, ADAPTIVE_START_LEVEL);
+        const firstIdx = pickClosest(pool.length, usedIndices, 0);
         if (firstIdx >= 0) usedIndices.add(firstIdx);
         const firstQuestion = firstIdx >= 0 ? pool[firstIdx] : pool[0];
 
@@ -102,7 +112,9 @@ export const useTestStore = create<TestStore>()((set, get) => ({
           questionPool: pool,
           questions: [firstQuestion],
           currentIndex: 0,
-          adaptiveLevel: ADAPTIVE_START_LEVEL,
+          adaptiveLevel: firstQuestion.word.level,
+          adaptiveLesson: firstQuestion.word.lesson,
+          difficultyCursor: 0,
           usedPoolIndices: usedIndices,
           selectedAnswer: null,
           answerResult: null,
@@ -115,7 +127,9 @@ export const useTestStore = create<TestStore>()((set, get) => ({
           questionPool: pool,
           questions: pool,
           currentIndex: 0,
-          adaptiveLevel: 1,
+          adaptiveLevel: pool[0]?.word.level ?? 1,
+          adaptiveLesson: pool[0]?.word.lesson ?? '',
+          difficultyCursor: 0,
           usedPoolIndices: new Set(pool.map((_, i) => i)),
           selectedAnswer: null,
           answerResult: null,
@@ -135,7 +149,7 @@ export const useTestStore = create<TestStore>()((set, get) => ({
     set({ selectedAnswer: answer });
   },
 
-  submitAnswer: async () => {
+  submitAnswer: async (elapsedSeconds?: number) => {
     const { session, questions, currentIndex, selectedAnswer } = get();
     if (!session || !selectedAnswer) return;
 
@@ -146,64 +160,72 @@ export const useTestStore = create<TestStore>()((set, get) => ({
       correct_answer: question.correct_answer,
     };
 
-    // Update adaptive level: +1 for correct, -1 for wrong (clamped 1-10)
     const isAdaptive = !session.test_config_id;
 
-    set((state) => ({
-      answerResult: localResult,
-      isSubmitting: false,
-      adaptiveLevel: isAdaptive
-        ? Math.max(1, Math.min(10, state.adaptiveLevel + (isCorrect ? 1 : -1)))
-        : state.adaptiveLevel,
-      session: {
-        ...session,
-        correct_count: session.correct_count + (isCorrect ? 1 : 0),
-      },
-      wrongAnswers: isCorrect
-        ? state.wrongAnswers
-        : [
-            ...state.wrongAnswers,
-            {
-              english: question.word.english,
-              correctAnswer: question.correct_answer,
-              selectedAnswer,
-            },
-          ],
-    }));
+    set((state) => {
+      const newCursor = isAdaptive
+        ? Math.max(0, state.difficultyCursor + (isCorrect ? getStepUp(elapsedSeconds ?? 15) : -STEP_DOWN))
+        : state.difficultyCursor;
+
+      // Derive display level from cursor position
+      const questionsPerLevel = state.questionPool.length / 10;
+      const newLevel = isAdaptive
+        ? Math.max(1, Math.min(10, Math.floor(newCursor / questionsPerLevel) + 1))
+        : state.adaptiveLevel;
+
+      return {
+        answerResult: localResult,
+        isSubmitting: false,
+        difficultyCursor: newCursor,
+        adaptiveLevel: newLevel,
+        session: {
+          ...session,
+          correct_count: session.correct_count + (isCorrect ? 1 : 0),
+        },
+        wrongAnswers: isCorrect
+          ? state.wrongAnswers
+          : [
+              ...state.wrongAnswers,
+              {
+                english: question.word.english,
+                correctAnswer: question.correct_answer,
+                selectedAnswer,
+              },
+            ],
+      };
+    });
 
     // Fire API in background (non-blocking) for server-side recording
     testService.submitAnswer(session.id, {
       word_id: question.word.id,
       selected_answer: selectedAnswer,
       question_order: question.question_order,
-    }).catch(() => {
-      // Server recording failed silently - local result already shown
-    });
+    }).catch(() => {});
   },
 
   nextQuestion: () => {
-    const { session, questionPool, questions, currentIndex, adaptiveLevel, usedPoolIndices } = get();
+    const { session, questionPool, questions, currentIndex, difficultyCursor, usedPoolIndices } = get();
     if (!session) return;
 
     const isAdaptive = !session.test_config_id;
 
     if (isAdaptive) {
-      // Adaptive: pick next question from pool matching current level
-      const nextIdx = pickFromPool(questionPool, usedPoolIndices, adaptiveLevel);
-      if (nextIdx < 0) return; // no more questions
+      const nextIdx = pickClosest(questionPool.length, usedPoolIndices, difficultyCursor);
+      if (nextIdx < 0) return;
 
       const newUsed = new Set(usedPoolIndices);
       newUsed.add(nextIdx);
+      const nextQ = questionPool[nextIdx];
 
       set({
-        questions: [...questions, questionPool[nextIdx]],
+        questions: [...questions, nextQ],
         currentIndex: currentIndex + 1,
+        adaptiveLesson: nextQ.word.lesson,
         usedPoolIndices: newUsed,
         selectedAnswer: null,
         answerResult: null,
       });
     } else {
-      // Sequential: just advance index
       set({
         currentIndex: currentIndex + 1,
         selectedAnswer: null,
@@ -218,7 +240,9 @@ export const useTestStore = create<TestStore>()((set, get) => ({
       questionPool: [],
       questions: [],
       currentIndex: 0,
-      adaptiveLevel: ADAPTIVE_START_LEVEL,
+      adaptiveLevel: 1,
+      adaptiveLesson: '',
+      difficultyCursor: 0,
       usedPoolIndices: new Set<number>(),
       selectedAnswer: null,
       answerResult: null,

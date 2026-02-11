@@ -32,6 +32,10 @@ class TestConfig(Base):
     book_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     level_range_min: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     level_range_max: Mapped[int] = mapped_column(Integer, nullable=False, default=15)
+    per_question_time_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    question_types: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    lesson_range_start: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    lesson_range_end: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         TZDateTime(), default=now_kst, nullable=False
     )

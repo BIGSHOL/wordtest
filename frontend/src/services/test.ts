@@ -16,7 +16,7 @@ export interface SubmitAnswerRequest {
 
 export interface TestQuestion {
   question_order: number;
-  word: { id: string; english: string; example_en?: string; level: number };
+  word: { id: string; english: string; example_en?: string; level: number; lesson: string };
   choices: string[];
   correct_answer: string;
 }

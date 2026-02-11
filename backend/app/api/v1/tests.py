@@ -68,7 +68,7 @@ async def start_test_endpoint(
         questions=[
             TestQuestion(
                 question_order=q["question_order"],
-                word=TestQuestionWord(id=q["word"].id, english=q["word"].english, example_en=q["word"].example_en, level=q["word"].level),
+                word=TestQuestionWord(id=q["word"].id, english=q["word"].english, example_en=q["word"].example_en, level=q["word"].level, lesson=q["word"].lesson or ""),
                 choices=q["choices"],
                 correct_answer=q["correct_answer"],
             )

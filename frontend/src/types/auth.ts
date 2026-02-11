@@ -12,8 +12,11 @@ export interface User {
   teacher_id: string | null;
   school_name: string | null;
   grade: string | null;
+  phone_number: string | null;
   created_at: string;
   updated_at: string;
+  latest_level?: number | null;
+  latest_rank?: string | null;
 }
 
 export interface LoginRequest {
