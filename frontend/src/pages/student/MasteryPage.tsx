@@ -13,6 +13,7 @@ import { useMasteryStore } from '../../stores/masteryStore';
 import { useTimer } from '../../hooks/useTimer';
 import { STAGE_CONFIG } from '../../types/mastery';
 import type { StageNumber } from '../../types/mastery';
+import { wordLevelToRank } from '../../types/rank';
 import { preloadWordAudio, stopAllSounds as stopTtsSounds, randomizeTtsVoice } from '../../utils/tts';
 import { playSound, stopSound } from '../../hooks/useSound';
 
@@ -285,6 +286,8 @@ export function MasteryPage() {
     <div className="min-h-screen bg-bg-cream flex flex-col">
       {/* Header */}
       <MasteryHeader
+        level={currentQuestion ? wordLevelToRank(currentQuestion.word.level) : 1}
+        lesson={currentQuestion?.word.lesson}
         stage={currentStage}
         currentIndex={currentIndex}
         totalInBatch={questions.length}
