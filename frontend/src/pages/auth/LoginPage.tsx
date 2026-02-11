@@ -21,18 +21,24 @@ export function LoginPage() {
   const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
 
   const handleTestCodeChange = (value: string) => {
-    setTestCode(value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 8));
+    setTestCode(value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
 
+    // Test code only — bypass login entirely
+    if (testCode.length === 8 && !formData.username && !formData.password) {
+      navigate(`/test/start?code=${testCode}`, { replace: true });
+      return;
+    }
+
     try {
       await login(formData);
       const user = useAuthStore.getState().user;
 
-      // If test code is provided, go directly to test start
+      // If test code is provided after login, go directly to test start
       if (testCode.length === 8) {
         navigate(`/test/start?code=${testCode}`, { replace: true });
         return;
@@ -163,7 +169,7 @@ export function LoginPage() {
                   name="username"
                   type="text"
                   autoComplete="username"
-                  required
+                  required={testCode.length !== 8}
                   value={formData.username}
                   onChange={handleChange}
                   className="h-12 px-3.5 rounded-lg border border-[#E5E4E1] bg-white text-sm text-[#1A1918] placeholder-[#9C9B99] focus:outline-none focus:border-[#2D9CAE] focus:ring-1 focus:ring-[#2D9CAE] transition-colors"
@@ -187,7 +193,7 @@ export function LoginPage() {
                     name="password"
                     type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
-                    required
+                    required={testCode.length !== 8}
                     value={formData.password}
                     onChange={handleChange}
                     className="w-full h-12 px-3.5 pr-11 rounded-lg border border-[#E5E4E1] bg-white text-sm text-[#1A1918] placeholder-[#9C9B99] focus:outline-none focus:border-[#2D9CAE] focus:ring-1 focus:ring-[#2D9CAE] transition-colors"
@@ -248,7 +254,9 @@ export function LoginPage() {
               {isLoading
                 ? '로그인 중...'
                 : testCode.length === 8
-                  ? '로그인 & 테스트 시작'
+                  ? formData.username
+                    ? '로그인 & 테스트 시작'
+                    : '테스트 코드로 시작'
                   : '로그인'}
             </button>
 

@@ -33,7 +33,7 @@ export function LevelChart({ history }: { history: TestHistoryItem[] }) {
               backgroundColor: `${latestRank.colors[0]}20`,
             }}
           >
-            {latestRank.name} 달성
+            {latest.rank_label || latestRank.name} 달성
           </span>
         )}
       </div>
@@ -60,7 +60,7 @@ export function LevelChart({ history }: { history: TestHistoryItem[] }) {
                   }}
                 >
                   <span className="text-[11px] text-white font-display font-semibold whitespace-nowrap">
-                    Lv.{level} {rank.name}
+                    {item.rank_label || `Lv.${level} ${rank.name}`}
                   </span>
                 </div>
               </div>

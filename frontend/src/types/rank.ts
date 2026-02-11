@@ -30,3 +30,79 @@ export function getLevelRank(rank: number): RankInfo {
   const index = Math.max(0, Math.min(rank - 1, RANKS.length - 1));
   return RANKS[index];
 }
+
+/** Map word DB level (1-15) to rank (1-10). Mirrors backend word_level_to_rank(). */
+export function wordLevelToRank(wordLevel: number): number {
+  return Math.min(wordLevel, 10);
+}
+
+export interface AnswerDetail {
+  wordLevel: number;
+  lesson: string;
+  isCorrect: boolean;
+}
+
+/**
+ * Real-time level determination — mirrors backend determine_level().
+ * Groups answers by rank, rank "passed" if ≥50% correct,
+ * determined_rank = highest passed rank before 2 consecutive fails.
+ * Sublevel = highest correct lesson index within the determined rank.
+ */
+export function determineLevel(
+  answers: AnswerDetail[],
+): { rank: number; sublevel: number } {
+  if (answers.length === 0) return { rank: 1, sublevel: 1 };
+
+  // Group by rank — track both accuracy and per-lesson results
+  const rankResults = new Map<number, { correct: number; total: number; lessons: Map<string, boolean> }>();
+  for (const { wordLevel, lesson, isCorrect } of answers) {
+    const rank = wordLevelToRank(wordLevel);
+    const entry = rankResults.get(rank) ?? { correct: 0, total: 0, lessons: new Map() };
+    entry.total++;
+    if (isCorrect) {
+      entry.correct++;
+      entry.lessons.set(lesson, true);
+    } else if (!entry.lessons.has(lesson)) {
+      entry.lessons.set(lesson, false);
+    }
+    rankResults.set(rank, entry);
+  }
+
+  // Walk ranks ascending, find highest passed before 2 consecutive fails
+  const sortedRanks = [...rankResults.keys()].sort((a, b) => a - b);
+  let determinedRank = 1;
+  let consecutiveFails = 0;
+
+  for (const rank of sortedRanks) {
+    const { correct, total } = rankResults.get(rank)!;
+    const passed = correct > 0 && correct >= total / 2;
+
+    if (passed) {
+      determinedRank = rank;
+      consecutiveFails = 0;
+    } else {
+      consecutiveFails++;
+      if (consecutiveFails >= 2) break;
+    }
+  }
+
+  // Determine sublevel within the determined rank (mirrors backend)
+  let sublevel = 1;
+  const rankEntry = rankResults.get(determinedRank);
+  if (rankEntry) {
+    const allLessons = [...rankEntry.lessons.keys()].sort();
+    const correctLessons = allLessons.filter((l) => rankEntry.lessons.get(l));
+
+    if (correctLessons.length > 0) {
+      const highestCorrect = correctLessons[correctLessons.length - 1];
+      sublevel = allLessons.indexOf(highestCorrect) + 1;
+
+      // All correct in this rank with ≥2 answers → mastered
+      if (rankEntry.correct === rankEntry.total && rankEntry.total >= 2) {
+        sublevel = 25; // MAX marker, same as backend
+      }
+    }
+  }
+
+  return { rank: determinedRank, sublevel };
+}

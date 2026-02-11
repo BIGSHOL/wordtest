@@ -4,7 +4,7 @@ import { BookOpen, Hash, AlertCircle, Loader2, Play } from 'lucide-react';
 import { useTestStore } from '../../stores/testStore';
 
 const CODE_LENGTH = 8;
-const CODE_CHARS = /[^A-HJ-NP-Z2-9]/g;
+const CODE_CHARS = /[^A-Z0-9]/g;
 
 export function TestStartPage() {
   const navigate = useNavigate();

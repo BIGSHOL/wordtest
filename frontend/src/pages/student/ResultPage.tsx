@@ -112,7 +112,7 @@ export function ResultPage() {
             {rank.name}&nbsp;&nbsp;{rank.nameKo}
           </h1>
           <span className="font-display text-base font-semibold text-text-secondary">
-            Level {level}
+            {session.rank_label || `Level ${level}`}
           </span>
         </div>
 

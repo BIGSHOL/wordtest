@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Award } from 'lucide-react';
+import {
+  ArrowLeft, Shield, Sword, Award, Crown, Gem, Diamond, Star, Flame, Trophy,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getLevelRank } from '../../types/rank';
+
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  shield: Shield, sword: Sword, award: Award, crown: Crown,
+  gem: Gem, diamond: Diamond, star: Star, flame: Flame, trophy: Trophy,
+};
 
 interface QuizHeaderProps {
   level: number;
@@ -13,6 +20,7 @@ interface QuizHeaderProps {
 export function QuizHeader({ level, lesson, currentIndex, totalQuestions }: QuizHeaderProps) {
   const navigate = useNavigate();
   const rank = getLevelRank(level);
+  const RankIcon = iconMap[rank.icon] || Award;
   const prevLevelRef = useRef(level);
   const [flashDelta, setFlashDelta] = useState(0);
   const [flashKey, setFlashKey] = useState(0);
@@ -98,7 +106,7 @@ export function QuizHeader({ level, lesson, currentIndex, totalQuestions }: Quiz
                 animation: absDelta >= 3 && flashDelta !== 0 ? `quiz-shake ${isDown ? '0.5s' : '0.4s'} ease-in-out` : undefined,
               }}
             >
-              <Award className="w-3.5 h-3.5 text-white" />
+              <RankIcon className="w-3.5 h-3.5 text-white" />
               <span className="font-display text-[13px] font-bold text-white">
                 {rank.name} {level}-{lessonNum}
               </span>

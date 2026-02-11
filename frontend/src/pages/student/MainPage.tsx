@@ -16,7 +16,7 @@ export function StudentMainPage() {
 
   const handleCodeChange = (value: string) => {
     if (composingRef.current) return;
-    const cleaned = value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 8);
+    const cleaned = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8);
     setTestCode(cleaned);
   };
 

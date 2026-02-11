@@ -184,7 +184,7 @@ export function DashboardPage() {
                                 color: rank.colors[1]
                               }}
                             >
-                              Lv.{test.determined_level} {rank.name}
+                              {test.rank_label || `Lv.${test.determined_level} ${rank.name}`}
                             </span>
                           ) : (
                             <span className="text-sm text-text-secondary">-</span>

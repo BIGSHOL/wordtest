@@ -10,6 +10,7 @@ function MobileStatCard({
   isRank,
   rank,
   level,
+  rankLabel,
 }: {
   value: string;
   label: string;
@@ -17,12 +18,13 @@ function MobileStatCard({
   isRank?: boolean;
   rank?: ReturnType<typeof getLevelRank> | null;
   level?: number | null;
+  rankLabel?: string | null;
 }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-1 rounded-[14px] bg-white py-3.5 px-3">
       {isRank && rank && level ? (
         <span className="font-display text-xl font-extrabold" style={{ color }}>
-          Lv.{level} {rank.name}
+          {rankLabel || `Lv.${level} ${rank.name}`}
         </span>
       ) : (
         <span
@@ -53,12 +55,13 @@ export function StatsRow({ session }: { session: TestSessionData }) {
     { value: `${session.correct_count}/${session.total_questions}`, label: '맞힌 문제', color: '#10B981' },
     { value: `${wrongCount}/${session.total_questions}`, label: '틀린 문제', color: '#EF4444' },
     {
-      value: rank ? `Lv.${session.determined_level} ${rank.name}` : '-',
+      value: rank ? (session.rank_label || `Lv.${session.determined_level} ${rank.name}`) : '-',
       label: '레벨/랭크',
       color: rank ? rank.colors[1] : '#6D6C6A',
       isRank: true,
       rank,
       level: session.determined_level,
+      rankLabel: session.rank_label,
     },
     { value: formatDuration(duration), label: '소요 시간', color: '#2D9CAE' },
   ];
@@ -76,7 +79,7 @@ export function StatsRow({ session }: { session: TestSessionData }) {
               <div className="flex items-center gap-2">
                 <RankBadge rank={s.rank} size="sm" />
                 <span className="font-display text-lg font-bold" style={{ color: s.color }}>
-                  Lv.{s.level} {s.rank.name}
+                  {s.rankLabel || `Lv.${s.level} ${s.rank.name}`}
                 </span>
               </div>
             ) : (

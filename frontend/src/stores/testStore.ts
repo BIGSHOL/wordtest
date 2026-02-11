@@ -14,6 +14,7 @@ import testService, {
 } from '../services/test';
 import { getErrorMessage } from '../utils/error';
 import { useAuthStore } from './auth';
+import { determineLevel, type AnswerDetail } from '../types/rank';
 
 /**
  * Pick the unused pool question whose index is closest to targetIdx.
@@ -54,6 +55,7 @@ interface TestStore {
   selectedAnswer: string | null;
   answerResult: SubmitAnswerResponse | null;
   wrongAnswers: WrongAnswer[];
+  answerDetails: AnswerDetail[];
   isLoading: boolean;
   isSubmitting: boolean;
   error: string | null;
@@ -88,6 +90,7 @@ export const useTestStore = create<TestStore>()((set, get) => ({
   selectedAnswer: null,
   answerResult: null,
   wrongAnswers: [],
+  answerDetails: [],
   isLoading: false,
   isSubmitting: false,
   error: null,
@@ -239,17 +242,22 @@ export const useTestStore = create<TestStore>()((set, get) => ({
         ? Math.max(0, state.difficultyCursor + (isCorrect ? getStepUp(elapsedSeconds ?? 15) : -STEP_DOWN))
         : state.difficultyCursor;
 
-      // Derive display level from cursor position
-      const questionsPerLevel = state.questionPool.length / 10;
-      const newLevel = isAdaptive
-        ? Math.max(1, Math.min(10, Math.floor(newCursor / questionsPerLevel) + 1))
-        : state.adaptiveLevel;
+      // Accumulate answer details for real-time level determination
+      const newAnswerDetails: AnswerDetail[] = [
+        ...state.answerDetails,
+        { wordLevel: question.word.level, lesson: question.word.lesson, isCorrect },
+      ];
+
+      // Real-time accuracy-per-rank level + sublevel (mirrors backend determine_level)
+      const { rank: newLevel, sublevel } = determineLevel(newAnswerDetails);
 
       return {
         answerResult: localResult,
         isSubmitting: false,
         difficultyCursor: newCursor,
         adaptiveLevel: newLevel,
+        adaptiveLesson: String(sublevel),
+        answerDetails: newAnswerDetails,
         session: {
           ...session,
           correct_count: session.correct_count + (isCorrect ? 1 : 0),
@@ -292,7 +300,6 @@ export const useTestStore = create<TestStore>()((set, get) => ({
       set({
         questions: [...questions, nextQ],
         currentIndex: currentIndex + 1,
-        adaptiveLesson: nextQ.word.lesson,
         usedPoolIndices: newUsed,
         selectedAnswer: null,
         answerResult: null,
@@ -319,6 +326,7 @@ export const useTestStore = create<TestStore>()((set, get) => ({
       selectedAnswer: null,
       answerResult: null,
       wrongAnswers: [],
+      answerDetails: [],
       isLoading: false,
       isSubmitting: false,
       error: null,

@@ -20,21 +20,21 @@
 
 코드는 8자리이며, 로그인 없이 `/test/start`에서 바로 입력 가능합니다.
 
-### 기초 배치고사 (Lv1-5) — placement, 10문제, 300초
+### 기초 배치고사 (Lv1-5) — placement, 50문제, 500초
 | 학생 | 코드 |
 |------|------|
 | 김민수 (student01) | TEST2AA1 |
 | 이지은 (student02) | TEST2AA2 |
 | 박서준 (student03) | TEST2AA3 |
 
-### 중급 배치고사 (Lv1-10) — placement, 20문제, 600초
+### 중급 배치고사 (Lv1-10) — placement, 80문제, 800초
 | 학생 | 코드 |
 |------|------|
 | 김민수 (student01) | TEST2BB1 |
 | 이지은 (student02) | TEST2BB2 |
 | 박서준 (student03) | TEST2BB3 |
 
-### 주간 테스트 (Lv1-3) — periodic, 10문제, 180초
+### 주간 테스트 (Lv1-3) — periodic, 30문제, 300초
 | 학생 | 코드 |
 |------|------|
 | 김민수 (student01) | TEST2CC1 |

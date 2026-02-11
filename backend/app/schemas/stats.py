@@ -17,6 +17,7 @@ class RecentTest(BaseModel):
     score: Optional[int] = None
     determined_level: Optional[int] = None
     rank_name: Optional[str] = None
+    rank_label: Optional[str] = None
     total_questions: int = 0
     correct_count: int = 0
     duration_seconds: Optional[int] = None
@@ -34,6 +35,7 @@ class TestHistoryItem(BaseModel):
     accuracy: int
     determined_level: Optional[int] = None
     rank_name: Optional[str] = None
+    rank_label: Optional[str] = None
     correct_count: int
     total_questions: int
     duration_seconds: Optional[int] = None

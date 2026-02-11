@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
+from app.services.level_engine import format_rank_label
 from app.schemas.stats import (
     DashboardStats,
     LevelDistribution,
@@ -130,6 +131,9 @@ async def get_dashboard_stats(
         duration = None
         if session.completed_at and session.started_at:
             duration = int((session.completed_at - session.started_at).total_seconds())
+        rank_label = None
+        if session.determined_level and session.determined_sublevel:
+            rank_label = format_rank_label(session.determined_level, session.determined_sublevel)
         recent_tests.append(
             RecentTest(
                 id=session.id,
@@ -140,6 +144,7 @@ async def get_dashboard_stats(
                 score=session.score,
                 determined_level=session.determined_level,
                 rank_name=session.rank_name,
+                rank_label=rank_label,
                 total_questions=session.total_questions,
                 correct_count=session.correct_count,
                 duration_seconds=duration,
@@ -269,12 +274,16 @@ async def get_student_history(
         duration = None
         if s.completed_at and s.started_at:
             duration = int((s.completed_at - s.started_at).total_seconds())
+        rl = None
+        if s.determined_level and s.determined_sublevel:
+            rl = format_rank_label(s.determined_level, s.determined_sublevel)
         history.append(
             TestHistoryItem(
                 test_date=test_date,
                 accuracy=accuracy,
                 determined_level=s.determined_level,
                 rank_name=s.rank_name,
+                rank_label=rl,
                 correct_count=s.correct_count,
                 total_questions=s.total_questions,
                 duration_seconds=duration,

@@ -19,6 +19,7 @@ export interface DashboardStats {
     score: number | null;
     determined_level: number | null;
     rank_name: string | null;
+    rank_label: string | null;
     total_questions: number;
     correct_count: number;
     duration_seconds: number | null;
@@ -34,6 +35,7 @@ export interface TestHistoryItem {
   accuracy: number;
   determined_level: number | null;
   rank_name: string | null;
+  rank_label: string | null;
   correct_count: number;
   total_questions: number;
   duration_seconds: number | null;
