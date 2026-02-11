@@ -66,7 +66,7 @@ export function StudentMainPage() {
             <Hash className="w-5 h-5 text-text-tertiary flex-shrink-0" />
             <input
               type="text"
-              inputMode="latin"
+              inputMode="text"
               autoComplete="off"
               placeholder="테스트 코드 입력"
               value={testCode}

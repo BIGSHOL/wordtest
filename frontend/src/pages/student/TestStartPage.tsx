@@ -159,7 +159,7 @@ export function TestStartPage() {
               <Hash className="w-[18px] h-[18px] text-text-tertiary shrink-0" />
               <input
                 type="text"
-                inputMode="latin"
+                inputMode="text"
                 autoComplete="off"
                 placeholder="A3X7K2"
                 value={testCode}
