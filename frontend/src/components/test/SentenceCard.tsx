@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import { Volume2 } from 'lucide-react';
-import { speak } from '../../utils/tts';
+import { speakSentence } from '../../utils/tts';
 
 interface SentenceCardProps {
   sentence: string;
@@ -24,7 +24,7 @@ export const SentenceCard = memo(function SentenceCard({ sentence, word }: Sente
   const { before, after } = useMemo(() => splitSentence(sentence, word), [sentence, word]);
 
   const handleSpeak = () => {
-    speak(sentence);
+    speakSentence(sentence);
   };
 
   return (

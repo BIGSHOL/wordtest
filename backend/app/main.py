@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from app.api.v1 import auth, users, students, tests, words, stats, test_configs, test_assignments
+from app.api.v1 import auth, users, students, tests, words, stats, test_configs, test_assignments, tts
 from app.core.config import settings
 
 app = FastAPI(title="API", version="0.1.0")
@@ -31,6 +31,7 @@ app.include_router(words.router, prefix="/api/v1")
 app.include_router(stats.router, prefix="/api/v1")
 app.include_router(test_configs.router, prefix="/api/v1")
 app.include_router(test_assignments.router, prefix="/api/v1")
+app.include_router(tts.router, prefix="/api/v1")
 
 
 @app.get("/health")

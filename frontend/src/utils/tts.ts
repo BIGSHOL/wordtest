@@ -114,7 +114,38 @@ export async function speakWord(word: string) {
 }
 
 /**
- * Web Speech API로 발음 (문장용, fallback용)
+ * 문장 발음: Gemini-TTS (백엔드) → Google Translate TTS → Web Speech API
+ */
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+export async function speakSentence(text: string) {
+  // 1) Gemini-TTS via backend
+  try {
+    const resp = await fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(text)}`);
+    if (resp.ok) {
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => URL.revokeObjectURL(url);
+      await audio.play();
+      return;
+    }
+  } catch { /* fall through */ }
+
+  // 2) Google Translate TTS fallback
+  try {
+    const gttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=${encodeURIComponent(text)}`;
+    const audio = new Audio(gttsUrl);
+    await audio.play();
+    return;
+  } catch { /* fall through */ }
+
+  // 3) Web Speech API fallback
+  speak(text, 'en-US', { rate: 0.9 });
+}
+
+/**
+ * Web Speech API로 발음 (fallback용)
  */
 export function speak(
   text: string,
