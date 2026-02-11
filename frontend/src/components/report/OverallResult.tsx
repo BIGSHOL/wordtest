@@ -8,8 +8,23 @@ interface Props {
   report: EnhancedTestReport;
 }
 
+const LEVEL_NAMES: Record<number, string> = {
+  1: 'Iron',
+  2: 'Bronze',
+  3: 'Silver',
+  4: 'Gold',
+  5: 'Platinum',
+  6: 'Emerald',
+  7: 'Diamond',
+  8: 'Master',
+  9: 'Grandmaster',
+  10: 'Challenger',
+  11: 'Legend',
+};
+
 export function OverallResult({ report }: Props) {
   const level = report.test_session.determined_level || 1;
+  const levelName = LEVEL_NAMES[level] || '';
 
   return (
     <div className="flex-1 border border-[#E8E8E8] rounded-sm p-5 space-y-4">
@@ -26,8 +41,11 @@ export function OverallResult({ report }: Props) {
         </div>
 
         {/* Level badge */}
-        <div className="w-16 h-16 rounded-full border-2 border-[#CC0000] flex items-center justify-center">
-          <span className="text-[#CC0000] text-lg font-bold">Lv.{level}</span>
+        <div className="w-[72px] h-[72px] rounded-full border-[3px] border-[#CC0000] flex flex-col items-center justify-center">
+          <span className="text-[#CC0000] text-lg font-bold leading-none">Lv.{level}</span>
+          <span className="text-[#CC0000] text-[9px] font-medium leading-tight mt-0.5">
+            {levelName}
+          </span>
         </div>
       </div>
 

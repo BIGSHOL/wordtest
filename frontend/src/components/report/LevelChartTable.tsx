@@ -37,79 +37,93 @@ const BOOKS = [
 ];
 
 export function LevelChartTable({ currentRank }: Props) {
+  // Calculate circle center position: 50px header + fraction of remaining width
+  const fraction = currentRank ? (currentRank - 0.5) / 11 : 0;
+  const circleLeft = `calc(${fraction * 100}% + ${50 * (1 - fraction)}px)`;
+
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-bold text-[#0D0D0D]">Level Chart</h3>
 
-      <div className="relative border-2 border-[#AAAAAA] overflow-hidden">
-        {/* Level row */}
-        <div className="flex border-b-2 border-[#AAAAAA]">
-          <div className="w-[50px] shrink-0 bg-[#F5F5F5] flex items-center justify-center border-r border-[#BBBBBB] py-2">
-            <span className="text-[10px] font-semibold text-[#333]">레벨</span>
-          </div>
-          {LEVELS.map((lv) => {
-            const isCurrent = lv.rank === currentRank;
-            return (
-              <div
-                key={lv.rank}
-                className="flex-1 min-w-0 flex items-center justify-center border-r border-[#BBBBBB] last:border-r-0 py-2 relative"
-                style={{
-                  backgroundColor: isCurrent ? '#CC000020' : lv.bg,
-                }}
-              >
-                <span
-                  className="text-[8px] text-center whitespace-pre-line leading-tight"
+      {/* Wrapper for circle overflow */}
+      <div className="relative">
+        <div className="border-2 border-[#AAAAAA] overflow-hidden">
+          {/* Level row */}
+          <div className="flex border-b-2 border-[#AAAAAA]">
+            <div className="w-[50px] shrink-0 bg-[#F5F5F5] flex items-center justify-center border-r border-[#BBBBBB] py-2">
+              <span className="text-[10px] font-semibold text-[#333]">레벨</span>
+            </div>
+            {LEVELS.map((lv) => {
+              const isCurrent = lv.rank === currentRank;
+              return (
+                <div
+                  key={lv.rank}
+                  className="flex-1 min-w-0 flex items-center justify-center border-r border-[#BBBBBB] last:border-r-0 py-2 relative"
                   style={{
-                    color: lv.color,
-                    fontWeight: isCurrent ? 700 : 400,
+                    backgroundColor: isCurrent ? '#CC000020' : lv.bg,
                   }}
                 >
-                  {lv.name}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Textbook row */}
-        <div className="flex">
-          <div className="w-[50px] shrink-0 bg-[#F5F5F5] flex items-center justify-center border-r border-[#BBBBBB] py-2">
-            <span className="text-[10px] font-semibold text-[#333]">교재</span>
+                  <span
+                    className="text-[8px] text-center whitespace-pre-line leading-tight"
+                    style={{
+                      color: lv.color,
+                      fontWeight: isCurrent ? 700 : 400,
+                    }}
+                  >
+                    {lv.name}
+                  </span>
+                </div>
+              );
+            })}
           </div>
-          {BOOKS.map((book, i) => {
-            const isCurrent = i + 1 === currentRank;
-            return (
-              <div
-                key={i}
-                className="flex-1 min-w-0 flex items-center justify-center border-r border-[#BBBBBB] last:border-r-0 py-2"
-                style={{
-                  backgroundColor: isCurrent ? '#FFF0F0' : undefined,
-                }}
-              >
-                <span
-                  className="text-[8px] text-center whitespace-pre-line leading-tight"
+
+          {/* Textbook row */}
+          <div className="flex">
+            <div className="w-[50px] shrink-0 bg-[#F5F5F5] flex items-center justify-center border-r border-[#BBBBBB] py-2">
+              <span className="text-[10px] font-semibold text-[#333]">교재</span>
+            </div>
+            {BOOKS.map((book, i) => {
+              const isCurrent = i + 1 === currentRank;
+              return (
+                <div
+                  key={i}
+                  className="flex-1 min-w-0 flex items-center justify-center border-r border-[#BBBBBB] last:border-r-0 py-2"
                   style={{
-                    color: isCurrent ? '#CC0000' : '#555555',
-                    fontWeight: isCurrent ? 700 : 400,
+                    backgroundColor: isCurrent ? '#FFF0F0' : undefined,
                   }}
                 >
-                  {book}
-                </span>
-              </div>
-            );
-          })}
+                  <span
+                    className="text-[8px] text-center whitespace-pre-line leading-tight"
+                    style={{
+                      color: isCurrent ? '#CC0000' : '#555555',
+                      fontWeight: isCurrent ? 700 : 400,
+                    }}
+                  >
+                    {book}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Red circle marker on current level */}
+        {/* Red circle marker - outside overflow-hidden so it can extend beyond table */}
         {currentRank && currentRank >= 1 && currentRank <= 11 && (
           <div
-            className="absolute top-1/2 -translate-y-1/2 pointer-events-none"
+            className="absolute top-1/2 pointer-events-none"
             style={{
-              left: `calc(50px + ${((currentRank - 1) / 11) * 100}% + ${(0.5 / 11) * 100}%)`,
+              left: circleLeft,
               transform: 'translate(-50%, -50%)',
             }}
           >
-            <div className="w-14 h-14 rounded-full border-[5px] border-[#CC0000] bg-[#CC000010]" />
+            <div
+              className="rounded-full border-[6px] border-[#CC0000]"
+              style={{
+                width: '90px',
+                height: '90px',
+                background: 'radial-gradient(circle, #CC000018 0%, #CC000010 70%, transparent 100%)',
+              }}
+            />
           </div>
         )}
       </div>

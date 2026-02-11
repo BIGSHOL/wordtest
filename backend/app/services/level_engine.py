@@ -159,6 +159,8 @@ async def generate_questions(
     # Select words: pick from EVENLY SPACED lessons within each level
     # This enables adaptive testing at lesson granularity
     question_words: list[Word] = []
+    used_english: set[str] = set()  # Prevent duplicate english words across levels
+
     for level in levels:
         count = questions_per_level.get(level, 0)
         if count == 0:
@@ -175,23 +177,33 @@ async def generate_questions(
         if len(lessons_sorted) <= count:
             # Fewer lessons than needed: pick one from each lesson
             for lesson in lessons_sorted:
-                selected.append(random.choice(by_lesson[lesson]))
+                candidates = [w for w in by_lesson[lesson] if w.english not in used_english]
+                if candidates:
+                    pick = random.choice(candidates)
+                    selected.append(pick)
+                    used_english.add(pick.english)
         else:
             # Pick from evenly spaced lessons across the range
             step = len(lessons_sorted) / count
             for i in range(count):
                 idx = int(i * step)
                 lesson = lessons_sorted[min(idx, len(lessons_sorted) - 1)]
-                selected.append(random.choice(by_lesson[lesson]))
+                candidates = [w for w in by_lesson[lesson] if w.english not in used_english]
+                if candidates:
+                    pick = random.choice(candidates)
+                    selected.append(pick)
+                    used_english.add(pick.english)
 
         # Fill remaining if needed
         if len(selected) < count:
             selected_ids = {w.id for w in selected}
-            extras = [w for w in level_words if w.id not in selected_ids]
+            extras = [w for w in level_words
+                      if w.id not in selected_ids and w.english not in used_english]
             if extras:
-                selected.extend(random.sample(
-                    extras, min(count - len(selected), len(extras))
-                ))
+                fills = random.sample(extras, min(count - len(selected), len(extras)))
+                for f in fills:
+                    used_english.add(f.english)
+                selected.extend(fills)
 
         question_words.extend(selected)
 
