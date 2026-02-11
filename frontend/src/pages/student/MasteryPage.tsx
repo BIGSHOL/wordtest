@@ -90,9 +90,10 @@ export function MasteryPage() {
     }
   }, [currentQuestion?.word_mastery_id]);
 
-  // Timer warning sounds
+  // Timer warning sounds (skip if timer just reset - fraction near 1.0)
   useEffect(() => {
     if (answerResult) return;
+    if (timer.fraction > 0.95) return; // timer just reset, skip
     if (timer.secondsLeft === timerWarnAt && timer.secondsLeft > 0 && !timerSoundPlayed.current) {
       playSound('timer', { startAt: timerAudioStart });
       timerSoundPlayed.current = true;
@@ -332,6 +333,7 @@ export function MasteryPage() {
         xp={xp}
         lessonXp={lessonXp}
         levelLabel={levelLabel}
+        lastXpChange={lastXpChange}
         onExit={handleExit}
       />
 
@@ -381,27 +383,16 @@ export function MasteryPage() {
         </div>
       </div>
 
-      {/* Footer: feedback banner + XP indicator */}
+      {/* Footer: feedback banner */}
       <div className="h-[70px] px-5 md:px-8 flex items-center">
         {answerResult && (
           <div className="w-full md:w-[640px] md:mx-auto">
-            <div className="flex items-center gap-3">
-              <div className="flex-1">
-                <FeedbackBanner
-                  isCorrect={answerResult.is_correct}
-                  correctAnswer={answerResult.correct_answer}
-                  stageStreak={answerResult.stage_streak}
-                  requiredStreak={answerResult.required_streak}
-                />
-              </div>
-              {/* XP change indicator */}
-              <span
-                className="font-display text-sm font-bold whitespace-nowrap"
-                style={{ color: lastXpChange >= 0 ? '#22C55E' : '#EF4444' }}
-              >
-                {lastXpChange >= 0 ? '+' : ''}{lastXpChange} XP
-              </span>
-            </div>
+            <FeedbackBanner
+              isCorrect={answerResult.is_correct}
+              correctAnswer={answerResult.correct_answer}
+              stageStreak={answerResult.stage_streak}
+              requiredStreak={answerResult.required_streak}
+            />
             {answerResult.almost_correct && (
               <div className="flex items-center gap-2.5 rounded-2xl bg-amber-50 border border-amber-200 px-5 py-3.5 w-full mt-2">
                 <span className="font-display text-sm font-semibold text-amber-700">

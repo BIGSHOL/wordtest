@@ -43,25 +43,23 @@ export const FeedbackBanner = memo(function FeedbackBanner({
   );
 });
 
-/** Streak progress dots + bar */
+/** Streak progress - mini bar with lightning icon */
 function StreakProgress({ current, required }: { current: number; required: number }) {
+  const pct = required > 0 ? (current / required) * 100 : 0;
   return (
-    <div className="flex items-center gap-2.5 ml-[32px]">
-      {/* Dots */}
-      <div className="flex items-center gap-1">
-        {Array.from({ length: required }, (_, i) => (
-          <div
-            key={i}
-            className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-              i < current
-                ? 'bg-emerald-500 scale-110'
-                : 'bg-emerald-200'
-            }`}
-          />
-        ))}
+    <div className="flex items-center gap-2 ml-[32px]">
+      {/* Mini progress bar */}
+      <div className="w-16 h-[5px] rounded-full bg-emerald-200 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{
+            width: `${pct}%`,
+            background: 'linear-gradient(90deg, #34D399, #10B981)',
+          }}
+        />
       </div>
       {/* Label */}
-      <span className="font-display text-xs font-semibold text-emerald-700 tabular-nums">
+      <span className="font-display text-[11px] font-bold text-emerald-600 tabular-nums">
         {current}/{required}
       </span>
     </div>
