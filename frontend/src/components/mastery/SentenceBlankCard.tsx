@@ -9,8 +9,10 @@ import { speakSentence } from '../../utils/tts';
 interface SentenceBlankCardProps {
   /** English sentence with ____ replacing the target word */
   sentenceBlank: string;
-  /** Korean meaning of the target word */
+  /** Korean meaning of the target word (fallback) */
   korean?: string;
+  /** Full Korean sentence translation */
+  sentenceKo?: string;
   /** Full English sentence (for TTS) */
   sentenceEn?: string;
   /** Stage number for prompt text */
@@ -28,9 +30,12 @@ const STAGE_PROMPTS: Record<number, string> = {
 export const SentenceBlankCard = memo(function SentenceBlankCard({
   sentenceBlank,
   korean,
+  sentenceKo,
   sentenceEn,
   stage,
 }: SentenceBlankCardProps) {
+  // Prefer full sentence translation; fall back to word meaning
+  const hintText = sentenceKo || korean;
   // Split sentence around ____ and render with highlight
   const parts = sentenceBlank.split('____');
 
@@ -62,10 +67,10 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
         {parts[1]}
       </p>
 
-      {/* Korean meaning of the target word */}
-      {korean && (
+      {/* Korean sentence translation (or word meaning as fallback) */}
+      {hintText && (
         <p className="font-display text-[17px] font-bold text-accent-indigo text-center mt-1">
-          {korean}
+          {hintText}
         </p>
       )}
 

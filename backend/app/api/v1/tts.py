@@ -165,6 +165,7 @@ async def text_to_speech(
         )
 
     if resp.status_code != 200:
+        logger.warning("Gemini TTS error %s for '%s': %s", resp.status_code, text[:30], resp.text[:200])
         return JSONResponse(status_code=502, content={"detail": "TTS API error"})
 
     data = resp.json()

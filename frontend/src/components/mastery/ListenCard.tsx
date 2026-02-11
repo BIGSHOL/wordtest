@@ -11,6 +11,7 @@ interface ListenCardProps {
   word: string;
   stage: number;
   korean?: string;
+  sentenceKo?: string | null;
   contextMode?: 'word' | 'sentence';
   sentenceBlank?: string | null;
   sentenceEn?: string | null;
@@ -20,6 +21,7 @@ export const ListenCard = memo(function ListenCard({
   word,
   stage,
   korean,
+  sentenceKo,
   contextMode = 'word',
   sentenceBlank,
   sentenceEn,
@@ -87,10 +89,10 @@ export const ListenCard = memo(function ListenCard({
         <Volume2 className="w-10 h-10 text-white" />
       </button>
 
-      {/* Korean meaning in sentence mode */}
-      {isSentence && korean && (
+      {/* Korean sentence translation in sentence mode */}
+      {isSentence && (sentenceKo || korean) && (
         <p className="font-display text-[15px] font-bold text-accent-indigo text-center">
-          {korean}
+          {sentenceKo || korean}
         </p>
       )}
 

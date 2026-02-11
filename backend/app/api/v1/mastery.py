@@ -1,10 +1,13 @@
 """Mastery learning API endpoints."""
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+
+logger = logging.getLogger(__name__)
 
 from app.db.session import get_db
 from app.core.deps import CurrentUser
@@ -177,6 +180,9 @@ async def complete_batch_endpoint(
         result = await complete_batch(db, body.session_id, body.final_level)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        logger.exception("complete_batch failed: session=%s level=%s", body.session_id, body.final_level)
+        raise HTTPException(status_code=500, detail=str(e))
 
     return result
 

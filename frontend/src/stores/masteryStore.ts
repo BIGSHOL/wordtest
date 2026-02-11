@@ -343,11 +343,21 @@ export const useMasteryStore = create<MasteryStore>()((set, get) => ({
     // Check if all questions done
     if (nextGlobalIdx >= state.questionCount) {
       set({ isComplete: true });
-      // Save final level to backend
+      // Save final level to backend (retry up to 3 times on failure)
       if (state.session) {
-        masteryService.completeBatch(state.session.id, state.currentBook).then((result) => {
-          set({ finalResult: result });
-        }).catch(() => {});
+        const sessionId = state.session.id;
+        const finalLevel = state.currentBook;
+        const attemptComplete = (retries: number) => {
+          masteryService.completeBatch(sessionId, finalLevel).then((result) => {
+            set({ finalResult: result });
+          }).catch((err) => {
+            console.error('[completeBatch] failed:', err);
+            if (retries > 0) {
+              setTimeout(() => attemptComplete(retries - 1), 2000);
+            }
+          });
+        };
+        attemptComplete(2);
       }
       return;
     }

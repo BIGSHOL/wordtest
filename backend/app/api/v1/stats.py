@@ -2,7 +2,7 @@
 from typing import Annotated
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, Integer
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.services.level_engine import format_rank_label
@@ -26,6 +26,8 @@ from app.models.user import User
 from app.models.word import Word
 from app.models.test_session import TestSession
 from app.models.test_answer import TestAnswer
+from app.models.learning_session import LearningSession
+from app.models.learning_answer import LearningAnswer
 from app.core.timezone import now_kst
 from app.services.test import get_test_result
 from app.services import report_engine
@@ -74,7 +76,7 @@ async def get_dashboard_stats(
             score_trend=[],
         )
 
-    # Total tests for teacher's students
+    # Total tests for teacher's students (TestSession + LearningSession)
     tests_query = (
         select(func.count())
         .select_from(TestSession)
@@ -82,6 +84,19 @@ async def get_dashboard_stats(
     )
     total_tests_result = await db.execute(tests_query)
     total_tests = total_tests_result.scalar() or 0
+
+    mastery_tests_query = (
+        select(func.count())
+        .select_from(LearningSession)
+        .where(
+            and_(
+                LearningSession.student_id.in_(student_ids_subq),
+                LearningSession.completed_at.isnot(None),
+            )
+        )
+    )
+    mastery_tests_result = await db.execute(mastery_tests_query)
+    total_tests += mastery_tests_result.scalar() or 0
 
     # Average score (only completed tests with score)
     avg_score_query = (
@@ -128,7 +143,7 @@ async def get_dashboard_stats(
     avg_time_result = await db.execute(avg_time_query)
     avg_time_per_question = avg_time_result.scalar() or 0.0
 
-    # Level distribution (from determined_level in completed tests)
+    # Level distribution (from determined_level in completed tests + mastery current_level)
     level_dist_query = (
         select(
             TestSession.determined_level,
@@ -144,9 +159,32 @@ async def get_dashboard_stats(
         .order_by(TestSession.determined_level)
     )
     level_dist_result = await db.execute(level_dist_query)
+    level_counts: dict[int, int] = {}
+    for row in level_dist_result.fetchall():
+        level_counts[row[0]] = row[1]
+
+    # Add mastery session levels
+    mastery_level_query = (
+        select(
+            LearningSession.current_level,
+            func.count(LearningSession.id).label("count"),
+        )
+        .where(
+            and_(
+                LearningSession.student_id.in_(student_ids_subq),
+                LearningSession.completed_at.isnot(None),
+                LearningSession.current_level.isnot(None),
+            )
+        )
+        .group_by(LearningSession.current_level)
+    )
+    mastery_level_result = await db.execute(mastery_level_query)
+    for row in mastery_level_result.fetchall():
+        level_counts[row[0]] = level_counts.get(row[0], 0) + row[1]
+
     level_distribution = [
-        LevelDistribution(level=row[0], count=row[1])
-        for row in level_dist_result.fetchall()
+        LevelDistribution(level=lvl, count=cnt)
+        for lvl, cnt in sorted(level_counts.items())
     ]
 
     # Recent tests (last 10 completed)
@@ -190,7 +228,61 @@ async def get_dashboard_stats(
             )
         )
 
-    # Weekly test count (last 7 days)
+    # Recent mastery sessions (completed)
+    recent_mastery_query = (
+        select(LearningSession, User.name, User.id, User.school_name, User.grade)
+        .join(User, LearningSession.student_id == User.id)
+        .where(
+            and_(
+                LearningSession.student_id.in_(student_ids_subq),
+                LearningSession.completed_at.isnot(None),
+            )
+        )
+        .order_by(LearningSession.completed_at.desc())
+        .limit(10)
+    )
+    recent_mastery_result = await db.execute(recent_mastery_query)
+    for row in recent_mastery_result.fetchall():
+        ms = row[0]
+        duration = None
+        if ms.completed_at and ms.started_at:
+            duration = int((ms.completed_at - ms.started_at).total_seconds())
+        # Calculate accuracy from LearningAnswer
+        ans_result = await db.execute(
+            select(
+                func.count(LearningAnswer.id),
+                func.sum(func.cast(LearningAnswer.is_correct, Integer)),
+            ).where(LearningAnswer.session_id == ms.id)
+        )
+        ans_row = ans_result.one()
+        total_q = ans_row[0] or 0
+        correct_q = ans_row[1] or 0
+        score = round((correct_q / total_q * 100) if total_q > 0 else 0)
+
+        rank_label = format_rank_label(ms.current_level, 1) if ms.current_level else None
+        recent_tests.append(
+            RecentTest(
+                id=ms.id,
+                student_id=row[2],
+                student_name=row[1],
+                student_school=row[3],
+                student_grade=row[4],
+                score=score,
+                determined_level=ms.current_level,
+                rank_name=None,
+                rank_label=rank_label,
+                total_questions=total_q,
+                correct_count=correct_q,
+                duration_seconds=duration,
+                completed_at=str(ms.completed_at) if ms.completed_at else None,
+            )
+        )
+
+    # Sort all recent tests by completed_at descending and take top 10
+    recent_tests.sort(key=lambda t: t.completed_at or "", reverse=True)
+    recent_tests = recent_tests[:10]
+
+    # Weekly test count (last 7 days) - TestSession + LearningSession
     week_ago = now_kst() - timedelta(days=7)
     weekly_tests_query = (
         select(func.count())
@@ -206,7 +298,21 @@ async def get_dashboard_stats(
     weekly_tests_result = await db.execute(weekly_tests_query)
     weekly_test_count = weekly_tests_result.scalar() or 0
 
-    # Today test count
+    weekly_mastery_query = (
+        select(func.count())
+        .select_from(LearningSession)
+        .where(
+            and_(
+                LearningSession.student_id.in_(student_ids_subq),
+                LearningSession.completed_at.isnot(None),
+                LearningSession.completed_at >= week_ago,
+            )
+        )
+    )
+    weekly_mastery_result = await db.execute(weekly_mastery_query)
+    weekly_test_count += weekly_mastery_result.scalar() or 0
+
+    # Today test count - TestSession + LearningSession
     today_start = now_kst().replace(hour=0, minute=0, second=0, microsecond=0)
     today_tests_query = (
         select(func.count())
@@ -221,6 +327,20 @@ async def get_dashboard_stats(
     )
     today_tests_result = await db.execute(today_tests_query)
     today_test_count = today_tests_result.scalar() or 0
+
+    today_mastery_query = (
+        select(func.count())
+        .select_from(LearningSession)
+        .where(
+            and_(
+                LearningSession.student_id.in_(student_ids_subq),
+                LearningSession.completed_at.isnot(None),
+                LearningSession.completed_at >= today_start,
+            )
+        )
+    )
+    today_mastery_result = await db.execute(today_mastery_query)
+    today_test_count += today_mastery_result.scalar() or 0
 
     # Score trend (daily averages for last 30 days)
     thirty_days_ago = now_kst() - timedelta(days=30)

@@ -296,6 +296,7 @@ export function MasteryPage() {
             word={currentQuestion.word.english}
             stage={currentQuestion.stage}
             korean={currentQuestion.word.korean || undefined}
+            sentenceKo={currentQuestion.word.example_ko}
             contextMode="sentence"
             sentenceBlank={currentQuestion.sentence_blank}
             sentenceEn={currentQuestion.word.example_en}
@@ -306,6 +307,7 @@ export function MasteryPage() {
         <SentenceBlankCard
           sentenceBlank={currentQuestion.sentence_blank!}
           korean={currentQuestion.word.korean || undefined}
+          sentenceKo={currentQuestion.word.example_ko || undefined}
           sentenceEn={currentQuestion.word.example_en || undefined}
           stage={currentQuestion.stage}
         />
