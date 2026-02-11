@@ -65,7 +65,7 @@ const audioCache = new Map<string, HTMLAudioElement>();
 const preloadingWords = new Set<string>();
 
 /**
- * 백그라운드에서 Dictionary API 음원을 미리 로드
+ * 백그라운드에서 Dictionary API → Gemini TTS 순서로 음원을 미리 로드
  */
 export function preloadWordAudio(word: string) {
   const key = word.toLowerCase();
@@ -80,7 +80,7 @@ export function preloadWordAudio(word: string) {
   })
     .then((res) => { clearTimeout(timeoutId); return res.ok ? res.json() : null; })
     .then((data) => {
-      if (!data) return;
+      if (!data) return null;
       const audioUrl = data?.[0]?.phonetics
         ?.map((p: { audio?: string }) => p.audio)
         ?.find((url: string) => url && url.length > 0);
@@ -88,6 +88,22 @@ export function preloadWordAudio(word: string) {
         const audio = new Audio(audioUrl);
         audio.preload = 'auto';
         audioCache.set(key, audio);
+        return 'done';
+      }
+      return null;
+    })
+    .then((result) => {
+      // Dictionary API에 음원이 없으면 Gemini TTS로 프리로드
+      if (!result && !audioCache.has(key)) {
+        return fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(word)}&voice=${sessionVoice}`)
+          .then((r) => r.ok ? r.blob() : null)
+          .then((blob) => {
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+            audio.preload = 'auto';
+            audioCache.set(key, audio);
+          });
       }
     })
     .catch(() => {})
@@ -95,7 +111,7 @@ export function preloadWordAudio(word: string) {
 }
 
 /**
- * 단어 발음 재생: 프리로드된 음원 → fallback: Web Speech API
+ * 단어 발음 재생: 프리로드된 음원 → Gemini TTS → Web Speech API
  */
 export async function speakWord(word: string) {
   const key = word.toLowerCase();
@@ -106,11 +122,21 @@ export async function speakWord(word: string) {
     return;
   }
 
-  // 캐시에 없으면 Web Speech API로 즉시 재생 (지연 없음)
-  speak(word, 'en-US', { rate: 0.85 });
+  // Gemini TTS for single word
+  try {
+    const resp = await fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(word)}&voice=${sessionVoice}`);
+    if (resp.ok) {
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => URL.revokeObjectURL(url);
+      await audio.play();
+      return;
+    }
+  } catch { /* fall through */ }
 
-  // 백그라운드에서 음원 캐시 (다음 클릭 시 원어민 음원 사용)
-  preloadWordAudio(word);
+  // Web Speech API fallback
+  speak(word, 'en-US', { rate: 0.85 });
 }
 
 /**
