@@ -21,7 +21,7 @@ export function LoginPage() {
   const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname;
 
   const handleTestCodeChange = (value: string) => {
-    setTestCode(value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6));
+    setTestCode(value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '').slice(0, 8));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,7 +33,7 @@ export function LoginPage() {
       const user = useAuthStore.getState().user;
 
       // If test code is provided, go directly to test start
-      if (testCode.length === 6) {
+      if (testCode.length === 8) {
         navigate(`/test/start?code=${testCode}`, { replace: true });
         return;
       }
@@ -223,13 +223,13 @@ export function LoginPage() {
                   onChange={(e) => handleTestCodeChange(e.target.value)}
                   className="w-full h-12 pl-10 pr-3.5 rounded-lg border border-[#E5E4E1] bg-white text-sm text-[#1A1918] placeholder-[#9C9B99] focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] transition-colors tracking-[0.15em] font-semibold"
                   placeholder="코드 입력 시 바로 테스트 시작"
-                  maxLength={6}
+                  maxLength={8}
                   style={{ fontFamily: 'Outfit, sans-serif' }}
                 />
               </div>
-              {testCode.length > 0 && testCode.length < 6 && (
+              {testCode.length > 0 && testCode.length < 8 && (
                 <p className="text-[11px] text-[#9C9B99]" style={{ fontFamily: 'Outfit, sans-serif' }}>
-                  6자리 코드를 입력하세요 ({testCode.length}/6)
+                  8자리 코드를 입력하세요 ({testCode.length}/8)
                 </p>
               )}
             </div>
@@ -239,7 +239,7 @@ export function LoginPage() {
               type="submit"
               disabled={isLoading}
               className={`w-full h-12 rounded-lg text-white text-[15px] font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-                testCode.length === 6
+                testCode.length === 8
                   ? 'bg-[#4F46E5] hover:bg-[#4338CA]'
                   : 'bg-[#2D9CAE] hover:bg-[#268a9a]'
               }`}
@@ -247,7 +247,7 @@ export function LoginPage() {
             >
               {isLoading
                 ? '로그인 중...'
-                : testCode.length === 6
+                : testCode.length === 8
                   ? '로그인 & 테스트 시작'
                   : '로그인'}
             </button>
