@@ -11,8 +11,6 @@ interface SentenceBlankCardProps {
   sentenceBlank: string;
   /** Korean meaning of the target word */
   korean?: string;
-  /** Korean translation of the full sentence */
-  sentenceKo?: string;
   /** Full English sentence (for TTS) */
   sentenceEn?: string;
   /** Stage number for prompt text */
@@ -30,7 +28,6 @@ const STAGE_PROMPTS: Record<number, string> = {
 export const SentenceBlankCard = memo(function SentenceBlankCard({
   sentenceBlank,
   korean,
-  sentenceKo,
   sentenceEn,
   stage,
 }: SentenceBlankCardProps) {
