@@ -113,6 +113,8 @@ export function MasteryPage() {
     return () => {
       window.removeEventListener('popstate', onPopState);
       stopTtsSounds();
+      stopSound('timer');
+      stopSound('two');
     };
   }, []);
 
@@ -164,6 +166,9 @@ export function MasteryPage() {
 
   // Handle exit
   const handleExit = useCallback(() => {
+    stopTtsSounds();
+    stopSound('timer');
+    stopSound('two');
     store.reset();
     navigate('/student', { replace: true });
   }, [navigate]);

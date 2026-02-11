@@ -33,6 +33,7 @@ class SubmitMasteryAnswerRequest(BaseModel):
     selected_answer: str
     time_taken_seconds: Optional[float] = None
     stage: int
+    question_type: Optional[str] = None
 
 
 # --- Response schemas ---

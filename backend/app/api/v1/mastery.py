@@ -186,6 +186,7 @@ async def submit_mastery_answer(
             selected_answer=body.selected_answer,
             stage=body.stage,
             time_taken_seconds=body.time_taken_seconds,
+            question_type=body.question_type,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

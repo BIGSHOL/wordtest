@@ -321,6 +321,7 @@ async def submit_answer(
     selected_answer: str,
     stage: int,
     time_taken_seconds: float | None = None,
+    question_type: str | None = None,
 ) -> dict:
     """Submit an answer and process stage transition.
 
@@ -342,8 +343,13 @@ async def submit_answer(
     if not word:
         raise ValueError("Word not found")
 
-    # Determine correct answer based on stage
-    if stage in (1, 4):
+    # Determine correct answer based on question_type (or fallback to stage)
+    if question_type:
+        if question_type in ('word_to_meaning', 'listen_to_meaning'):
+            correct = word.korean
+        else:
+            correct = word.english
+    elif stage in (1, 4):
         correct = word.korean
     else:
         correct = word.english
