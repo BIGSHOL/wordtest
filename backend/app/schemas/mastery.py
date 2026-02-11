@@ -86,6 +86,7 @@ class StartMasteryResponse(BaseModel):
     stage_summary: StageSummary
     questions: list[MasteryQuestion]
     total_words: int
+    question_count: int = 50
     access_token: Optional[str] = None
     student_name: Optional[str] = None
     assignment_type: str = "mastery"

@@ -64,7 +64,7 @@ async def start_mastery_by_code(
         )
 
     try:
-        session, questions, masteries, all_words, assignment, student_name, current_level = \
+        session, questions, masteries, all_words, assignment, student_name, current_level, question_count = \
             await start_session_by_code(db, code, allow_restart=body.allow_restart)
     except ValueError as e:
         msg = str(e)
@@ -90,6 +90,7 @@ async def start_mastery_by_code(
         stage_summary=summary,
         questions=questions,
         total_words=len(all_words),
+        question_count=question_count,
         access_token=access_token,
         student_name=student_name,
         assignment_type="mastery",

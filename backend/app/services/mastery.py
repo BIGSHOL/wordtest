@@ -144,7 +144,7 @@ async def _compute_stage_summary(
 
 async def start_session_by_code(
     db: AsyncSession, code: str, allow_restart: bool = False
-) -> tuple[LearningSession, list[MasteryQuestion], list[WordMastery], list[Word], TestAssignment, str, int]:
+) -> tuple[LearningSession, list[MasteryQuestion], list[WordMastery], list[Word], TestAssignment, str, int, int]:
     """Start or resume a mastery learning session by test code.
 
     Returns:
@@ -227,7 +227,7 @@ async def start_session_by_code(
 
     await db.commit()
 
-    return (session, first_batch, masteries, all_words, assignment, student.name or "학생", session.current_level)
+    return (session, first_batch, masteries, all_words, assignment, student.name or "학생", session.current_level, config.question_count)
 
 
 async def get_question_pool(
@@ -494,6 +494,17 @@ async def complete_batch(
     # Save final level + mark session completed
     session.current_level = new_level
     session.completed_at = now_kst()
+
+    # Update linked TestAssignment status to "completed"
+    if session.assignment_id:
+        assign_result = await db.execute(
+            select(TestAssignment).where(TestAssignment.id == session.assignment_id)
+        )
+        linked_assignment = assign_result.scalar_one_or_none()
+        if linked_assignment and linked_assignment.status != "completed":
+            linked_assignment.status = "completed"
+            linked_assignment.completed_at = now_kst()
+
     await db.commit()
 
     return {

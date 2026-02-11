@@ -30,13 +30,12 @@ import { getLevelRank } from '../../types/rank';
 
 const FEEDBACK_DELAY_CORRECT = 800;
 const FEEDBACK_DELAY_WRONG = 1800;
-const TOTAL_QUESTIONS = 50;
 
 export function MasteryPage() {
   const navigate = useNavigate();
   const store = useMasteryStore();
   const {
-    session, globalIndex,
+    session, globalIndex, questionCount,
     selectedAnswer, typedAnswer, answerResult,
     combo, isLoading, isComplete, finalResult,
     currentBook, displayRank, correctCount, totalAnswered,
@@ -328,7 +327,7 @@ export function MasteryPage() {
       <MasteryHeader
         level={displayRank}
         currentIndex={globalIndex}
-        totalInBatch={TOTAL_QUESTIONS}
+        totalInBatch={questionCount}
         combo={combo}
         xp={xp}
         lessonXp={lessonXp}
@@ -338,7 +337,7 @@ export function MasteryPage() {
       />
 
       {/* Progress Bar - global 1-50 */}
-      <GradientProgressBar current={globalIndex + 1} total={TOTAL_QUESTIONS} />
+      <GradientProgressBar current={globalIndex + 1} total={questionCount} />
 
       {/* Content Area */}
       <div className="flex-1 flex flex-col justify-center items-center gap-6 px-5 py-6 md:px-8 md:gap-7">

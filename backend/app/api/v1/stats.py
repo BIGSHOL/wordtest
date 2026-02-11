@@ -97,6 +97,36 @@ async def get_dashboard_stats(
     avg_score_result = await db.execute(avg_score_query)
     avg_score = avg_score_result.scalar() or 0.0
 
+    # Average answer time (seconds per question, from completed tests)
+    completed_sessions_subq = (
+        select(TestSession.id)
+        .where(
+            and_(
+                TestSession.student_id.in_(student_ids_subq),
+                TestSession.completed_at.isnot(None),
+            )
+        )
+        .scalar_subquery()
+    )
+    avg_time_query = (
+        select(
+            func.avg(
+                func.extract('epoch', TestSession.completed_at) -
+                func.extract('epoch', TestSession.started_at)
+            ) / func.nullif(TestSession.total_questions, 0)
+        )
+        .where(
+            and_(
+                TestSession.student_id.in_(student_ids_subq),
+                TestSession.completed_at.isnot(None),
+                TestSession.started_at.isnot(None),
+                TestSession.total_questions > 0,
+            )
+        )
+    )
+    avg_time_result = await db.execute(avg_time_query)
+    avg_time_per_question = avg_time_result.scalar() or 0.0
+
     # Level distribution (from determined_level in completed tests)
     level_dist_query = (
         select(
@@ -225,7 +255,7 @@ async def get_dashboard_stats(
         total_words=total_words,
         total_tests=total_tests,
         avg_score=float(avg_score),
-        avg_time_seconds=0.0,  # No timing data in model yet
+        avg_time_seconds=round(float(avg_time_per_question), 1),
         level_distribution=level_distribution,
         recent_tests=recent_tests,
         weekly_test_count=weekly_test_count,

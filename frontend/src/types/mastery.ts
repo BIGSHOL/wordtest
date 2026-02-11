@@ -105,6 +105,7 @@ export interface StartMasteryResponse {
   stage_summary: StageSummary;
   questions: MasteryQuestion[];
   total_words: number;
+  question_count: number;
   access_token?: string;
   student_name?: string;
   assignment_type: string;

@@ -9,6 +9,7 @@ from app.schemas.user import UserResponse
 from app.core.deps import CurrentTeacher
 from app.models.user import User
 from app.models.test_session import TestSession
+from app.services.level_engine import format_rank_label
 from app.services.student import (
     get_student_by_username,
     create_student,
@@ -24,6 +25,8 @@ router = APIRouter(prefix="/students", tags=["students"])
 class StudentWithLevelResponse(UserResponse):
     latest_level: Optional[int] = None
     latest_rank: Optional[str] = None
+    latest_sublevel: Optional[int] = None
+    latest_rank_label: Optional[str] = None
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -84,6 +87,7 @@ async def list_students_endpoint(
             TestSession.student_id,
             TestSession.determined_level,
             TestSession.rank_name,
+            TestSession.determined_sublevel,
         )
         .join(
             latest_sub,
@@ -95,7 +99,7 @@ async def list_students_endpoint(
     )
     level_map = {}
     for row in result.all():
-        level_map[row[0]] = {"level": row[1], "rank": row[2]}
+        level_map[row[0]] = {"level": row[1], "rank": row[2], "sublevel": row[3]}
 
     responses = []
     for s in students:
@@ -115,6 +119,11 @@ async def list_students_endpoint(
                 updated_at=s.updated_at,
                 latest_level=info.get("level"),
                 latest_rank=info.get("rank"),
+                latest_sublevel=info.get("sublevel"),
+                latest_rank_label=(
+                    format_rank_label(info["level"], info["sublevel"])
+                    if info.get("level") and info.get("sublevel") else None
+                ),
             )
         )
     return responses

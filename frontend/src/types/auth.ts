@@ -17,6 +17,8 @@ export interface User {
   updated_at: string;
   latest_level?: number | null;
   latest_rank?: string | null;
+  latest_sublevel?: number | null;
+  latest_rank_label?: string | null;
 }
 
 export interface LoginRequest {

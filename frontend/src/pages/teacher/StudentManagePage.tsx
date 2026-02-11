@@ -281,10 +281,13 @@ export function StudentManagePage() {
                         <td className="px-4 whitespace-nowrap">
                           {rankInfo ? (
                             <span
-                              className="inline-flex items-center px-2 py-1 rounded text-xs font-medium text-white whitespace-nowrap"
-                              style={{ backgroundColor: rankInfo.bgColor }}
+                              className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap"
+                              style={{
+                                backgroundColor: rankInfo.colors[0] + '20',
+                                color: rankInfo.colors[1],
+                              }}
                             >
-                              Lv.{student.latest_level} {rankInfo.nameKo}
+                              {student.latest_rank_label || `${rankInfo.name} ${student.latest_level}-1`}
                             </span>
                           ) : (
                             <span className="text-sm text-text-tertiary">-</span>

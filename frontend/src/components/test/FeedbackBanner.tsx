@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { CircleCheck, CircleX } from 'lucide-react';
+import { CircleCheck, CircleX, Zap } from 'lucide-react';
 
 interface FeedbackBannerProps {
   isCorrect: boolean;
@@ -43,25 +43,57 @@ export const FeedbackBanner = memo(function FeedbackBanner({
   );
 });
 
-/** Streak progress - mini bar with lightning icon */
+/** Streak progress - step dots with glow + pulse */
 function StreakProgress({ current, required }: { current: number; required: number }) {
-  const pct = required > 0 ? (current / required) * 100 : 0;
   return (
-    <div className="flex items-center gap-2 ml-[32px]">
-      {/* Mini progress bar */}
-      <div className="w-16 h-[5px] rounded-full bg-emerald-200 overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-500"
+    <>
+      <style>{`
+        @keyframes streak-pulse {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 4px #34D399; }
+          50% { transform: scale(1.3); box-shadow: 0 0 12px #34D399, 0 0 20px #34D39960; }
+        }
+        @keyframes streak-zap {
+          0% { transform: scale(0.8); opacity: 0.6; }
+          50% { transform: scale(1.2); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
+      <div className="flex items-center gap-2.5 ml-[32px]">
+        <Zap
+          className="w-4 h-4"
           style={{
-            width: `${pct}%`,
-            background: 'linear-gradient(90deg, #34D399, #10B981)',
+            color: '#10B981',
+            fill: '#10B981',
+            animation: 'streak-zap 0.4s ease-out',
+            filter: 'drop-shadow(0 0 4px #10B98180)',
           }}
         />
+        <div className="flex items-center gap-1.5">
+          {Array.from({ length: required }, (_, i) => {
+            const filled = i < current;
+            const isLatest = i === current - 1;
+            return (
+              <div
+                key={i}
+                className="rounded-full"
+                style={{
+                  width: 10,
+                  height: 10,
+                  background: filled
+                    ? 'linear-gradient(135deg, #34D399, #10B981)'
+                    : '#D1D5DB',
+                  boxShadow: filled ? '0 0 6px #34D39980' : undefined,
+                  animation: isLatest ? 'streak-pulse 0.8s ease-in-out' : undefined,
+                  transition: 'all 0.3s',
+                }}
+              />
+            );
+          })}
+        </div>
+        <span className="font-display text-[12px] font-bold text-emerald-600 tabular-nums">
+          {current}/{required}
+        </span>
       </div>
-      {/* Label */}
-      <span className="font-display text-[11px] font-bold text-emerald-600 tabular-nums">
-        {current}/{required}
-      </span>
-    </div>
+    </>
   );
 }

@@ -56,128 +56,85 @@ export function AssignmentStatusTable({ assignments, onDelete, onViewResult }: P
         </div>
       ) : (
         <div className="overflow-x-auto">
-          {/* Table Header */}
-          <div
-            className="flex items-center"
-            style={{
-              backgroundColor: '#F8F8F6',
-              height: 40,
-              padding: '0 24px',
-              gap: 12,
-              borderTop: '1px solid #E8E8E6',
-              borderBottom: '1px solid #E8E8E6',
-            }}
-          >
-            <span className="text-[11px] font-semibold text-text-secondary whitespace-nowrap" style={{ width: 80 }}>학생</span>
-            <span className="text-[11px] font-semibold text-text-secondary whitespace-nowrap" style={{ width: 90 }}>학교</span>
-            <span className="text-[11px] font-semibold text-text-secondary whitespace-nowrap" style={{ width: 45 }}>학년</span>
-            <span className="text-[11px] font-semibold text-text-secondary whitespace-nowrap" style={{ width: 90 }}>테스트코드</span>
-            <span className="text-[11px] font-semibold text-text-secondary whitespace-nowrap" style={{ width: 55 }}>문제수</span>
-            <span className="text-[11px] font-semibold text-text-secondary whitespace-nowrap" style={{ width: 55 }}>제한시간</span>
-            <span className="text-[11px] font-semibold text-text-secondary whitespace-nowrap" style={{ width: 65 }}>유형</span>
-            <span className="text-[11px] font-semibold text-text-secondary whitespace-nowrap" style={{ width: 100 }}>출제범위</span>
-            <span className="text-[11px] font-semibold text-text-secondary whitespace-nowrap" style={{ width: 85 }}>출제일</span>
-            <span className="text-[11px] font-semibold text-text-secondary whitespace-nowrap" style={{ width: 60 }}>상태</span>
-            <span className="text-[11px] font-semibold text-text-secondary flex-1 whitespace-nowrap">관리</span>
-          </div>
-
-          {/* Table Rows */}
-          {assignments.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center"
-              style={{
-                height: 48,
-                padding: '0 24px',
-                gap: 12,
-                borderBottom: '1px solid #E8E8E6',
-              }}
-            >
-              <span className="text-xs font-semibold text-text-primary truncate" style={{ width: 80 }}>
-                {item.student_name}
-              </span>
-              <span className="text-xs text-text-secondary truncate" style={{ width: 90 }}>
-                {item.student_school || '-'}
-              </span>
-              <span className="text-xs text-text-secondary whitespace-nowrap" style={{ width: 45 }}>
-                {item.student_grade || '-'}
-              </span>
-              <span className="whitespace-nowrap" style={{ width: 90 }}>
-                <span className="text-xs font-bold" style={{ color: '#4F46E5', letterSpacing: 1 }}>
-                  {item.test_code}
-                </span>
-              </span>
-              <span className="text-xs text-text-secondary whitespace-nowrap" style={{ width: 55 }}>
-                {item.question_count}문제
-              </span>
-              <span className="text-xs text-text-secondary whitespace-nowrap" style={{ width: 55 }}>
-                {item.per_question_time_seconds ?? '-'}초
-              </span>
-              <span className="text-xs text-text-secondary whitespace-nowrap" style={{ width: 65 }}>
-                {formatQuestionTypes(item.question_types)}
-              </span>
-              <span className="text-xs text-text-secondary whitespace-nowrap" style={{ width: 100 }}>
-                {item.lesson_range || '-'}
-                {item.test_type === 'placement' && (
-                  <span
-                    className="text-[9px] font-semibold ml-1"
-                    style={{ color: '#4F46E5' }}
-                  >
-                    적응
-                  </span>
-                )}
-              </span>
-              <span className="text-[11px] text-text-tertiary whitespace-nowrap" style={{ width: 85 }}>
-                {formatDate(item.assigned_at)}
-              </span>
-              <span className="whitespace-nowrap" style={{ width: 60 }}>
-                {item.status === 'pending' && (
-                  <span
-                    className="text-[10px] font-semibold rounded-full"
-                    style={{ backgroundColor: '#FEF2F2', color: '#EF4444', padding: '3px 8px' }}
-                  >
-                    미응시
-                  </span>
-                )}
-                {item.status === 'in_progress' && (
-                  <span
-                    className="text-[10px] font-semibold rounded-full"
-                    style={{ backgroundColor: '#EEF2FF', color: '#4F46E5', padding: '3px 8px' }}
-                  >
-                    학습중
-                  </span>
-                )}
-                {item.status === 'completed' && (
-                  <span
-                    className="text-[10px] font-semibold rounded-full"
-                    style={{ backgroundColor: '#E8FAF0', color: '#5A8F6B', padding: '3px 8px' }}
-                  >
-                    완료
-                  </span>
-                )}
-              </span>
-              <span className="flex-1 flex items-center gap-2">
-                {item.status === 'pending' && (
-                  <button
-                    onClick={() => onDelete(item.id)}
-                    className="hover:opacity-70 transition-opacity"
-                    title="삭제"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" style={{ color: '#EF4444' }} />
-                  </button>
-                )}
-                {item.status === 'completed' && item.test_session_id && (
-                  <button
-                    onClick={() => onViewResult(item.student_id)}
-                    className="text-[11px] font-semibold hover:opacity-70 transition-opacity"
-                    style={{ color: '#2D9CAE' }}
-                  >
-                    보기
-                  </button>
-                )}
-              </span>
-            </div>
-          ))}
+          {/* Table */}
+          <table className="w-full" style={{ minWidth: 920 }}>
+            <thead>
+              <tr style={{ backgroundColor: '#F8F8F6', height: 40, borderTop: '1px solid #E8E8E6', borderBottom: '1px solid #E8E8E6' }}>
+                <th className="text-[11px] font-semibold text-text-secondary text-left pl-6 pr-2 whitespace-nowrap">학생</th>
+                <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">학교</th>
+                <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">학년</th>
+                <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">테스트코드</th>
+                <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">문제수</th>
+                <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">제한시간</th>
+                <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">유형</th>
+                <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">출제범위</th>
+                <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">출제일</th>
+                <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">상태</th>
+                <th className="text-[11px] font-semibold text-text-secondary text-left pl-2 pr-6 whitespace-nowrap">관리</th>
+              </tr>
+            </thead>
+            <tbody>
+              {assignments.map((item) => (
+                <tr key={item.id} style={{ borderBottom: '1px solid #E8E8E6', height: 48 }}>
+                  <td className="text-xs font-semibold text-text-primary pl-6 pr-2 whitespace-nowrap">
+                    {item.student_name}
+                  </td>
+                  <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
+                    {item.student_school || '-'}
+                  </td>
+                  <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
+                    {item.student_grade || '-'}
+                  </td>
+                  <td className="px-2 whitespace-nowrap">
+                    <span className="text-xs font-bold" style={{ color: '#4F46E5', letterSpacing: 1 }}>
+                      {item.test_code}
+                    </span>
+                  </td>
+                  <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
+                    {item.question_count}문제
+                  </td>
+                  <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
+                    {item.per_question_time_seconds ?? '-'}초
+                  </td>
+                  <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
+                    {formatQuestionTypes(item.question_types)}
+                  </td>
+                  <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
+                    {item.lesson_range || '-'}
+                    {item.test_type === 'placement' && (
+                      <span className="text-[9px] font-semibold ml-1" style={{ color: '#4F46E5' }}>적응</span>
+                    )}
+                  </td>
+                  <td className="text-[11px] text-text-tertiary px-2 whitespace-nowrap">
+                    {formatDate(item.assigned_at)}
+                  </td>
+                  <td className="px-2 whitespace-nowrap">
+                    {item.status === 'pending' && (
+                      <span className="text-[10px] font-semibold rounded-full" style={{ backgroundColor: '#FEF2F2', color: '#EF4444', padding: '3px 8px' }}>미응시</span>
+                    )}
+                    {item.status === 'in_progress' && (
+                      <span className="text-[10px] font-semibold rounded-full" style={{ backgroundColor: '#EEF2FF', color: '#4F46E5', padding: '3px 8px' }}>학습중</span>
+                    )}
+                    {item.status === 'completed' && (
+                      <span className="text-[10px] font-semibold rounded-full" style={{ backgroundColor: '#E8FAF0', color: '#5A8F6B', padding: '3px 8px' }}>완료</span>
+                    )}
+                  </td>
+                  <td className="pl-2 pr-6">
+                    <div className="flex items-center gap-2">
+                      {item.status === 'pending' && (
+                        <button onClick={() => onDelete(item.id)} className="hover:opacity-70 transition-opacity" title="삭제">
+                          <Trash2 className="w-3.5 h-3.5" style={{ color: '#EF4444' }} />
+                        </button>
+                      )}
+                      {item.status === 'completed' && item.test_session_id && (
+                        <button onClick={() => onViewResult(item.student_id)} className="text-[11px] font-semibold hover:opacity-70 transition-opacity" style={{ color: '#2D9CAE' }}>보기</button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

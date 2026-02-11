@@ -1,6 +1,7 @@
 """Statistics schemas."""
 from typing import Optional
 from pydantic import BaseModel
+from app.schemas.test import TestSessionResponse, AnswerDetail
 
 
 class LevelDistribution(BaseModel):
@@ -81,8 +82,8 @@ class PeerRanking(BaseModel):
 
 
 class EnhancedTestReport(BaseModel):
-    test_session: "TestSessionResponse"  # forward ref
-    answers: list["AnswerDetail"]        # forward ref
+    test_session: TestSessionResponse
+    answers: list[AnswerDetail]
     radar_metrics: RadarMetrics
     metric_details: list[MetricDetail]
     peer_ranking: Optional[PeerRanking] = None

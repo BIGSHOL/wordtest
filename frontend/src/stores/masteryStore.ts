@@ -19,7 +19,7 @@ import type {
   CompleteBatchResponse,
 } from '../types/mastery';
 
-const TOTAL_QUESTIONS = 50;
+const DEFAULT_QUESTION_COUNT = 50;
 
 // --- XP Configuration ---
 
@@ -63,6 +63,7 @@ export interface MasteryStore {
   session: MasterySessionInfo | null;
   stageSummary: StageSummary | null;
   totalWords: number;
+  questionCount: number;
 
   // Question pools (grouped by word level/book)
   levelPools: Record<number, MasteryQuestion[]>;
@@ -110,6 +111,7 @@ const initialState = {
   session: null,
   stageSummary: null,
   totalWords: 0,
+  questionCount: DEFAULT_QUESTION_COUNT,
   levelPools: {} as Record<number, MasteryQuestion[]>,
   poolIndex: {} as Record<number, number>,
   xp: 0,
@@ -192,6 +194,7 @@ export const useMasteryStore = create<MasteryStore>()((set, get) => ({
         session: response.session,
         stageSummary: response.stage_summary,
         totalWords: response.total_words,
+        questionCount: response.question_count || DEFAULT_QUESTION_COUNT,
         levelPools: pools,
         poolIndex,
         xp: 0,
@@ -334,8 +337,8 @@ export const useMasteryStore = create<MasteryStore>()((set, get) => ({
     const state = get();
     const nextGlobalIdx = state.globalIndex + 1;
 
-    // Check if all 50 questions done
-    if (nextGlobalIdx >= TOTAL_QUESTIONS) {
+    // Check if all questions done
+    if (nextGlobalIdx >= state.questionCount) {
       set({ isComplete: true });
       // Save final level to backend
       if (state.session) {
