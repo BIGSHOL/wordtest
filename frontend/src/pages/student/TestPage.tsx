@@ -13,7 +13,7 @@ import { FeedbackBanner } from '../../components/test/FeedbackBanner';
 import { useTestStore } from '../../stores/testStore';
 import { useTimer } from '../../hooks/useTimer';
 import { playSound, stopSound } from '../../hooks/useSound';
-import { preloadWordAudio } from '../../utils/tts';
+import { preloadWordAudio, preloadSentenceAudio, randomizeTtsVoice } from '../../utils/tts';
 
 const TIMER_SECONDS = 15;
 const FEEDBACK_DELAY_MS = 800;
@@ -43,6 +43,7 @@ export function TestPage() {
   const { secondsLeft, fraction, urgency, reset: resetTimer, pause: pauseTimer } = useTimer(TIMER_SECONDS, handleTimeout);
 
   useEffect(() => {
+    randomizeTtsVoice();
     const state = useTestStore.getState();
     if (!state.session || state.questions.length === 0) {
       state.reset();
@@ -76,10 +77,17 @@ export function TestPage() {
     // Preload current word's pronunciation
     if (questions[currentIndex]) {
       preloadWordAudio(questions[currentIndex].word.english);
+      // Preload sentence TTS if this is a sentence question (every 5th)
+      if ((currentIndex + 1) % 5 === 0 && questions[currentIndex].word.example_en) {
+        preloadSentenceAudio(questions[currentIndex].word.example_en);
+      }
     }
-    // Preload next word's pronunciation
+    // Preload next word's pronunciation + sentence if needed
     if (questions[currentIndex + 1]) {
       preloadWordAudio(questions[currentIndex + 1].word.english);
+      if ((currentIndex + 2) % 5 === 0 && questions[currentIndex + 1].word.example_en) {
+        preloadSentenceAudio(questions[currentIndex + 1].word.example_en);
+      }
     }
   }, [currentIndex, resetTimer, questions]);
 

@@ -114,14 +114,48 @@ export async function speakWord(word: string) {
 }
 
 /**
- * 문장 발음: Gemini-TTS (백엔드) → Google Translate TTS → Web Speech API
+ * Gemini-TTS: 시험마다 랜덤 음성, 시험 중에는 동일 음성 유지
  */
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const TTS_VOICES = ['Aoede', 'Puck', 'Charon', 'Fenrir', 'Leda'];
+let sessionVoice = TTS_VOICES[Math.floor(Math.random() * TTS_VOICES.length)];
 
+/** 시험 시작 시 호출 — 새 랜덤 음성 배정 */
+export function randomizeTtsVoice() {
+  sessionVoice = TTS_VOICES[Math.floor(Math.random() * TTS_VOICES.length)];
+}
+
+// Sentence preload cache
+const sentenceCache = new Map<string, HTMLAudioElement>();
+
+/** 문제 표시 시 호출 — 백그라운드에서 TTS 미리 로드 */
+export function preloadSentenceAudio(sentence: string) {
+  if (!sentence || sentenceCache.has(sentence)) return;
+  fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(sentence)}&voice=${sessionVoice}`)
+    .then((r) => r.ok ? r.blob() : null)
+    .then((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.preload = 'auto';
+      sentenceCache.set(sentence, audio);
+    })
+    .catch(() => {});
+}
+
+/** 문장 발음: preloaded → Gemini-TTS → Google Translate TTS → Web Speech API */
 export async function speakSentence(text: string) {
-  // 1) Gemini-TTS via backend
+  // 1) Preloaded cache (즉시 재생)
+  const cached = sentenceCache.get(text);
+  if (cached) {
+    cached.currentTime = 0;
+    await cached.play().catch(() => {});
+    return;
+  }
+
+  // 2) Gemini-TTS via backend
   try {
-    const resp = await fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(text)}`);
+    const resp = await fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(text)}&voice=${sessionVoice}`);
     if (resp.ok) {
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);
@@ -132,7 +166,7 @@ export async function speakSentence(text: string) {
     }
   } catch { /* fall through */ }
 
-  // 2) Google Translate TTS fallback
+  // 3) Google Translate TTS fallback
   try {
     const gttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=en&client=tw-ob&q=${encodeURIComponent(text)}`;
     const audio = new Audio(gttsUrl);
@@ -140,7 +174,7 @@ export async function speakSentence(text: string) {
     return;
   } catch { /* fall through */ }
 
-  // 3) Web Speech API fallback
+  // 4) Web Speech API fallback
   speak(text, 'en-US', { rate: 0.9 });
 }
 

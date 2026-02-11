@@ -26,10 +26,18 @@ def pcm_to_wav(pcm_data: bytes, sample_rate: int = 24000, channels: int = 1, bit
     return header + pcm_data
 
 
+VOICES = ["Aoede", "Puck", "Charon", "Fenrir", "Leda"]
+
+
 @router.get("/tts")
-async def text_to_speech(text: str = Query(..., max_length=500)):
+async def text_to_speech(
+    text: str = Query(..., max_length=500),
+    voice: str = Query("Aoede"),
+):
     if not settings.GEMINI_API_KEY:
         return JSONResponse(status_code=503, content={"detail": "TTS not configured"})
+
+    voice_name = voice if voice in VOICES else "Aoede"
 
     payload = {
         "contents": [{"parts": [{"text": text}]}],
@@ -37,7 +45,7 @@ async def text_to_speech(text: str = Query(..., max_length=500)):
             "responseModalities": ["AUDIO"],
             "speechConfig": {
                 "voiceConfig": {
-                    "prebuiltVoiceConfig": {"voiceName": "Kore"}
+                    "prebuiltVoiceConfig": {"voiceName": voice_name}
                 }
             },
         },
