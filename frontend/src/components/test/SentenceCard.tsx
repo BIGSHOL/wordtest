@@ -29,7 +29,7 @@ export const SentenceCard = memo(function SentenceCard({ sentence, word }: Sente
 
   return (
     <div
-      className="flex flex-col items-center justify-center gap-4 rounded-2xl bg-bg-surface px-6 py-8 w-full"
+      className="flex flex-col items-center justify-center gap-4 rounded-2xl bg-bg-surface px-6 md:px-8 py-8 w-full"
       style={{
         borderRadius: 20,
         boxShadow: '0 4px 24px #1A191812',

@@ -127,7 +127,7 @@ export function RegisterPage() {
         </div>
 
         {/* Register Card */}
-        <div className="w-full max-w-[360px] bg-white rounded-[20px] lg:rounded-none lg:shadow-none shadow-[0_2px_12px_rgba(26,25,24,0.03)] p-6 lg:p-0">
+        <div className="w-full max-w-[360px] md:max-w-[440px] bg-white rounded-[20px] lg:rounded-none lg:shadow-none shadow-[0_2px_12px_rgba(26,25,24,0.03)] p-6 lg:p-0">
           <form className="flex flex-col gap-6" onSubmit={handleSubmit}>
             {/* Title */}
             <div className="flex flex-col gap-1">

@@ -59,6 +59,7 @@ async def get_dashboard_stats(
             level_distribution=[],
             recent_tests=[],
             weekly_test_count=0,
+            today_test_count=0,
             score_trend=[],
         )
 
@@ -108,7 +109,7 @@ async def get_dashboard_stats(
 
     # Recent tests (last 10 completed)
     recent_tests_query = (
-        select(TestSession, User.name)
+        select(TestSession, User.name, User.id, User.school_name, User.grade)
         .join(User, TestSession.student_id == User.id)
         .where(
             and_(
@@ -120,16 +121,28 @@ async def get_dashboard_stats(
         .limit(10)
     )
     recent_tests_result = await db.execute(recent_tests_query)
-    recent_tests = [
-        RecentTest(
-            id=row[0].id,
-            student_name=row[1],
-            score=row[0].score,
-            determined_level=row[0].determined_level,
-            completed_at=str(row[0].completed_at) if row[0].completed_at else None,
+    recent_tests = []
+    for row in recent_tests_result.fetchall():
+        session = row[0]
+        duration = None
+        if session.completed_at and session.started_at:
+            duration = int((session.completed_at - session.started_at).total_seconds())
+        recent_tests.append(
+            RecentTest(
+                id=session.id,
+                student_id=row[2],
+                student_name=row[1],
+                student_school=row[3],
+                student_grade=row[4],
+                score=session.score,
+                determined_level=session.determined_level,
+                rank_name=session.rank_name,
+                total_questions=session.total_questions,
+                correct_count=session.correct_count,
+                duration_seconds=duration,
+                completed_at=str(session.completed_at) if session.completed_at else None,
+            )
         )
-        for row in recent_tests_result.fetchall()
-    ]
 
     # Weekly test count (last 7 days)
     week_ago = now_kst() - timedelta(days=7)
@@ -146,6 +159,22 @@ async def get_dashboard_stats(
     )
     weekly_tests_result = await db.execute(weekly_tests_query)
     weekly_test_count = weekly_tests_result.scalar() or 0
+
+    # Today test count
+    today_start = now_kst().replace(hour=0, minute=0, second=0, microsecond=0)
+    today_tests_query = (
+        select(func.count())
+        .select_from(TestSession)
+        .where(
+            and_(
+                TestSession.student_id.in_(student_ids_subq),
+                TestSession.completed_at.isnot(None),
+                TestSession.completed_at >= today_start,
+            )
+        )
+    )
+    today_tests_result = await db.execute(today_tests_query)
+    today_test_count = today_tests_result.scalar() or 0
 
     # Score trend (daily averages for last 30 days)
     thirty_days_ago = now_kst() - timedelta(days=30)
@@ -185,6 +214,7 @@ async def get_dashboard_stats(
         level_distribution=level_distribution,
         recent_tests=recent_tests,
         weekly_test_count=weekly_test_count,
+        today_test_count=today_test_count,
         score_trend=score_trend,
     )
 

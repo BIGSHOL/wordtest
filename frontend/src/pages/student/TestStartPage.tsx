@@ -119,11 +119,11 @@ export function TestStartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-bg-cream flex flex-col items-center lg:justify-center">
-      {/* Center container for PC (480px), full width on mobile */}
-      <div className="flex flex-col w-full lg:w-[480px]">
+    <div className="min-h-screen bg-bg-cream flex flex-col items-center md:justify-center lg:justify-center">
+      {/* Center container for PC (480px), tablet (480px), full width on mobile */}
+      <div className="flex flex-col w-full md:w-[480px] lg:w-[480px]">
       {/* Top Section */}
-      <div className="flex flex-col items-center gap-4 pt-[60px] lg:pt-0 pb-8 px-6">
+      <div className="flex flex-col items-center gap-4 pt-[60px] md:pt-0 lg:pt-0 pb-8 px-6 md:px-8">
         <div
           className="w-[72px] h-[72px] rounded-full flex items-center justify-center"
           style={{
@@ -145,7 +145,7 @@ export function TestStartPage() {
       </div>
 
       {/* Form Section */}
-      <div className="flex flex-col gap-5 px-6 w-full">
+      <div className="flex flex-col gap-5 px-6 md:px-8 w-full">
         {/* Input Group */}
         <div className="flex flex-col gap-2 w-full">
           <label className="font-display text-sm font-semibold text-text-primary">
@@ -257,10 +257,10 @@ export function TestStartPage() {
       </div>
 
       {/* Spacer (mobile only) */}
-      <div className="flex-1 lg:hidden" />
+      <div className="flex-1 md:hidden lg:hidden" />
 
       {/* Bottom Section */}
-      <div className="flex flex-col items-center gap-4 px-6 pb-10 lg:pb-0 lg:pt-8">
+      <div className="flex flex-col items-center gap-4 px-6 md:px-8 pb-10 md:pb-0 md:pt-8 lg:pb-0 lg:pt-8">
         <button
           onClick={handleStart}
           disabled={!config || isStarting}

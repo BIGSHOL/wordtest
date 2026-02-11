@@ -94,9 +94,9 @@ export function ResultPage() {
   const previewWrong = wrongItems.slice(0, 4);
 
   return (
-    <div className="min-h-screen bg-bg-cream flex flex-col lg:items-center">
+    <div className="min-h-screen bg-bg-cream flex flex-col md:items-center lg:items-center">
       {/* Scroll Content */}
-      <div className="flex-1 overflow-y-auto w-full lg:max-w-[600px]">
+      <div className="flex-1 overflow-y-auto w-full md:max-w-[600px] lg:max-w-[600px]">
         {/* Result Header */}
         <div className="flex flex-col items-center gap-5 pt-12 pb-6 px-6">
           <span className="font-display text-sm font-semibold text-accent-indigo">테스트 완료!</span>
@@ -166,7 +166,7 @@ export function ResultPage() {
       </div>
 
       {/* Bottom Buttons */}
-      <div className="px-6 pt-3 pb-10 w-full lg:max-w-[600px]">
+      <div className="px-6 pt-3 pb-10 w-full md:max-w-[600px] lg:max-w-[600px]">
         <button
           onClick={() => navigate('/student', { replace: true })}
           className="flex items-center justify-center gap-2 w-full h-[52px] rounded-2xl text-white"

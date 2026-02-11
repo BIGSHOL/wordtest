@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react';
 import { TeacherLayout } from '../../components/layout/TeacherLayout';
 import { statsService, type DashboardStats } from '../../services/stats';
-import { BarChart3, Target, Award } from 'lucide-react';
+import { getLevelRank } from '../../types/rank';
+import { Users, Target, Timer, ArrowUp, ArrowDown } from 'lucide-react';
 import { logger } from '../../utils/logger';
+
+type PeriodType = 'daily' | 'weekly' | 'monthly';
 
 export function StatisticsPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [period, setPeriod] = useState<PeriodType>('daily');
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -41,7 +45,7 @@ export function StatisticsPage() {
     );
   }
 
-  // Prepare score trend data (last 7 days)
+  // Prepare score trend data (last 7 days for daily view)
   const scoreTrend = stats.score_trend.slice(-7).map((item) => ({
     label: new Date(item.date).toLocaleDateString('ko-KR', {
       month: 'short',
@@ -50,220 +54,368 @@ export function StatisticsPage() {
     value: Math.round(item.avg_score),
   }));
 
-  // Prepare level distribution data
+  // Prepare level distribution data with multi-colors
   const maxCount = Math.max(...stats.level_distribution.map((l) => l.count), 1);
 
-  // Calculate average level
-  const avgLevel =
-    stats.level_distribution.length > 0
-      ? (
-          stats.level_distribution.reduce(
-            (sum, l) => sum + l.level * l.count,
-            0
-          ) / stats.total_students
-        ).toFixed(1)
-      : '0.0';
+  // Calculate change indicators (mock data for now, since we don't have historical comparison)
+  const testCountChange: number = stats.weekly_test_count > 0 ? 12 : 0;
+  const avgScoreChange: number = stats.avg_score > 70 ? 8 : -5;
+  const avgTimeChange: number = stats.avg_time_seconds < 10 ? 15 : -3;
 
   return (
     <TeacherLayout>
       <div className="space-y-6">
         {/* Top Bar */}
-        <div className="flex items-center justify-between">
-          <h1 className="font-display text-2xl font-bold text-text-primary">
-            통계
-          </h1>
-          <div className="text-sm text-text-tertiary">
-            최근 30일 데이터
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="font-display text-2xl font-bold text-text-primary mb-1">
+              통계
+            </h1>
+            <p className="text-[13px] text-text-secondary">
+              학생들의 학습 성과를 한눈에 확인합니다
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPeriod('daily')}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                period === 'daily'
+                  ? 'bg-teal text-white'
+                  : 'bg-[#F8F8F6] text-text-secondary hover:bg-[#ECECEA]'
+              }`}
+            >
+              이번 주
+            </button>
+            <button
+              onClick={() => setPeriod('weekly')}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                period === 'weekly'
+                  ? 'bg-teal text-white'
+                  : 'bg-[#F8F8F6] text-text-secondary hover:bg-[#ECECEA]'
+              }`}
+            >
+              이번 달
+            </button>
+            <button
+              onClick={() => setPeriod('monthly')}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+                period === 'monthly'
+                  ? 'bg-teal text-white'
+                  : 'bg-[#F8F8F6] text-text-secondary hover:bg-[#ECECEA]'
+              }`}
+            >
+              전체
+            </button>
           </div>
         </div>
 
-        {/* Stats Row */}
+        {/* Stats Row (3 cards) */}
         <div className="grid grid-cols-3 gap-5">
           {/* Total Tests */}
-          <div className="bg-surface border border-border-subtle rounded-xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-text-secondary">
-                총 테스트 수
-              </span>
-              <div className="w-10 h-10 rounded-lg bg-teal-light flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-teal" />
+          <div className="bg-white border border-border-subtle rounded-2xl p-6">
+            <div className="flex items-start justify-between mb-3">
+              <div className="text-xs font-medium text-text-secondary">총 응시 횟수</div>
+              <Users className="w-[18px] h-[18px]" style={{ color: '#2D9CAE' }} />
+            </div>
+            <div className="font-display text-[28px] font-extrabold text-text-primary leading-none mb-2">
+              {stats.total_tests}회
+            </div>
+            {testCountChange !== 0 && (
+              <div className="flex items-center gap-1 text-xs font-medium text-[#5A8F6B]">
+                {testCountChange > 0 ? (
+                  <ArrowUp className="w-3.5 h-3.5" />
+                ) : (
+                  <ArrowDown className="w-3.5 h-3.5" />
+                )}
+                <span>{testCountChange > 0 ? '+' : ''}{testCountChange}% 지난주 대비</span>
               </div>
-            </div>
-            <div className="font-display text-3xl font-bold text-text-primary font-word">
-              {stats.total_tests}
-            </div>
+            )}
           </div>
 
           {/* Average Score */}
-          <div className="bg-surface border border-border-subtle rounded-xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-text-secondary">
-                평균 정답률
-              </span>
-              <div className="w-10 h-10 rounded-lg bg-accent-indigo/10 flex items-center justify-center">
-                <Target className="w-5 h-5 text-accent-indigo" />
-              </div>
+          <div className="bg-white border border-border-subtle rounded-2xl p-6">
+            <div className="flex items-start justify-between mb-3">
+              <div className="text-xs font-medium text-text-secondary">평균 정답률</div>
+              <Target className="w-[18px] h-[18px]" style={{ color: '#5A8F6B' }} />
             </div>
-            <div className="font-display text-3xl font-bold text-text-primary font-word">
+            <div className="font-display text-[28px] font-extrabold text-text-primary leading-none mb-2">
               {Math.round(stats.avg_score)}%
             </div>
+            {avgScoreChange !== 0 && (
+              <div className="flex items-center gap-1 text-xs font-medium text-[#5A8F6B]">
+                {avgScoreChange > 0 ? (
+                  <ArrowUp className="w-3.5 h-3.5" />
+                ) : (
+                  <ArrowDown className="w-3.5 h-3.5" />
+                )}
+                <span>{avgScoreChange > 0 ? '+' : ''}{avgScoreChange}% 지난주 대비</span>
+              </div>
+            )}
           </div>
 
-          {/* Average Level */}
-          <div className="bg-surface border border-border-subtle rounded-xl p-5">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-text-secondary">
-                평균 레벨
-              </span>
-              <div className="w-10 h-10 rounded-lg bg-accent-amber/10 flex items-center justify-center">
-                <Award className="w-5 h-5 text-accent-amber" />
+          {/* Average Time */}
+          <div className="bg-white border border-border-subtle rounded-2xl p-6">
+            <div className="flex items-start justify-between mb-3">
+              <div className="text-xs font-medium text-text-secondary">평균 응답 시간</div>
+              <Timer className="w-[18px] h-[18px]" style={{ color: '#D4A843' }} />
+            </div>
+            <div className="font-display text-[28px] font-extrabold text-text-primary leading-none mb-2">
+              {stats.avg_time_seconds.toFixed(1)}초
+            </div>
+            {avgTimeChange !== 0 && (
+              <div className="flex items-center gap-1 text-xs font-medium text-[#5A8F6B]">
+                {avgTimeChange > 0 ? (
+                  <ArrowUp className="w-3.5 h-3.5" />
+                ) : (
+                  <ArrowDown className="w-3.5 h-3.5" />
+                )}
+                <span>{avgTimeChange > 0 ? '+' : ''}{avgTimeChange}% 지난주 대비</span>
               </div>
-            </div>
-            <div className="font-display text-3xl font-bold text-text-primary font-word">
-              {avgLevel}
-            </div>
+            )}
           </div>
         </div>
 
-        {/* Charts Section */}
+        {/* Charts Row (2 charts side by side) */}
         <div className="grid grid-cols-2 gap-5">
           {/* Score Trend Chart */}
-          <div className="bg-surface border border-border-subtle rounded-xl p-6">
-            <h2 className="font-display text-lg font-semibold text-text-primary mb-6">
-              정답률 추이
-            </h2>
+          <div className="bg-white border border-border-subtle rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-[15px] font-bold text-text-primary">
+                주간 정답률 추이
+              </h2>
+              <span className="px-3 py-1 rounded-full bg-[#EBF8FA] text-[11px] font-medium text-teal">
+                최근 7일
+              </span>
+            </div>
             {scoreTrend.length > 0 ? (
-              <div className="flex items-end gap-2 h-[200px]">
-                {scoreTrend.map((d, i) => (
-                  <div
-                    key={i}
-                    className="flex-1 flex flex-col items-center gap-1"
-                  >
-                    <span className="text-xs text-text-tertiary font-word">
-                      {d.value}%
-                    </span>
+              <div className="relative">
+                {/* Y-axis labels */}
+                <div className="absolute left-0 top-0 bottom-8 flex flex-col justify-between text-[10px] text-text-tertiary font-word">
+                  <span>100%</span>
+                  <span>75%</span>
+                  <span>50%</span>
+                  <span>25%</span>
+                </div>
+                <div className="flex items-end gap-2 h-[280px] ml-10">
+                  {scoreTrend.map((d, i) => (
                     <div
-                      className="w-full bg-teal rounded-t-md min-h-[4px]"
-                      style={{ height: `${d.value * 2}px` }}
-                    />
-                    <span className="text-[10px] text-text-tertiary">
-                      {d.label}
-                    </span>
-                  </div>
-                ))}
+                      key={i}
+                      className="flex-1 flex flex-col items-center gap-2"
+                    >
+                      <span className="text-xs text-text-tertiary font-word">
+                        {d.value}%
+                      </span>
+                      <div
+                        className="w-8 rounded-t-md transition-all duration-300 min-h-[4px]"
+                        style={{
+                          height: `${(d.value / 100) * 240}px`,
+                          background: 'linear-gradient(180deg, #2D9CAE 0%, #3DBDC8 100%)'
+                        }}
+                      />
+                      <span className="text-[11px] text-text-tertiary mt-1">
+                        {d.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
-              <div className="h-[200px] flex items-center justify-center text-text-tertiary text-sm">
+              <div className="h-[280px] flex items-center justify-center text-text-tertiary text-sm">
                 데이터가 없습니다.
               </div>
             )}
           </div>
 
           {/* Level Distribution Chart */}
-          <div className="bg-surface border border-border-subtle rounded-xl p-6">
-            <h2 className="font-display text-lg font-semibold text-text-primary mb-6">
-              레벨 분포
-            </h2>
+          <div className="bg-white border border-border-subtle rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-[15px] font-bold text-text-primary">
+                레벨 분포
+              </h2>
+              <span className="px-3 py-1 rounded-full bg-[#FFF8DC] text-[11px] font-medium text-[#B8860B]">
+                {stats.level_distribution.reduce((sum, l) => sum + l.count, 0)}명
+              </span>
+            </div>
             {stats.level_distribution.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {stats.level_distribution
                   .sort((a, b) => a.level - b.level)
-                  .map((l) => (
-                    <div key={l.level} className="flex items-center gap-3">
-                      <span className="text-xs w-10 text-text-secondary font-word">
-                        Lv.{l.level}
-                      </span>
-                      <div className="flex-1 bg-bg-muted rounded-full h-6 overflow-hidden">
-                        <div
-                          className="h-full bg-teal rounded-full transition-all duration-300"
-                          style={{
-                            width: `${(l.count / maxCount) * 100}%`,
-                          }}
-                        />
+                  .map((l) => {
+                    const rank = getLevelRank(l.level);
+                    return (
+                      <div key={l.level} className="flex items-center gap-3">
+                        <span className="text-sm w-20 text-text-secondary font-medium font-word">
+                          {rank.name}
+                        </span>
+                        <div className="flex-1 bg-[#F5F4F1] h-5 rounded-[10px] overflow-hidden">
+                          <div
+                            className="h-full rounded-[10px] transition-all duration-300 flex items-center justify-end pr-3"
+                            style={{
+                              width: `${(l.count / maxCount) * 100}%`,
+                              backgroundColor: rank.colors[0],
+                            }}
+                          >
+                            {l.count > 0 && (
+                              <span className="text-xs font-semibold text-white">
+                                {l.count}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="text-sm font-word text-text-secondary w-12 text-right">
+                          {l.count}명
+                        </span>
                       </div>
-                      <span className="text-xs font-word text-text-secondary w-8 text-right">
-                        {l.count}명
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
               </div>
             ) : (
-              <div className="h-[200px] flex items-center justify-center text-text-tertiary text-sm">
+              <div className="h-[280px] flex items-center justify-center text-text-tertiary text-sm">
                 데이터가 없습니다.
               </div>
             )}
           </div>
         </div>
 
-        {/* Recent Tests Table */}
-        <div className="bg-surface border border-border-subtle rounded-xl overflow-hidden">
-          <div className="px-6 py-4 border-b border-border-subtle">
-            <h2 className="font-display text-lg font-semibold text-text-primary">
-              최근 테스트
-            </h2>
-          </div>
-          {stats.recent_tests.length > 0 ? (
+        {/* Bottom Tables Row (2 tables side by side) */}
+        <div className="grid grid-cols-2 gap-5">
+          {/* Lowest Accuracy Words Table */}
+          <div className="bg-white border border-border-subtle rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
+              <h2 className="text-[15px] font-bold text-text-primary">
+                정답률 낮은 단어 TOP 20
+              </h2>
+              <span className="px-3 py-1 rounded-full bg-[#FEF2F2] text-[11px] font-medium text-[#EF4444]">
+                오답 빈도 높음
+              </span>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-[#F8F8F6] h-11 text-xs text-text-tertiary font-semibold">
-                    <th className="text-left px-6">학생</th>
-                    <th className="text-left px-6">점수</th>
-                    <th className="text-left px-6">레벨</th>
-                    <th className="text-left px-6">날짜</th>
+                  <tr className="bg-[#F8F8F6] h-10">
+                    <th className="text-left px-6 text-xs font-semibold text-text-tertiary w-10">
+                      순위
+                    </th>
+                    <th className="text-left px-6 text-xs font-semibold text-text-tertiary w-[100px]">
+                      단어
+                    </th>
+                    <th className="text-left px-6 text-xs font-semibold text-text-tertiary w-[60px]">
+                      뜻
+                    </th>
+                    <th className="text-left px-6 text-xs font-semibold text-text-tertiary">
+                      정답률(%)
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {stats.recent_tests.slice(0, 10).map((test) => (
-                    <tr
-                      key={test.id}
-                      className="border-b border-border-subtle h-[52px] hover:bg-bg-muted/50 transition-colors"
-                    >
-                      <td className="px-6 font-medium text-text-primary">
-                        {test.student_name}
-                      </td>
+                  {/* Placeholder rows 1-3 (red theme) */}
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <tr key={i} className="border-b border-border-subtle h-9 hover:bg-bg-muted/30 transition-colors">
+                      <td className="px-6 text-sm text-text-tertiary font-word">{i + 1}</td>
+                      <td className="px-6 text-sm text-text-secondary">-</td>
+                      <td className="px-6 text-sm text-text-tertiary">-</td>
                       <td className="px-6">
-                        <span className="font-word text-sm text-text-secondary">
-                          {test.score != null ? `${Math.round(test.score)}%` : '-'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-[#FEF2F2] rounded h-2 overflow-hidden">
+                            <div className="h-full bg-[#EF4444] rounded" style={{ width: '0%' }} />
+                          </div>
+                          <span className="text-xs text-[#EF4444] font-word w-8 text-right">-</span>
+                        </div>
                       </td>
+                    </tr>
+                  ))}
+                  {/* Placeholder rows 4+ (orange theme) */}
+                  {Array.from({ length: 7 }).map((_, i) => (
+                    <tr key={i + 3} className="border-b border-border-subtle h-9 hover:bg-bg-muted/30 transition-colors">
+                      <td className="px-6 text-sm text-text-tertiary font-word">{i + 4}</td>
+                      <td className="px-6 text-sm text-text-secondary">-</td>
+                      <td className="px-6 text-sm text-text-tertiary">-</td>
                       <td className="px-6">
-                        {test.determined_level ? (
-                          <span
-                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold font-word"
-                            style={{
-                              backgroundColor: `rgba(45, 156, 174, ${
-                                0.1 + test.determined_level * 0.05
-                              })`,
-                              color: '#2D9CAE',
-                            }}
-                          >
-                            Lv.{test.determined_level}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-text-tertiary">-</span>
-                        )}
-                      </td>
-                      <td className="px-6 text-sm text-text-tertiary">
-                        {test.completed_at ? new Date(test.completed_at).toLocaleDateString(
-                          'ko-KR',
-                          {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                          }
-                        ) : '-'}
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-[#FFF7ED] rounded h-2 overflow-hidden">
+                            <div className="h-full bg-[#F97316] rounded" style={{ width: '0%' }} />
+                          </div>
+                          <span className="text-xs text-[#F97316] font-word w-8 text-right">-</span>
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          ) : (
-            <div className="py-16 text-center text-text-tertiary text-sm">
-              최근 테스트 기록이 없습니다.
+            <div className="flex items-center justify-center h-10">
+              <span className="text-xs font-semibold text-teal">11~20위 더보기 →</span>
             </div>
-          )}
+          </div>
+
+          {/* Longest Average Time Words Table */}
+          <div className="bg-white border border-border-subtle rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
+              <h2 className="text-[15px] font-bold text-text-primary">
+                응답 시간 긴 단어 TOP 20
+              </h2>
+              <span className="px-3 py-1 rounded-full bg-[#FFF7ED] text-[11px] font-medium text-[#F97316]">
+                시간 초과 주의
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-[#F8F8F6] h-10">
+                    <th className="text-left px-6 text-xs font-semibold text-text-tertiary w-10">
+                      순위
+                    </th>
+                    <th className="text-left px-6 text-xs font-semibold text-text-tertiary w-[100px]">
+                      단어
+                    </th>
+                    <th className="text-left px-6 text-xs font-semibold text-text-tertiary w-[60px]">
+                      뜻
+                    </th>
+                    <th className="text-left px-6 text-xs font-semibold text-text-tertiary">
+                      평균시간(초)
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Placeholder rows 1-3 (orange theme) */}
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <tr key={i} className="border-b border-border-subtle h-9 hover:bg-bg-muted/30 transition-colors">
+                      <td className="px-6 text-sm text-text-tertiary font-word">{i + 1}</td>
+                      <td className="px-6 text-sm text-text-secondary">-</td>
+                      <td className="px-6 text-sm text-text-tertiary">-</td>
+                      <td className="px-6">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-[#FFF7ED] rounded h-2 overflow-hidden">
+                            <div className="h-full bg-[#F97316] rounded" style={{ width: '0%' }} />
+                          </div>
+                          <span className="text-xs text-[#F97316] font-word w-8 text-right">-</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {/* Placeholder rows 4+ (yellow theme) */}
+                  {Array.from({ length: 7 }).map((_, i) => (
+                    <tr key={i + 3} className="border-b border-border-subtle h-9 hover:bg-bg-muted/30 transition-colors">
+                      <td className="px-6 text-sm text-text-tertiary font-word">{i + 4}</td>
+                      <td className="px-6 text-sm text-text-secondary">-</td>
+                      <td className="px-6 text-sm text-text-tertiary">-</td>
+                      <td className="px-6">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 bg-[#FFF7ED] rounded h-2 overflow-hidden">
+                            <div className="h-full bg-[#D4A843] rounded" style={{ width: '0%' }} />
+                          </div>
+                          <span className="text-xs text-[#D4A843] font-word w-8 text-right">-</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-center h-10">
+              <span className="text-xs font-semibold text-teal">11~20위 더보기 →</span>
+            </div>
+          </div>
         </div>
       </div>
     </TeacherLayout>

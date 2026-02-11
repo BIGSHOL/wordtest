@@ -31,7 +31,7 @@ export function StudentMainPage() {
   return (
     <div className="min-h-screen bg-bg-cream flex flex-col items-center justify-center">
       {/* Mobile Layout */}
-      <div className="flex-1 flex flex-col items-center px-6 w-full lg:hidden">
+      <div className="flex-1 flex flex-col items-center px-6 w-full md:w-[520px] md:mx-auto lg:hidden">
         {/* Top section */}
         <div className="pt-16 flex flex-col items-center text-center">
           <div

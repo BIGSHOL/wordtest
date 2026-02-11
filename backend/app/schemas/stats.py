@@ -10,10 +10,17 @@ class LevelDistribution(BaseModel):
 
 class RecentTest(BaseModel):
     id: str
+    student_id: str
     student_name: str
-    score: Optional[int]
-    determined_level: Optional[int]
-    completed_at: Optional[str]
+    student_school: Optional[str] = None
+    student_grade: Optional[str] = None
+    score: Optional[int] = None
+    determined_level: Optional[int] = None
+    rank_name: Optional[str] = None
+    total_questions: int = 0
+    correct_count: int = 0
+    duration_seconds: Optional[int] = None
+    completed_at: Optional[str] = None
 
 
 class ScoreTrend(BaseModel):
@@ -45,4 +52,5 @@ class DashboardStats(BaseModel):
     level_distribution: list[LevelDistribution]
     recent_tests: list[RecentTest]
     weekly_test_count: int
+    today_test_count: int
     score_trend: list[ScoreTrend]

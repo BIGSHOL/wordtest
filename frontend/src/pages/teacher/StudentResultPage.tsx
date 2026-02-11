@@ -13,7 +13,7 @@ import {
 } from '../../services/test';
 import { studentService } from '../../services/student';
 import { statsService, type TestHistoryItem } from '../../services/stats';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Download, Image, Printer } from 'lucide-react';
 import type { User } from '../../types/auth';
 
 import { StudentInfoCard } from '../../components/result/StudentInfoCard';
@@ -109,6 +109,31 @@ export function StudentResultPage() {
                   {student?.grade ? ` ${student.grade}` : ''}
                 </p>
               </div>
+            </div>
+
+            {/* Export buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => alert('준비 중입니다')}
+                className="h-9 px-[14px] rounded-lg bg-teal text-white text-sm font-semibold flex items-center gap-2 hover:bg-teal/90 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                <span>PDF</span>
+              </button>
+              <button
+                onClick={() => alert('준비 중입니다')}
+                className="h-9 px-[14px] rounded-lg bg-white border border-border-subtle text-text-secondary text-sm font-semibold flex items-center gap-2 hover:bg-bg-muted transition-colors"
+              >
+                <Image className="w-4 h-4" />
+                <span>이미지</span>
+              </button>
+              <button
+                onClick={() => alert('준비 중입니다')}
+                className="h-9 px-[14px] rounded-lg bg-white border border-border-subtle text-text-secondary text-sm font-semibold flex items-center gap-2 hover:bg-bg-muted transition-colors"
+              >
+                <Printer className="w-4 h-4" />
+                <span>인쇄</span>
+              </button>
             </div>
           </div>
 

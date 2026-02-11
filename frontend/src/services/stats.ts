@@ -12,12 +12,20 @@ export interface DashboardStats {
   level_distribution: { level: number; count: number }[];
   recent_tests: {
     id: string;
+    student_id: string;
     student_name: string;
+    student_school: string | null;
+    student_grade: string | null;
     score: number | null;
     determined_level: number | null;
+    rank_name: string | null;
+    total_questions: number;
+    correct_count: number;
+    duration_seconds: number | null;
     completed_at: string | null;
   }[];
   weekly_test_count: number;
+  today_test_count: number;
   score_trend: { date: string; avg_score: number; count: number }[];
 }
 

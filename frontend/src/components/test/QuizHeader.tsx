@@ -75,7 +75,7 @@ export function QuizHeader({ level, lesson, currentIndex, totalQuestions }: Quiz
           75% { transform: translateX(-1px); }
         }
       `}</style>
-      <div className="flex items-center justify-between h-14 px-5 lg:h-16 lg:px-12 w-full">
+      <div className="flex items-center justify-between h-14 px-5 md:h-[60px] md:px-8 lg:h-16 lg:px-12 w-full">
         <button
           onClick={() => navigate('/student')}
           className="w-10 h-10 rounded-full flex items-center justify-center"

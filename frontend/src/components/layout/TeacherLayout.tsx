@@ -4,10 +4,10 @@ import {
   LayoutDashboard,
   Users,
   BookOpen,
-  ClipboardList,
-  BarChart3,
+  Settings,
+  Database,
+  TrendingUp,
   LogOut,
-  GraduationCap,
 } from 'lucide-react';
 
 interface TeacherLayoutProps {
@@ -17,9 +17,9 @@ interface TeacherLayoutProps {
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: '대시보드' },
   { to: '/students', icon: Users, label: '학생 관리' },
-  { to: '/words', icon: BookOpen, label: '단어 DB' },
-  { to: '/test-settings', icon: ClipboardList, label: '테스트 출제' },
-  { to: '/statistics', icon: BarChart3, label: '통계' },
+  { to: '/test-settings', icon: Settings, label: '테스트 설정' },
+  { to: '/words', icon: Database, label: '데이터베이스' },
+  { to: '/statistics', icon: TrendingUp, label: '통계' },
 ];
 
 export function TeacherLayout({ children }: TeacherLayoutProps) {
@@ -37,39 +37,71 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
       <aside className="w-[260px] bg-surface border-r border-border-subtle flex flex-col shrink-0">
         {/* Logo */}
         <div className="h-16 flex items-center px-6 gap-3">
-          <div className="w-8 h-8 rounded-lg bg-teal flex items-center justify-center">
-            <GraduationCap className="w-5 h-5 text-white" />
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center"
+            style={{
+              background: 'linear-gradient(135deg, #2D9CAE 0%, #3DBDC8 100%)',
+            }}
+          >
+            <BookOpen className="w-5 h-5 text-white" />
           </div>
-          <span className="font-display text-lg font-bold text-text-primary tracking-tight">
+          <span className="font-display text-[20px] font-extrabold text-text-primary">
             WordTest
           </span>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-2 space-y-1">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-teal-light text-teal font-semibold'
-                    : 'text-text-secondary hover:bg-bg-muted hover:text-text-primary'
-                }`
-              }
+        <nav className="flex-1 px-3 pt-6 pb-2">
+          {/* Menu label */}
+          <div className="px-[14px] mb-3">
+            <p
+              className="text-[11px] font-semibold text-[#9C9B99] uppercase"
+              style={{ letterSpacing: '1px' }}
             >
-              <item.icon className="w-[18px] h-[18px]" />
-              {item.label}
-            </NavLink>
-          ))}
+              메뉴
+            </p>
+          </div>
+
+          {/* Nav items */}
+          <div className="space-y-2">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-[14px] h-11 rounded-[10px] text-sm transition-colors ${
+                    isActive
+                      ? 'bg-[#EBF8FA] text-teal font-semibold'
+                      : 'text-[#3D3C3A] hover:bg-bg-muted'
+                  }`
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <item.icon
+                      className="w-[18px] h-[18px]"
+                      style={{ color: isActive ? '#2D9CAE' : '#6D6C6A' }}
+                    />
+                    <span className={isActive ? 'font-semibold' : 'font-medium'}>
+                      {item.label}
+                    </span>
+                  </>
+                )}
+              </NavLink>
+            ))}
+          </div>
         </nav>
 
         {/* User section */}
         <div className="border-t border-border-subtle p-4">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-full bg-teal-light flex items-center justify-center">
-              <span className="text-sm font-semibold text-teal">
+            <div
+              className="w-9 h-9 rounded-full flex items-center justify-center"
+              style={{
+                background: 'linear-gradient(135deg, #2D9CAE 0%, #3DBDC8 100%)',
+              }}
+            >
+              <span className="text-sm font-semibold text-white">
                 {user?.name?.charAt(0) || 'T'}
               </span>
             </div>
@@ -82,7 +114,7 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-secondary hover:text-wrong hover:bg-wrong-light rounded-lg transition-colors"
+            className="flex items-center gap-2 w-full px-3 py-2 text-sm text-text-secondary bg-[#F5F4F1] border border-[#E8E8E6] hover:text-wrong hover:bg-wrong-light rounded-lg transition-colors"
           >
             <LogOut className="w-4 h-4" />
             로그아웃

@@ -8,7 +8,7 @@ interface WrongWordCardProps {
 export function WrongWordCard({ english, correctAnswer }: WrongWordCardProps) {
   return (
     <div
-      className="flex flex-col gap-2 rounded-[14px] bg-bg-surface p-4 px-[18px] w-full"
+      className="flex flex-col gap-2 rounded-[14px] bg-bg-surface p-4 px-[18px] md:px-5 w-full"
       style={{
         border: '1px solid #E5E4E1',
         boxShadow: '0 1px 6px #1A191806',

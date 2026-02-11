@@ -42,7 +42,7 @@ export function WrongWordsPage() {
   return (
     <div className="min-h-screen bg-bg-cream flex flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 h-14 px-4 lg:h-16 lg:px-12 w-full">
+      <div className="flex items-center gap-3 h-14 px-4 md:px-8 lg:h-16 lg:px-12 w-full">
         <button
           onClick={() => navigate(-1)}
           className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-bg-surface flex items-center justify-center shrink-0"
@@ -59,8 +59,8 @@ export function WrongWordsPage() {
       </div>
 
       {/* Word List */}
-      <div className="flex-1 overflow-y-auto px-4 py-2 lg:px-12 flex justify-center">
-        <div className="w-full lg:w-[760px]">
+      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-2 lg:px-12 flex justify-center">
+        <div className="w-full md:max-w-[640px] lg:w-[760px]">
           {isLoading ? (
             <div className="flex items-center justify-center pt-20">
               <div className="w-8 h-8 border-4 border-accent-indigo border-t-transparent rounded-full animate-spin" />
@@ -70,7 +70,7 @@ export function WrongWordsPage() {
               <p className="font-display text-text-tertiary">틀린 단어가 없습니다!</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-2.5 lg:grid lg:grid-cols-2 lg:gap-3">
+            <div className="flex flex-col gap-2.5 md:px-0 lg:grid lg:grid-cols-2 lg:gap-3">
               {wrongItems.map((item, i) => (
                 <WrongWordCard
                   key={i}
@@ -84,10 +84,10 @@ export function WrongWordsPage() {
       </div>
 
       {/* Bottom Area */}
-      <div className="px-4 pt-3 pb-10 lg:px-12 flex justify-center">
+      <div className="px-4 md:px-8 pt-3 pb-10 lg:px-12 flex justify-center">
         <button
           onClick={() => navigate('/student', { replace: true })}
-          className="flex items-center justify-center gap-2 w-full lg:w-[760px] h-[52px] rounded-2xl text-white"
+          className="flex items-center justify-center gap-2 w-full md:max-w-[640px] lg:w-[760px] h-[52px] rounded-2xl text-white"
           style={{
             background: 'linear-gradient(90deg, #4F46E5, #7C3AED)',
             boxShadow: '0 4px 16px #4F46E540',

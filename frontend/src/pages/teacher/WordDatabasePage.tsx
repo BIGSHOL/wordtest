@@ -1,10 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { TeacherLayout } from '../../components/layout/TeacherLayout';
-import { wordService, type Word, type CreateWordRequest } from '../../services/word';
-import { Search, Plus, Pencil, Trash2, X } from 'lucide-react';
+import { wordService, type Word, type CreateWordRequest, type LessonInfo } from '../../services/word';
+import { Search, Plus, Pencil, Trash2, X, Upload, Volume2 } from 'lucide-react';
 import { logger } from '../../utils/logger';
+import { getLevelRank } from '../../types/rank';
+import { speakWord, speakSentence } from '../../utils/tts';
 
 const ITEMS_PER_PAGE = 20;
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+async function checkTtsCache(text: string): Promise<boolean> {
+  try {
+    const resp = await fetch(`${API_BASE}/api/v1/tts/check?text=${encodeURIComponent(text)}`);
+    if (!resp.ok) return false;
+    const data = await resp.json();
+    return data.cached;
+  } catch {
+    return false;
+  }
+}
 
 interface WordFormData {
   english: string;
@@ -32,13 +46,15 @@ export function WordDatabasePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [levelFilter, setLevelFilter] = useState<number | undefined>();
   const [bookFilter, setBookFilter] = useState<string>('');
+  const [lessonFilter, setLessonFilter] = useState<string>('');
   const [page, setPage] = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [editingWord, setEditingWord] = useState<Word | null>(null);
   const [formData, setFormData] = useState<WordFormData>(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
+  const [bookOptions, setBookOptions] = useState<string[]>([]);
+  const [lessonOptions, setLessonOptions] = useState<LessonInfo[]>([]);
 
   const fetchWords = async () => {
     try {
@@ -47,19 +63,24 @@ export function WordDatabasePage() {
         skip: number;
         limit: number;
         search?: string;
-        level?: number;
         book_name?: string;
       } = {
         skip: page * ITEMS_PER_PAGE,
         limit: ITEMS_PER_PAGE,
       };
       if (debouncedSearch) params.search = debouncedSearch;
-      if (levelFilter) params.level = levelFilter;
       if (bookFilter) params.book_name = bookFilter;
 
       const response = await wordService.listWords(params);
-      setWords(response.words);
-      setTotal(response.total);
+
+      // Filter by lesson on client side if needed
+      let filteredWords = response.words;
+      if (lessonFilter) {
+        filteredWords = filteredWords.filter(w => w.lesson === lessonFilter);
+      }
+
+      setWords(filteredWords);
+      setTotal(lessonFilter ? filteredWords.length : response.total);
     } catch (error) {
       logger.error('Failed to fetch words:', error);
     } finally {
@@ -78,7 +99,24 @@ export function WordDatabasePage() {
 
   useEffect(() => {
     fetchWords();
-  }, [page, debouncedSearch, levelFilter, bookFilter]);
+  }, [page, debouncedSearch, bookFilter, lessonFilter]);
+
+  // Load books on mount
+  useEffect(() => {
+    wordService.listBooks().then(setBookOptions).catch((e: unknown) => logger.error('Failed to load books:', e));
+  }, []);
+
+  // Load lessons when book changes
+  useEffect(() => {
+    if (bookFilter) {
+      wordService.listLessons(bookFilter)
+        .then(setLessonOptions)
+        .catch((e: unknown) => logger.error('Failed to load lessons:', e));
+    } else {
+      setLessonOptions([]);
+    }
+    setLessonFilter(''); // Reset lesson filter when book changes
+  }, [bookFilter]);
 
   const handleOpenForm = (word?: Word) => {
     if (word) {
@@ -146,78 +184,80 @@ export function WordDatabasePage() {
     }
   };
 
+  const handlePlayWord = useCallback(async (english: string) => {
+    const cached = await checkTtsCache(english);
+    if (cached) {
+      speakWord(english);
+      return;
+    }
+    if (confirm(`"${english}" 발음이 아직 생성되지 않았습니다.\nGemini TTS로 생성하시겠습니까?`)) {
+      speakWord(english);
+    }
+  }, []);
+
+  const handlePlaySentence = useCallback(async (sentence: string) => {
+    const cached = await checkTtsCache(sentence);
+    if (cached) {
+      speakSentence(sentence);
+      return;
+    }
+    if (confirm(`예문 발음이 아직 생성되지 않았습니다.\nGemini TTS로 생성하시겠습니까?`)) {
+      speakSentence(sentence);
+    }
+  }, []);
+
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
-  // Extract unique book names for filter
-  const [bookOptions, setBookOptions] = useState<string[]>([]);
-  useEffect(() => {
-    wordService.listBooks().then(setBookOptions).catch((e: unknown) => logger.error('Failed to load books:', e));
-  }, []);
+  const handleExcelImport = () => {
+    alert('엑셀 가져오기 기능은 준비 중입니다.');
+  };
+
+  const filteredTotal = lessonFilter
+    ? words.length
+    : (bookFilter ? words.length : total);
 
   return (
     <TeacherLayout>
       <div className="space-y-6">
         {/* Top Bar */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex items-start justify-between">
+          <div>
             <h1 className="font-display text-2xl font-bold text-text-primary">
               단어 데이터베이스
             </h1>
-            <span className="px-2.5 py-1 bg-teal-light text-teal text-sm font-semibold rounded-full">
-              {total}개
-            </span>
+            <p className="text-[13px] text-text-secondary mt-1">
+              레슨별 단어를 관리하고 새로운 단어를 추가합니다
+            </p>
           </div>
-          <button
-            onClick={() => handleOpenForm()}
-            className="flex items-center gap-2 bg-teal text-white rounded-lg px-4 py-2 font-medium hover:bg-teal/90 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            단어 추가
-          </button>
-        </div>
-
-        {/* Filter Bar */}
-        <div className="flex gap-3">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
-            <input
-              type="text"
-              placeholder="영단어 또는 뜻 검색..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-border-subtle rounded-lg text-sm focus:outline-none focus:border-teal"
-            />
+          <div className="flex items-center gap-3">
+            <div className="relative w-[220px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
+              <input
+                type="text"
+                placeholder="단어 검색..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 border border-border-subtle rounded-[10px] text-sm bg-white focus:outline-none focus:border-teal"
+              />
+            </div>
+            <button
+              onClick={() => handleOpenForm()}
+              className="flex items-center gap-2 px-4 py-2 rounded-[10px] text-white font-medium text-sm transition-all"
+              style={{
+                background: 'linear-gradient(135deg, #2D9CAE 0%, #3DBDC8 100%)',
+              }}
+            >
+              <Plus className="w-4 h-4" />
+              단어 추가
+            </button>
+            <button
+              onClick={handleExcelImport}
+              className="flex items-center gap-2 px-4 py-2 border border-border-subtle rounded-[10px] bg-white text-text-primary font-medium text-sm hover:bg-bg-muted transition-colors"
+            >
+              <Upload className="w-4 h-4" />
+              엑셀 가져오기
+            </button>
           </div>
-          <select
-            value={levelFilter || ''}
-            onChange={(e) => {
-              setLevelFilter(e.target.value ? Number(e.target.value) : undefined);
-              setPage(0);
-            }}
-            className="px-4 py-2.5 border border-border-subtle rounded-lg text-sm focus:outline-none focus:border-teal bg-white"
-          >
-            <option value="">전체 레벨</option>
-            {Array.from({ length: 15 }, (_, i) => i + 1).map((level) => (
-              <option key={level} value={level}>
-                Level {level}
-              </option>
-            ))}
-          </select>
-          <select
-            value={bookFilter}
-            onChange={(e) => {
-              setBookFilter(e.target.value);
-              setPage(0);
-            }}
-            className="px-4 py-2.5 border border-border-subtle rounded-lg text-sm focus:outline-none focus:border-teal bg-white min-w-[140px]"
-          >
-            <option value="">전체 교재</option>
-            {bookOptions.map((book) => (
-              <option key={book} value={book}>
-                {book}
-              </option>
-            ))}
-          </select>
         </div>
 
         {/* Add/Edit Form */}
@@ -331,6 +371,62 @@ export function WordDatabasePage() {
 
         {/* Word Table */}
         <div className="bg-surface border border-border-subtle rounded-xl overflow-hidden">
+          {/* Lesson Tab Bar */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border-subtle">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => {
+                  setBookFilter('');
+                  setLessonFilter('');
+                  setPage(0);
+                }}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  !bookFilter && !lessonFilter
+                    ? 'bg-teal text-white'
+                    : 'bg-transparent text-text-secondary hover:bg-bg-muted'
+                }`}
+              >
+                전체
+              </button>
+              {bookOptions.map((book) => (
+                <button
+                  key={book}
+                  onClick={() => {
+                    setBookFilter(book);
+                    setLessonFilter('');
+                    setPage(0);
+                  }}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    bookFilter === book && !lessonFilter
+                      ? 'bg-teal text-white'
+                      : 'bg-transparent text-text-secondary hover:bg-bg-muted'
+                  }`}
+                >
+                  {book}
+                </button>
+              ))}
+              {bookFilter && lessonOptions.map((lesson) => (
+                <button
+                  key={lesson.lesson}
+                  onClick={() => {
+                    setLessonFilter(lesson.lesson);
+                    setPage(0);
+                  }}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    lessonFilter === lesson.lesson
+                      ? 'bg-teal text-white'
+                      : 'bg-transparent text-text-secondary hover:bg-bg-muted'
+                  }`}
+                >
+                  {lesson.lesson}
+                </button>
+              ))}
+            </div>
+            <div className="text-xs text-text-tertiary whitespace-nowrap ml-4">
+              총 {filteredTotal}개 단어
+            </div>
+          </div>
+
           {isLoading ? (
             <div className="py-16 text-center text-text-tertiary">로딩 중...</div>
           ) : words.length === 0 ? (
@@ -343,91 +439,108 @@ export function WordDatabasePage() {
                 <table className="w-full">
                   <thead>
                     <tr className="bg-[#F8F8F6] h-11 text-xs text-text-tertiary font-semibold">
-                      <th className="text-left px-5">영단어</th>
-                      <th className="text-left px-5">뜻(한국어)</th>
-                      <th className="text-left px-5">레벨</th>
-                      <th className="text-left px-5">교재</th>
-                      <th className="text-left px-5">단원</th>
-                      <th className="text-left px-5">품사</th>
-                      <th className="text-center px-5 w-24">관리</th>
+                      <th className="text-center px-3 w-[50px]">No.</th>
+                      <th className="text-left px-4 w-[150px]">영어 단어</th>
+                      <th className="text-left px-4 w-[150px]">한국어 뜻</th>
+                      <th className="text-left px-4 w-[200px]">예문</th>
+                      <th className="text-left px-4 w-[100px]">레슨</th>
+                      <th className="text-center px-4">관리</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {words.map((word) => (
-                      <tr
-                        key={word.id}
-                        className="border-b border-border-subtle h-[52px] hover:bg-bg-muted/50 transition-colors"
-                      >
-                        <td className="px-5 font-word font-medium text-text-primary">
-                          {word.english}
-                        </td>
-                        <td className="px-5 text-sm text-text-secondary">{word.korean}</td>
-                        <td className="px-5">
-                          <span
-                            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
-                            style={{
-                              backgroundColor: `rgba(45, 156, 174, ${0.1 + word.level * 0.05})`,
-                              color: '#2D9CAE',
-                            }}
-                          >
-                            Lv.{word.level}
-                          </span>
-                        </td>
-                        <td className="px-5 text-sm text-text-secondary">
-                          {word.book_name || '-'}
-                        </td>
-                        <td className="px-5 text-sm text-text-secondary">
-                          {word.lesson || '-'}
-                        </td>
-                        <td className="px-5 text-sm text-text-tertiary font-word">
-                          {word.part_of_speech || '-'}
-                        </td>
-                        <td className="px-5">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleOpenForm(word)}
-                              className="p-1.5 text-text-tertiary hover:text-teal hover:bg-teal-light rounded transition-colors"
-                              title="수정"
+                    {words.map((word, index) => {
+                      const rankInfo = getLevelRank(word.level);
+                      return (
+                        <tr
+                          key={word.id}
+                          className="border-b border-border-subtle h-[52px] hover:bg-bg-muted/50 transition-colors"
+                        >
+                          <td className="px-3 text-center text-sm text-text-tertiary">
+                            {page * ITEMS_PER_PAGE + index + 1}
+                          </td>
+                          <td className="px-4">
+                            <div className="flex items-center gap-2">
+                              <span className="font-word font-medium text-text-primary">{word.english}</span>
+                              <button
+                                onClick={() => handlePlayWord(word.english)}
+                                className="p-1 text-text-tertiary hover:text-teal rounded transition-colors"
+                                title="발음"
+                              >
+                                <Volume2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                          <td className="px-4 text-sm text-text-secondary">{word.korean}</td>
+                          <td className="px-4 text-sm text-text-secondary">
+                            {word.example_en ? (
+                              <div className="flex items-center gap-1">
+                                <span className="truncate">{word.example_en}</span>
+                                <button
+                                  onClick={() => handlePlaySentence(word.example_en!)}
+                                  className="p-1 text-text-tertiary hover:text-teal rounded shrink-0 transition-colors"
+                                  title="예문 발음"
+                                >
+                                  <Volume2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : '-'}
+                          </td>
+                          <td className="px-4">
+                            <span
+                              className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-semibold"
+                              style={{
+                                backgroundColor: rankInfo.colors[0] + '20',
+                                color: rankInfo.colors[1],
+                              }}
                             >
-                              <Pencil className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(word.id)}
-                              className="p-1.5 text-text-tertiary hover:text-wrong hover:bg-wrong-light rounded transition-colors"
-                              title="삭제"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                              {word.lesson || `Lesson ${word.level}`}
+                            </span>
+                          </td>
+                          <td className="px-4">
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => handleOpenForm(word)}
+                                className="p-1.5 text-text-tertiary hover:text-teal hover:bg-teal-light rounded transition-colors"
+                                title="수정"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(word.id)}
+                                className="p-1.5 text-text-tertiary hover:text-wrong hover:bg-wrong-light rounded transition-colors"
+                                title="삭제"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between px-5 py-4 border-t border-border-subtle">
-                  <div className="text-sm text-text-tertiary">
-                    Page {page + 1} of {totalPages}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setPage(Math.max(0, page - 1))}
-                      disabled={page === 0}
-                      className="px-4 py-2 text-sm font-medium border border-border-subtle rounded-lg hover:bg-bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      이전
-                    </button>
-                    <button
-                      onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
-                      disabled={page >= totalPages - 1}
-                      className="px-4 py-2 text-sm font-medium border border-border-subtle rounded-lg hover:bg-bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      다음
-                    </button>
-                  </div>
+                <div className="flex items-center justify-center gap-2 px-5 py-4 border-t border-border-subtle">
+                  <button
+                    onClick={() => setPage(Math.max(0, page - 1))}
+                    disabled={page === 0}
+                    className="px-4 py-2 text-sm font-medium border border-border-subtle rounded-lg hover:bg-bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    이전
+                  </button>
+                  <span className="px-3 text-sm text-text-secondary">
+                    {page + 1} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
+                    disabled={page >= totalPages - 1}
+                    className="px-4 py-2 text-sm font-medium border border-border-subtle rounded-lg hover:bg-bg-muted transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    다음
+                  </button>
                 </div>
               )}
             </>

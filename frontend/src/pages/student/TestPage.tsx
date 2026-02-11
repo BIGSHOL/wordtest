@@ -69,27 +69,43 @@ export function TestPage() {
     return () => window.removeEventListener('popstate', blockBack);
   }, []);
 
-  // Reset timer on new question + preload TTS for current & next word
+  // Reset timer on new question + preload TTS for current & next words
   useEffect(() => {
     resetTimer();
     timerSoundPlayed.current = false;
     twoSoundPlayed.current = false;
-    // Preload current word's pronunciation
-    if (questions[currentIndex]) {
-      preloadWordAudio(questions[currentIndex].word.english);
-      // Preload sentence TTS if this is a sentence question (every 5th)
-      if ((currentIndex + 1) % 5 === 0 && questions[currentIndex].word.example_en) {
-        preloadSentenceAudio(questions[currentIndex].word.example_en);
+    const current = questions[currentIndex];
+    if (current) {
+      preloadWordAudio(current.word.english);
+      if (current.word.example_en) {
+        preloadSentenceAudio(current.word.example_en);
       }
     }
-    // Preload next word's pronunciation + sentence if needed
-    if (questions[currentIndex + 1]) {
-      preloadWordAudio(questions[currentIndex + 1].word.english);
-      if ((currentIndex + 2) % 5 === 0 && questions[currentIndex + 1].word.example_en) {
-        preloadSentenceAudio(questions[currentIndex + 1].word.example_en);
+    // Preload next 2 questions' audio (for sequential mode)
+    for (let i = 1; i <= 2; i++) {
+      const next = questions[currentIndex + i];
+      if (next) {
+        preloadWordAudio(next.word.english);
+        const exEn = next.word.example_en;
+        if (exEn) preloadSentenceAudio(exEn);
       }
     }
   }, [currentIndex, resetTimer, questions]);
+
+  // Adaptive mode: preload newly added question's audio immediately
+  const prevQLen = useRef(questions.length);
+  useEffect(() => {
+    if (questions.length > prevQLen.current) {
+      const newest = questions[questions.length - 1];
+      if (newest) {
+        preloadWordAudio(newest.word.english);
+        if (newest.word.example_en) {
+          preloadSentenceAudio(newest.word.example_en);
+        }
+      }
+    }
+    prevQLen.current = questions.length;
+  }, [questions.length]);
 
   // Timer warning sounds
   useEffect(() => {
@@ -205,10 +221,10 @@ export function TestPage() {
       <GradientProgressBar current={currentIndex + 1} total={totalToAnswer} />
 
       {/* Content Area */}
-      <div className="flex-1 flex flex-col justify-center items-center gap-6 px-5 py-6 lg:gap-7 lg:px-12 lg:py-5">
+      <div className="flex-1 flex flex-col justify-center items-center gap-6 px-5 py-6 md:px-8 md:gap-7 lg:gap-7 lg:px-12 lg:py-5">
         {/* Timer */}
         {!answerResult && (
-          <div className="w-full lg:w-[640px]">
+          <div className="w-full md:w-[640px] lg:w-[640px]">
             <TimerBar
               secondsLeft={secondsLeft}
               fraction={fraction}
@@ -218,7 +234,7 @@ export function TestPage() {
         )}
 
         {/* Word Card or Sentence Card */}
-        <div className="w-full lg:w-[640px]">
+        <div className="w-full md:w-[640px] lg:w-[640px]">
           {isSentenceQuestion && currentQuestion.word.example_en ? (
             <SentenceCard
               sentence={currentQuestion.word.example_en}
@@ -230,7 +246,7 @@ export function TestPage() {
         </div>
 
         {/* Choices: vertical on mobile, 2x2 grid on PC */}
-        <div className="flex flex-col gap-3 w-full lg:grid lg:grid-cols-2 lg:gap-3 lg:w-[640px]">
+        <div className="flex flex-col gap-3 w-full md:grid md:grid-cols-2 md:gap-3 md:w-[640px] lg:grid lg:grid-cols-2 lg:gap-3 lg:w-[640px]">
           {currentQuestion.choices.map((choice, i) => (
             <ChoiceButton
               key={i}
@@ -244,9 +260,9 @@ export function TestPage() {
       </div>
 
       {/* Footer Area */}
-      <div className="h-[70px] px-5 flex items-center lg:justify-center" onClick={answerResult ? handleNext : undefined}>
+      <div className="h-[70px] px-5 md:px-8 flex items-center lg:justify-center" onClick={answerResult ? handleNext : undefined}>
         {answerResult ? (
-          <button onClick={handleNext} className="w-full lg:w-[640px]">
+          <button onClick={handleNext} className="w-full md:w-[640px] md:mx-auto lg:w-[640px]">
             <FeedbackBanner
               isCorrect={answerResult.is_correct}
               correctAnswer={answerResult.correct_answer}
