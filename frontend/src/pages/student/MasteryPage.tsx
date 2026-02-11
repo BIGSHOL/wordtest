@@ -40,7 +40,7 @@ export function MasteryPage() {
   const navigate = useNavigate();
   const store = useMasteryStore();
   const {
-    session, stageSummary, totalWords, currentStage, questions,
+    session, stageSummary, currentStage, questions,
     currentIndex, selectedAnswer, typedAnswer, answerResult,
     showSentenceReview, combo, isLoading, isTransitioning,
     batchComplete,
