@@ -63,6 +63,25 @@ if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
 // Preloaded audio cache: word → HTMLAudioElement (ready to play instantly)
 const audioCache = new Map<string, HTMLAudioElement>();
 const preloadingWords = new Set<string>();
+const MAX_CACHE_SIZE = 100;
+
+/**
+ * Helper function to add items to cache with size limit (LRU-style eviction)
+ */
+function addToCache(cache: Map<string, HTMLAudioElement>, key: string, value: HTMLAudioElement) {
+  if (cache.size >= MAX_CACHE_SIZE) {
+    // Remove oldest item (first key in Map - insertion order preserved)
+    const firstKey = cache.keys().next().value;
+    if (firstKey) {
+      const oldAudio = cache.get(firstKey);
+      if (oldAudio && oldAudio.src.startsWith('blob:')) {
+        URL.revokeObjectURL(oldAudio.src);
+      }
+      cache.delete(firstKey);
+    }
+  }
+  cache.set(key, value);
+}
 
 /**
  * 백그라운드에서 Dictionary API → Gemini TTS 순서로 음원을 미리 로드
@@ -87,7 +106,7 @@ export function preloadWordAudio(word: string) {
       if (audioUrl) {
         const audio = new Audio(audioUrl);
         audio.preload = 'auto';
-        audioCache.set(key, audio);
+        addToCache(audioCache, key, audio);
         return 'done';
       }
       return null;
@@ -102,7 +121,7 @@ export function preloadWordAudio(word: string) {
             const url = URL.createObjectURL(blob);
             const audio = new Audio(url);
             audio.preload = 'auto';
-            audioCache.set(key, audio);
+            addToCache(audioCache, key, audio);
           });
       }
     })
@@ -164,7 +183,7 @@ export function preloadSentenceAudio(sentence: string) {
       const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
       audio.preload = 'auto';
-      sentenceCache.set(sentence, audio);
+      addToCache(sentenceCache, sentence, audio);
     })
     .catch(() => {});
 }

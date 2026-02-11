@@ -39,6 +39,8 @@ export function StudentResultPage() {
 
     const loadData = async () => {
       try {
+        // TODO: Add getStudent(id) API to studentService to avoid fetching full list
+        // Currently using listStudents() and filtering, which is inefficient for large datasets
         const [studentsData, testsData] = await Promise.all([
           studentService.listStudents(),
           testService.listTests(studentId),

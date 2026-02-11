@@ -2,7 +2,7 @@
  * Student management page for teachers.
  * Redesigned to match Pencil design specification.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { TeacherLayout } from '../../components/layout/TeacherLayout';
 import { useNavigate } from 'react-router-dom';
 import type { User } from '../../types/auth';
@@ -10,10 +10,15 @@ import { studentService } from '../../services/student';
 import { getLevelRank } from '../../types/rank';
 import { Search, UserPlus, Pencil, Trash2, FileText } from 'lucide-react';
 
+// Helper function moved outside component to prevent recreation on every render
+function formatDate(dateString: string) {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
 export function StudentManagePage() {
   const navigate = useNavigate();
   const [students, setStudents] = useState<User[]>([]);
-  const [filteredStudents, setFilteredStudents] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -24,32 +29,28 @@ export function StudentManagePage() {
   const [newStudent, setNewStudent] = useState({ username: '', password: '', name: '' });
   const [editData, setEditData] = useState({ name: '', password: '' });
 
+  // useMemo instead of useEffect + setState to prevent double rendering
+  const filteredStudents = useMemo(() => {
+    if (searchQuery.trim() === '') {
+      return students;
+    }
+    const query = searchQuery.toLowerCase();
+    return students.filter(
+      (s) =>
+        s.name.toLowerCase().includes(query) ||
+        s.username?.toLowerCase().includes(query) ||
+        s.school_name?.toLowerCase().includes(query)
+    );
+  }, [searchQuery, students]);
+
   useEffect(() => {
     loadStudents();
   }, []);
-
-  useEffect(() => {
-    // Filter students based on search query
-    if (searchQuery.trim() === '') {
-      setFilteredStudents(students);
-    } else {
-      const query = searchQuery.toLowerCase();
-      setFilteredStudents(
-        students.filter(
-          (s) =>
-            s.name.toLowerCase().includes(query) ||
-            s.username?.toLowerCase().includes(query) ||
-            s.school_name?.toLowerCase().includes(query)
-        )
-      );
-    }
-  }, [searchQuery, students]);
 
   const loadStudents = async () => {
     try {
       const data = await studentService.listStudents();
       setStudents(data);
-      setFilteredStudents(data);
     } catch {
       setError('학생 목록을 불러올 수 없습니다.');
     } finally {
@@ -96,11 +97,6 @@ export function StudentManagePage() {
     } catch {
       setError('학생 삭제에 실패했습니다.');
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
   };
 
   return (
