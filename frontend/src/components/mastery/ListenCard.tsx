@@ -10,6 +10,7 @@ import { speakWord, speakSentence } from '../../utils/tts';
 interface ListenCardProps {
   word: string;
   stage: number;
+  korean?: string;
   contextMode?: 'word' | 'sentence';
   sentenceBlank?: string | null;
   sentenceEn?: string | null;
@@ -18,6 +19,7 @@ interface ListenCardProps {
 export const ListenCard = memo(function ListenCard({
   word,
   stage,
+  korean,
   contextMode = 'word',
   sentenceBlank,
   sentenceEn,
@@ -84,6 +86,13 @@ export const ListenCard = memo(function ListenCard({
       >
         <Volume2 className="w-10 h-10 text-white" />
       </button>
+
+      {/* Korean meaning in sentence mode */}
+      {isSentence && korean && (
+        <p className="font-display text-[15px] font-bold text-accent-indigo text-center">
+          {korean}
+        </p>
+      )}
 
       {/* Show sentence blank in sentence mode */}
       {isSentence && blankParts && blankParts.length >= 2 && (

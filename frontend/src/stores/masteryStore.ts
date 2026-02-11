@@ -21,6 +21,9 @@ import type {
 
 const DEFAULT_QUESTION_COUNT = 50;
 
+/** Track ongoing prefetches to avoid duplicate requests */
+const _prefetchingLevels = new Set<number>();
+
 // --- XP Configuration ---
 
 /** XP needed to clear one lesson in a given book. Book 1: 10, Book 2: 15, ..., Book 10: 55 */
@@ -351,20 +354,42 @@ export const useMasteryStore = create<MasteryStore>()((set, get) => ({
 
     // Advance pool index for current book
     const book = state.currentBook;
-    const pool = state.levelPools[book];
     const currentIdx = (state.poolIndex[book] ?? 0) + 1;
 
-    if (pool && currentIdx < pool.length) {
-      // Next question in current pool
+    // Check latest state (prefetch may have extended the pool)
+    const latestState = useMasteryStore.getState();
+    const latestPool = latestState.levelPools[book];
+
+    if (latestPool && currentIdx < latestPool.length) {
+      // Next question available (from original or prefetched pool)
       set({
-        poolIndex: { ...state.poolIndex, [book]: currentIdx },
+        poolIndex: { ...latestState.poolIndex, [book]: currentIdx },
         globalIndex: nextGlobalIdx,
         selectedAnswer: null,
         typedAnswer: '',
         answerResult: null,
       });
+
+      // Prefetch when 3 questions remain in pool
+      const remaining = latestPool.length - currentIdx - 1;
+      if (remaining === 2 && state.session && !_prefetchingLevels.has(book)) {
+        _prefetchingLevels.add(book);
+        masteryService.fetchLevelQuestions(state.session.id, book)
+          .then((batchResult) => {
+            const latest = useMasteryStore.getState();
+            const existingPool = latest.levelPools[book] || [];
+            useMasteryStore.setState({
+              levelPools: {
+                ...latest.levelPools,
+                [book]: [...existingPool, ...batchResult.questions],
+              },
+            });
+          })
+          .catch(() => {})
+          .finally(() => { _prefetchingLevels.delete(book); });
+      }
     } else {
-      // Pool exhausted for this level - lazy fetch more
+      // Pool fully exhausted and no prefetch arrived - fetch now
       set({
         isLoading: true,
         globalIndex: nextGlobalIdx,
@@ -376,15 +401,15 @@ export const useMasteryStore = create<MasteryStore>()((set, get) => ({
       if (state.session) {
         masteryService.fetchLevelQuestions(state.session.id, book)
           .then((batchResult) => {
-            const newQuestions = batchResult.questions;
-            const existingPool = state.levelPools[book] || [];
+            const latest = useMasteryStore.getState();
+            const existingPool = latest.levelPools[book] || [];
             set({
               levelPools: {
-                ...useMasteryStore.getState().levelPools,
-                [book]: [...existingPool, ...newQuestions],
+                ...latest.levelPools,
+                [book]: [...existingPool, ...batchResult.questions],
               },
               poolIndex: {
-                ...useMasteryStore.getState().poolIndex,
+                ...latest.poolIndex,
                 [book]: currentIdx,
               },
               isLoading: false,

@@ -52,6 +52,7 @@ export function MasteryPage() {
   const submittingRef = useRef(false);
   const timerSoundPlayed = useRef(false);
   const twoSoundPlayed = useRef(false);
+  const lastQuestionChangeAt = useRef(0);
 
   // Timer warning: 15s->10초부터, 10s->7초부터, 5s->바로 재생
   const timerWarnAt = timerSeconds <= 5 ? timerSeconds : timerSeconds <= 10 ? 7 : 10;
@@ -75,6 +76,7 @@ export function MasteryPage() {
     const qid = currentQuestion?.word_mastery_id;
     if (qid && qid !== prevQuestionRef.current) {
       prevQuestionRef.current = qid;
+      lastQuestionChangeAt.current = Date.now();
       timer.reset();
       stopTtsSounds();
       stopSound('timer');
@@ -89,10 +91,11 @@ export function MasteryPage() {
     }
   }, [currentQuestion?.word_mastery_id]);
 
-  // Timer warning sounds (skip if timer just reset - fraction near 1.0)
+  // Timer warning sounds (skip during question transition)
   useEffect(() => {
     if (answerResult) return;
     if (timer.fraction > 0.95) return; // timer just reset, skip
+    if (Date.now() - lastQuestionChangeAt.current < 600) return; // skip during transition
     if (timer.secondsLeft === timerWarnAt && timer.secondsLeft > 0 && !timerSoundPlayed.current) {
       playSound('timer', { startAt: timerAudioStart });
       timerSoundPlayed.current = true;
@@ -159,6 +162,8 @@ export function MasteryPage() {
     const delay = answerResult.is_correct ? FEEDBACK_DELAY_CORRECT : FEEDBACK_DELAY_WRONG;
     const t = setTimeout(() => {
       submittingRef.current = false;
+      stopSound('timer');
+      stopSound('two');
       store.nextQuestion();
     }, delay);
     return () => clearTimeout(t);
@@ -290,6 +295,7 @@ export function MasteryPage() {
           <ListenCard
             word={currentQuestion.word.english}
             stage={currentQuestion.stage}
+            korean={currentQuestion.word.korean || undefined}
             contextMode="sentence"
             sentenceBlank={currentQuestion.sentence_blank}
             sentenceEn={currentQuestion.word.example_en}
@@ -299,6 +305,7 @@ export function MasteryPage() {
       return (
         <SentenceBlankCard
           sentenceBlank={currentQuestion.sentence_blank!}
+          korean={currentQuestion.word.korean || undefined}
           sentenceKo={currentQuestion.word.example_ko || undefined}
           sentenceEn={currentQuestion.word.example_en || undefined}
           stage={currentQuestion.stage}

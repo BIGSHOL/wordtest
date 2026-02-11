@@ -29,19 +29,10 @@ REVIEW_INTERVALS = [3, 7, 30]
 def get_required_streak(word_level: int) -> int:
     """Get consecutive correct answers needed to advance one stage.
 
-    Higher-level words require more consecutive correct answers,
-    making progression increasingly harder.
+    Returns 1: each correct answer immediately advances the stage.
+    This avoids word repetition within a session and simplifies UX.
     """
-    if word_level <= 3:
-        return 2
-    elif word_level <= 6:
-        return 3
-    elif word_level <= 9:
-        return 4
-    elif word_level <= 12:
-        return 5
-    else:  # 13-15
-        return 6
+    return 1
 
 
 
@@ -259,13 +250,18 @@ async def get_question_pool(
     """Generate a multi-level question pool for adaptive level progression.
 
     Returns questions from current_level to current_level + max_levels - 1,
-    with per_level questions per level. Frontend manages pool switching
-    based on real-time XP tracking.
-
-    Questions include word.level so frontend can sort them into level pools.
+    with per_level questions per level. Excludes already-answered words.
     """
     start_level = session.current_level
     all_questions: list[MasteryQuestion] = []
+
+    # Exclude words already answered in this session
+    answered_result = await db.execute(
+        select(LearningAnswer.word_mastery_id).where(
+            LearningAnswer.session_id == session.id,
+        ).distinct()
+    )
+    answered_ids = set(answered_result.scalars().all())
 
     for i in range(max_levels):
         level = start_level + i
@@ -275,18 +271,13 @@ async def get_question_pool(
         level_masteries = [
             m for m in masteries
             if not m.mastered_at
+            and m.id not in answered_ids
             and words_map.get(m.word_id)
             and words_map[m.word_id].level == level
         ]
 
-        # Prioritize words with streak in progress, then randomly sample rest
-        in_progress = [m for m in level_masteries if m.stage_streak > 0]
-        rest = [m for m in level_masteries if m.stage_streak == 0]
-        random.shuffle(rest)
-
-        batch = in_progress[:per_level]
-        if len(batch) < per_level:
-            batch.extend(rest[:per_level - len(batch)])
+        random.shuffle(level_masteries)
+        batch = level_masteries[:per_level]
         if not batch:
             continue
 
@@ -308,17 +299,23 @@ async def get_level_questions(
 ) -> list[MasteryQuestion]:
     """Get questions for a specific level with fallback to adjacent levels.
 
-    Prioritizes:
-    1. Words with streak in progress (stage_streak > 0) - so they can complete faster
-    2. Randomly sampled new words from target level
-    3. Words from adjacent levels if not enough at target
+    Excludes words already answered in this session to prevent repetition.
+    Falls back to adjacent levels if not enough at target.
     """
-    # Separate masteries by level proximity
+    # Exclude words already answered in this session
+    answered_result = await db.execute(
+        select(LearningAnswer.word_mastery_id).where(
+            LearningAnswer.session_id == session.id,
+        ).distinct()
+    )
+    answered_ids = set(answered_result.scalars().all())
+
+    # Separate masteries by level proximity (excluding answered)
     target_masteries = []
     other_masteries = []
 
     for m in masteries:
-        if m.mastered_at:
+        if m.mastered_at or m.id in answered_ids:
             continue
         word = words_map.get(m.word_id)
         if not word:
@@ -328,18 +325,12 @@ async def get_level_questions(
         else:
             other_masteries.append(m)
 
-    # Priority 1: words with streak in progress (need to complete their streak)
-    in_progress = [m for m in target_masteries if m.stage_streak > 0]
-    remaining = [m for m in target_masteries if m.stage_streak == 0]
+    # Randomly sample from available words
+    random.shuffle(target_masteries)
 
-    # Priority 2: randomly sample from remaining words (not always the same ones)
-    random.shuffle(remaining)
+    batch = target_masteries[:batch_size]
 
-    batch = in_progress[:batch_size]
-    if len(batch) < batch_size:
-        batch.extend(remaining[:batch_size - len(batch)])
-
-    # Priority 3: fill from adjacent levels if needed
+    # Fill from adjacent levels if needed
     if len(batch) < batch_size:
         random.shuffle(other_masteries)
         batch.extend(other_masteries[:batch_size - len(batch)])

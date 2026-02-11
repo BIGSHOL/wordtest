@@ -9,6 +9,8 @@ import { speakSentence } from '../../utils/tts';
 interface SentenceBlankCardProps {
   /** English sentence with ____ replacing the target word */
   sentenceBlank: string;
+  /** Korean meaning of the target word */
+  korean?: string;
   /** Korean translation of the full sentence */
   sentenceKo?: string;
   /** Full English sentence (for TTS) */
@@ -27,6 +29,7 @@ const STAGE_PROMPTS: Record<number, string> = {
 
 export const SentenceBlankCard = memo(function SentenceBlankCard({
   sentenceBlank,
+  korean,
   sentenceKo,
   sentenceEn,
   stage,
@@ -62,10 +65,10 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
         {parts[1]}
       </p>
 
-      {/* Korean sentence (for stages 2, 5 as context clue) */}
-      {sentenceKo && (stage === 2 || stage === 5) && (
-        <p className="font-display text-[14px] text-text-secondary text-center leading-relaxed mt-1">
-          {sentenceKo}
+      {/* Korean meaning of the target word */}
+      {korean && (
+        <p className="font-display text-[17px] font-bold text-accent-indigo text-center mt-1">
+          {korean}
         </p>
       )}
 
