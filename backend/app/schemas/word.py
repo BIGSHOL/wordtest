@@ -1,10 +1,12 @@
 """Word schemas."""
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class WordResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     english: str
     korean: str
@@ -16,9 +18,6 @@ class WordResponse(BaseModel):
     example_en: Optional[str] = None
     example_ko: Optional[str] = None
     created_at: Optional[datetime] = None
-
-    class Config:
-        from_attributes = True
 
 
 class CreateWordRequest(BaseModel):

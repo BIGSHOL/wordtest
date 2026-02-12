@@ -9,7 +9,7 @@ interface Props {
   assignments: TestAssignmentItem[];
   onDelete: (id: string) => void;
   onReset: (id: string) => void;
-  onViewResult: (studentId: string) => void;
+  onViewResult: (item: TestAssignmentItem) => void;
 }
 
 function formatDate(dateStr: string): string {
@@ -124,8 +124,8 @@ export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewRe
                           <Trash2 className="w-3.5 h-3.5" style={{ color: '#EF4444' }} />
                         </button>
                       )}
-                      {item.status === 'completed' && item.test_session_id && (
-                        <button onClick={() => onViewResult(item.student_id)} className="text-[11px] font-semibold hover:opacity-70 transition-opacity" style={{ color: '#2D9CAE' }}>보기</button>
+                      {item.status === 'completed' && (item.test_session_id || item.learning_session_id) && (
+                        <button onClick={() => onViewResult(item)} className="text-[11px] font-semibold hover:opacity-70 transition-opacity" style={{ color: '#2D9CAE' }}>보기</button>
                       )}
                       {item.status !== 'pending' && (
                         <button onClick={() => onReset(item.id)} className="hover:opacity-70 transition-opacity" title="초기화">

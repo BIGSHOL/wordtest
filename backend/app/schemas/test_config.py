@@ -1,9 +1,11 @@
 """Test configuration schemas."""
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class TestConfigResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     teacher_id: str
     name: str
@@ -21,9 +23,6 @@ class TestConfigResponse(BaseModel):
     lesson_range_end: Optional[str] = None
     created_at: str
     updated_at: str
-
-    class Config:
-        from_attributes = True
 
 
 class CreateTestConfigRequest(BaseModel):

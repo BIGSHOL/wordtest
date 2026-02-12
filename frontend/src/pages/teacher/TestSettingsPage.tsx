@@ -184,8 +184,12 @@ export function TestSettingsPage() {
     }
   };
 
-  const handleViewResult = (studentId: string) => {
-    navigate(`/students/${studentId}/results`);
+  const handleViewResult = (item: TestAssignmentItem) => {
+    if (item.assignment_type === 'mastery' && item.learning_session_id) {
+      navigate(`/students/${item.student_id}/mastery/${item.learning_session_id}`);
+    } else {
+      navigate(`/students/${item.student_id}/results`);
+    }
   };
 
   const canAssign =

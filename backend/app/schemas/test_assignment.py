@@ -1,7 +1,7 @@
 """Test assignment schemas."""
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class AssignTestRequest(BaseModel):
@@ -17,6 +17,8 @@ class AssignTestRequest(BaseModel):
 
 
 class TestAssignmentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     student_id: str
     student_name: str
@@ -32,6 +34,4 @@ class TestAssignmentResponse(BaseModel):
     status: str
     assigned_at: datetime
     test_session_id: Optional[str] = None
-
-    class Config:
-        from_attributes = True
+    learning_session_id: Optional[str] = None

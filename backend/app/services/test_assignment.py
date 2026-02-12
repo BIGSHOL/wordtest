@@ -6,6 +6,7 @@ from app.models.test_assignment import TestAssignment
 from app.models.test_config import TestConfig
 from app.models.user import User
 from app.models.word import Word
+from app.models.learning_session import LearningSession
 from app.schemas.test_assignment import AssignTestRequest, TestAssignmentResponse
 from app.services.test_config import generate_test_code
 from app.core.timezone import now_kst
@@ -129,8 +130,26 @@ async def list_assignments_by_teacher(
         .order_by(TestAssignment.assigned_at.desc())
     )
 
+    rows = result.all()
+
+    # Batch-fetch learning_session_ids for mastery assignments
+    assignment_ids = [a.id for a, _, _ in rows]
+    ls_result = await db.execute(
+        select(LearningSession.assignment_id, LearningSession.id)
+        .where(
+            LearningSession.assignment_id.in_(assignment_ids),
+            LearningSession.completed_at != None,
+        )
+        .order_by(LearningSession.completed_at.desc())
+    )
+    # Take the latest completed session per assignment
+    ls_map: dict[str, str] = {}
+    for ls_assignment_id, ls_id in ls_result.all():
+        if ls_assignment_id not in ls_map:
+            ls_map[ls_assignment_id] = ls_id
+
     responses = []
-    for assignment, config, student in result.all():
+    for assignment, config, student in rows:
         lesson_range = None
         is_cross = config.book_name_end and config.book_name_end != config.book_name
         if is_cross and config.lesson_range_start and config.lesson_range_end:
@@ -155,6 +174,7 @@ async def list_assignments_by_teacher(
                 status=assignment.status,
                 assigned_at=assignment.assigned_at,
                 test_session_id=assignment.test_session_id,
+                learning_session_id=ls_map.get(assignment.id),
             )
         )
     return responses

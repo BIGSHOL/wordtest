@@ -1,6 +1,6 @@
 """Level test schemas."""
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class StartTestRequest(BaseModel):
@@ -37,6 +37,8 @@ class TestQuestion(BaseModel):
 
 
 class TestSessionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: str
     student_id: str
     test_type: str
@@ -50,9 +52,6 @@ class TestSessionResponse(BaseModel):
     test_config_id: Optional[str] = None
     started_at: str
     completed_at: Optional[str] = None
-
-    class Config:
-        from_attributes = True
 
 
 class StartTestResponse(BaseModel):

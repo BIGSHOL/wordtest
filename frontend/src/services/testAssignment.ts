@@ -31,6 +31,7 @@ export interface TestAssignmentItem {
   status: 'pending' | 'in_progress' | 'completed';
   assigned_at: string;
   test_session_id: string | null;
+  learning_session_id: string | null;
 }
 
 export const testAssignmentService = {

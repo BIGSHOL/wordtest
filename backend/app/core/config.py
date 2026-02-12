@@ -1,7 +1,9 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=("../.env", ".env"))
+
     # Supabase PostgreSQL (Transaction mode pooler uses port 6543)
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/app"
     # Direct connection for migrations (bypasses pooler)
@@ -21,9 +23,6 @@ class Settings(BaseSettings):
 
     # Google Gemini TTS (optional)
     GEMINI_API_KEY: str = ""
-
-    class Config:
-        env_file = ("../.env", ".env")
 
 
 settings = Settings()
