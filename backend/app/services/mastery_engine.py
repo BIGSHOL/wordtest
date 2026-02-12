@@ -16,17 +16,82 @@ from app.schemas.mastery import (
 def _min_stage_for_level(word_level: int) -> int:
     """Minimum effective stage based on word level.
 
-    Prevents high-level words from getting trivially easy question types.
+    Aggressive thresholds so difficulty is felt from book 3 onwards.
     Stage 1-2: multiple choice (easy), Stage 3: listen+type, Stage 4: listen+choice, Stage 5: type
     """
-    if word_level <= 3:
-        return 1   # 전부 허용
-    elif word_level <= 5:
-        return 2   # 최소 meaning_to_word
+    if word_level <= 2:
+        return 1   # 전부 허용 (객관식)
+    elif word_level <= 4:
+        return 2   # 최소 meaning_to_word (여전히 객관식이지만 역방향)
+    elif word_level <= 6:
+        return 3   # 최소 listen_and_type (타이핑 시작!)
     elif word_level <= 9:
-        return 3   # 최소 listen_and_type
+        return 4   # 최소 listen_to_meaning (듣기+선택)
     else:  # 10-15
-        return 4   # 최소 listen_to_meaning
+        return 5   # 최소 meaning_and_type (한→영 타이핑)
+
+
+# --- Level-based choice count ---
+# Higher levels get more distractors to make multiple choice harder.
+
+def _choice_count_for_level(word_level: int) -> int:
+    """Number of choices (including correct) for multiple choice questions."""
+    if word_level <= 2:
+        return 3   # 쉬움: 3지선다
+    elif word_level <= 4:
+        return 4   # 기본: 4지선다
+    elif word_level <= 7:
+        return 5   # 중간: 5지선다
+    else:  # 8-15
+        return 6   # 어려움: 6지선다
+
+
+# --- Level-based base timer ---
+# Higher levels get shorter time per question (more pressure).
+
+def _base_timer_for_level(word_level: int, stage: int) -> int:
+    """Base timer (seconds) considering both level and question type.
+
+    Typing questions (stage 3,5) always get 15s.
+    Choice questions get shorter time at higher levels.
+    """
+    if stage in (3, 5):
+        # Typing: always generous
+        if word_level <= 4:
+            return 15
+        elif word_level <= 8:
+            return 12
+        else:
+            return 10
+    else:
+        # Multiple choice: pressure increases with level
+        if word_level <= 2:
+            return 8
+        elif word_level <= 4:
+            return 7
+        elif word_level <= 6:
+            return 6
+        elif word_level <= 9:
+            return 5
+        else:  # 10-15
+            return 4
+
+
+# --- Level-based typing probability ---
+# At stage 1-2, higher levels have a chance to get typing instead of choice.
+
+def _typing_probability(word_level: int) -> float:
+    """Probability [0..1] of upgrading a choice question to typing at stage 1-2."""
+    if word_level <= 3:
+        return 0.0
+    elif word_level <= 5:
+        return 0.15
+    elif word_level <= 7:
+        return 0.3
+    elif word_level <= 9:
+        return 0.45
+    else:  # 10-15
+        return 0.6
 
 
 # --- Level-based sentence probability ---
@@ -266,61 +331,73 @@ def generate_mixed_questions(
         question_type = ""
         timer = 5
 
+        # Level-based choice count (distractors = n_choices - 1)
+        n_choices = _choice_count_for_level(word.level)
+        n_distractors = n_choices - 1
+
         # Determine question type based on internal stage
         if stage == 1 or stage == 2:
-            if use_sentence:
+            # Typing probability: high-level words may get typing even at stage 1-2
+            if random.random() < _typing_probability(word.level):
+                # Upgrade to typing (meaning_and_type)
+                question_type = "meaning_and_type"
+                correct_answer = word.english
+                timer = _base_timer_for_level(word.level, 5)
+            elif use_sentence:
                 # Sentence blank → always English word choices
                 question_type = "meaning_to_word"
                 correct_answer = word.english
-                sampled = _pick_english_distractors(word.english, unique_english)
+                sampled = _pick_english_distractors(word.english, unique_english, n_distractors)
                 choices = [correct_answer] + sampled
                 random.shuffle(choices)
+                timer = _base_timer_for_level(word.level, stage)
             elif random.random() < 0.5:
-                # word_to_meaning: English → Korean meaning (4 choices)
+                # word_to_meaning: English → Korean meaning
                 question_type = "word_to_meaning"
                 correct_answer = word.korean
                 wrong = [k for k in unique_korean if k != word.korean]
-                sampled = random.sample(wrong, min(3, len(wrong)))
+                sampled = random.sample(wrong, min(n_distractors, len(wrong)))
                 choices = [correct_answer] + sampled
                 random.shuffle(choices)
+                timer = _base_timer_for_level(word.level, stage)
             else:
-                # meaning_to_word: Korean meaning → English word (4 choices)
+                # meaning_to_word: Korean meaning → English word
                 question_type = "meaning_to_word"
                 correct_answer = word.english
-                sampled = _pick_english_distractors(word.english, unique_english)
+                sampled = _pick_english_distractors(word.english, unique_english, n_distractors)
                 choices = [correct_answer] + sampled
                 random.shuffle(choices)
-            timer = 5
+                timer = _base_timer_for_level(word.level, stage)
 
         elif stage == 3:
             # listen_and_type: Listen → Type English word
             question_type = "listen_and_type"
             correct_answer = word.english
-            timer = 15
+            timer = _base_timer_for_level(word.level, stage)
 
         elif stage == 4:
             if use_sentence:
                 # Sentence blank → always English word choices
                 question_type = "listen_to_meaning"
                 correct_answer = word.english
-                sampled = _pick_english_distractors(word.english, unique_english)
+                sampled = _pick_english_distractors(word.english, unique_english, n_distractors)
                 choices = [correct_answer] + sampled
                 random.shuffle(choices)
             else:
-                # listen_to_meaning: Listen → Korean meaning (4 choices)
+                # listen_to_meaning: Listen → Korean meaning
                 question_type = "listen_to_meaning"
                 correct_answer = word.korean
                 wrong = [k for k in unique_korean if k != word.korean]
-                sampled = random.sample(wrong, min(3, len(wrong)))
+                sampled = random.sample(wrong, min(n_distractors, len(wrong)))
                 choices = [correct_answer] + sampled
                 random.shuffle(choices)
-            timer = 10
+            timer = _base_timer_for_level(word.level, stage)
 
         elif stage == 5:
             # meaning_and_type: Korean meaning → Type English word
             question_type = "meaning_and_type"
             correct_answer = word.english
-            timer = 15
+            timer = _base_timer_for_level(word.level, stage)
 
         questions.append(MasteryQuestion(
             word_mastery_id=mastery.id,
