@@ -258,6 +258,7 @@ async def submit_answer(
     stage: int,
     time_taken_seconds: float | None = None,
     question_type: str | None = None,
+    context_mode: str | None = None,
 ) -> dict:
     """Submit answer for stage test. Wrong answers do NOT demote stage."""
     # Look up mastery record
@@ -276,8 +277,11 @@ async def submit_answer(
     if not word:
         raise ValueError("Word not found")
 
-    # Determine correct answer based on question_type
-    if question_type:
+    # Determine correct answer based on context_mode / question_type / stage
+    # Sentence mode: answer is always English (fill in the blank)
+    if context_mode == 'sentence':
+        correct = word.english
+    elif question_type:
         if question_type in ('word_to_meaning', 'listen_to_meaning'):
             correct = word.korean
         else:

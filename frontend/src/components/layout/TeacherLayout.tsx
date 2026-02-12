@@ -7,6 +7,7 @@ import {
   Settings,
   Database,
   TrendingUp,
+  BarChart3,
   LogOut,
 } from 'lucide-react';
 
@@ -20,6 +21,7 @@ const navItems = [
   { to: '/test-settings', icon: Settings, label: '테스트 설정' },
   { to: '/words', icon: Database, label: '데이터베이스' },
   { to: '/statistics', icon: TrendingUp, label: '통계' },
+  { to: '/analysis', icon: BarChart3, label: '분석' },
 ];
 
 export function TeacherLayout({ children }: TeacherLayoutProps) {

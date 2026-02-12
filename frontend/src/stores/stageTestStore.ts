@@ -220,6 +220,7 @@ export const useStageTestStore = create<StageTestStore>()((set, get) => ({
         time_taken_seconds: timeTaken,
         stage: question.stage,
         question_type: question.question_type,
+        context_mode: question.context_mode,
       });
 
       // Update local word state

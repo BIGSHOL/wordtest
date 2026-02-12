@@ -66,6 +66,7 @@ export const stageTestService = {
       time_taken_seconds?: number;
       stage: number;
       question_type?: string;
+      context_mode?: string;
     },
   ): Promise<StageTestAnswerResponse> {
     const response = await api.post<StageTestAnswerResponse>(

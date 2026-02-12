@@ -26,9 +26,9 @@ const _prefetchingLevels = new Set<number>();
 
 // --- XP Configuration ---
 
-/** XP needed to clear one lesson in a given book. Book 1: 3, Book 5: 7, Book 10: 12 */
+/** XP needed to clear one lesson in a given book. Book 1: 5, Book 5: 9, Book 10: 14 */
 function getLessonXp(book: number): number {
-  return 2 + book;
+  return 4 + book;
 }
 
 /** XP breakdown per answer. */
@@ -302,12 +302,14 @@ export const useMasteryStore = create<MasteryStore>()((set, get) => ({
       let newXp = state.xp + xpBreakdown.total;
       let newBook = state.currentBook;
       let newLesson = state.currentLesson;
-      const lessonXp = getLessonXp(newBook);
 
-      // Level UP: advance lessons (possibly multiple if big XP gain)
-      while (newXp >= lessonXp && newBook <= 15) {
+      // Level UP: advance lessons (max 3 per answer to prevent extreme jumps)
+      const MAX_LESSON_ADVANCE = 3;
+      let lessonsAdvanced = 0;
+      while (newXp >= getLessonXp(newBook) && newBook <= 15 && lessonsAdvanced < MAX_LESSON_ADVANCE) {
         newXp -= getLessonXp(newBook);
         newLesson++;
+        lessonsAdvanced++;
         if (newLesson > 25) {
           // Next book
           newBook++;

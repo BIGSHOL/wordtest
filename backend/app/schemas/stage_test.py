@@ -22,6 +22,7 @@ class StageTestAnswerRequest(BaseModel):
     time_taken_seconds: Optional[float] = None
     stage: int
     question_type: Optional[str] = None
+    context_mode: Optional[str] = None
 
 
 class StageTestCompleteRequest(BaseModel):

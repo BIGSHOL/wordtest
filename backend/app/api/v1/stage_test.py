@@ -110,6 +110,7 @@ async def submit_stage_test_answer(
             stage=body.stage,
             time_taken_seconds=body.time_taken_seconds,
             question_type=body.question_type,
+            context_mode=body.context_mode,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
