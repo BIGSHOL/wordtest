@@ -232,7 +232,7 @@ async def list_assignments_by_teacher(
 async def reset_assignment(
     db: AsyncSession, assignment_id: str, teacher_id: str
 ) -> bool:
-    """Reset a completed/in_progress assignment back to pending with a new code."""
+    """Reset a completed/in_progress assignment back to pending (keep test code)."""
     result = await db.execute(
         select(TestAssignment).where(
             TestAssignment.id == assignment_id,
@@ -248,7 +248,7 @@ async def reset_assignment(
     assignment.status = "pending"
     assignment.test_session_id = None
     assignment.completed_at = None
-    assignment.test_code = await generate_test_code(db)
+    # Keep original test_code (no re-generation)
     await db.commit()
     return True
 
