@@ -47,6 +47,10 @@ export const testAssignmentService = {
   async deleteAssignment(id: string): Promise<void> {
     await api.delete(`/api/v1/test-assignments/${id}`);
   },
+
+  async resetAssignment(id: string): Promise<void> {
+    await api.patch(`/api/v1/test-assignments/${id}/reset`);
+  },
 };
 
 export default testAssignmentService;

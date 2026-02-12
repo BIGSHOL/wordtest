@@ -2,12 +2,13 @@
  * Assignment status table for test assignment page.
  * Matches Pencil editor design: white card with header badge, purple test codes.
  */
-import { Trash2 } from 'lucide-react';
+import { Trash2, RotateCcw } from 'lucide-react';
 import type { TestAssignmentItem } from '../../services/testAssignment';
 
 interface Props {
   assignments: TestAssignmentItem[];
   onDelete: (id: string) => void;
+  onReset: (id: string) => void;
   onViewResult: (studentId: string) => void;
 }
 
@@ -31,7 +32,7 @@ function formatQuestionTypes(types: string | null): string {
   return `유형${nums.join('+')}`;
 }
 
-export function AssignmentStatusTable({ assignments, onDelete, onViewResult }: Props) {
+export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewResult }: Props) {
   return (
     <div className="bg-white border border-border-subtle rounded-2xl overflow-hidden">
       {/* Header */}
@@ -125,6 +126,11 @@ export function AssignmentStatusTable({ assignments, onDelete, onViewResult }: P
                       )}
                       {item.status === 'completed' && item.test_session_id && (
                         <button onClick={() => onViewResult(item.student_id)} className="text-[11px] font-semibold hover:opacity-70 transition-opacity" style={{ color: '#2D9CAE' }}>보기</button>
+                      )}
+                      {item.status !== 'pending' && (
+                        <button onClick={() => onReset(item.id)} className="hover:opacity-70 transition-opacity" title="초기화">
+                          <RotateCcw className="w-3.5 h-3.5" style={{ color: '#F59E0B' }} />
+                        </button>
                       )}
                     </div>
                   </td>

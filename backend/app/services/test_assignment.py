@@ -160,6 +160,30 @@ async def list_assignments_by_teacher(
     return responses
 
 
+async def reset_assignment(
+    db: AsyncSession, assignment_id: str, teacher_id: str
+) -> bool:
+    """Reset a completed/in_progress assignment back to pending with a new code."""
+    result = await db.execute(
+        select(TestAssignment).where(
+            TestAssignment.id == assignment_id,
+            TestAssignment.teacher_id == teacher_id,
+        )
+    )
+    assignment = result.scalar_one_or_none()
+    if not assignment:
+        return False
+    if assignment.status == "pending":
+        return False
+
+    assignment.status = "pending"
+    assignment.test_session_id = None
+    assignment.completed_at = None
+    assignment.test_code = await generate_test_code(db)
+    await db.commit()
+    return True
+
+
 async def delete_assignment(
     db: AsyncSession, assignment_id: str, teacher_id: str
 ) -> bool:

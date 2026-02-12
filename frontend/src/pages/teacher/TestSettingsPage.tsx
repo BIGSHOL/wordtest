@@ -174,6 +174,16 @@ export function TestSettingsPage() {
     }
   };
 
+  const handleReset = async (id: string) => {
+    if (!window.confirm('이 테스트를 초기화하시겠습니까? 새 코드가 발급됩니다.')) return;
+    try {
+      await testAssignmentService.resetAssignment(id);
+      await refreshAssignments();
+    } catch (error) {
+      logger.error('Failed to reset assignment:', error);
+    }
+  };
+
   const handleViewResult = (studentId: string) => {
     navigate(`/students/${studentId}/results`);
   };
@@ -241,6 +251,7 @@ export function TestSettingsPage() {
         <AssignmentStatusTable
           assignments={assignments}
           onDelete={handleDelete}
+          onReset={handleReset}
           onViewResult={handleViewResult}
         />
       </div>

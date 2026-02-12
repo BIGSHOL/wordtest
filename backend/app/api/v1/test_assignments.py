@@ -9,6 +9,7 @@ from app.services.test_assignment import (
     assign_test,
     list_assignments_by_teacher,
     delete_assignment,
+    reset_assignment,
 )
 
 router = APIRouter(prefix="/test-assignments", tags=["test-assignments"])
@@ -46,5 +47,21 @@ async def remove_assignment(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Assignment not found or not in pending status",
+        )
+    return None
+
+
+@router.patch("/{assignment_id}/reset", status_code=status.HTTP_204_NO_CONTENT)
+async def reset_assignment_endpoint(
+    assignment_id: str,
+    teacher: CurrentTeacher,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Reset a completed/in_progress assignment back to pending (teacher only)."""
+    ok = await reset_assignment(db, assignment_id, teacher.id)
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Assignment not found or already pending",
         )
     return None
