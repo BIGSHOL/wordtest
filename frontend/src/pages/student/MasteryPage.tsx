@@ -28,7 +28,7 @@ import { SentenceBlankCard } from '../../components/mastery/SentenceBlankCard';
 import { Loader2, Trophy } from 'lucide-react';
 import { getLevelRank } from '../../types/rank';
 
-const FEEDBACK_DELAY_CORRECT = 800;
+const FEEDBACK_DELAY_CORRECT = 1500;
 const FEEDBACK_DELAY_WRONG = 1800;
 
 export function MasteryPage() {
