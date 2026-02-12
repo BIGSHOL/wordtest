@@ -575,7 +575,7 @@ async def get_enhanced_report(
 
     # Mappings
     grade_level = report_engine.RANK_TO_GRADE.get(rank, "미정")
-    vocab_desc = report_engine.RANK_TO_VOCAB_DESC.get(rank, "")
+    vocab_desc = report_engine.get_vocab_description(rank, score)
     recommended_book = report_engine.RANK_TO_BOOK.get(rank, "")
 
     return EnhancedTestReport(
@@ -764,7 +764,7 @@ async def get_mastery_report(
 
     # Mappings
     grade_level = report_engine.RANK_TO_GRADE.get(rank, "미정")
-    vocab_desc = report_engine.RANK_TO_VOCAB_DESC.get(rank, "")
+    vocab_desc = report_engine.get_vocab_description(rank, score)
     recommended_book = report_engine.RANK_TO_BOOK.get(rank, "")
 
     session_data = MasterySessionData(

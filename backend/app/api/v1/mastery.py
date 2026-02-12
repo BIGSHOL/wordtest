@@ -66,13 +66,43 @@ async def start_mastery_by_code(
     body: StartMasteryByCodeRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """Start a mastery session. Returns multi-level question pool."""
+    """Start a mastery session. Returns multi-level question pool.
+
+    If the test code is for a stage test (periodic), returns
+    assignment_type="stage_test" without creating a mastery session.
+    """
     code = body.test_code.strip().upper()
     if not code:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Test code is required",
         )
+
+    # Early detection: route stage tests (periodic) without creating a session
+    from app.services.mastery import _get_assignment_and_config as _lookup
+    lookup = await _lookup(db, code)
+    if lookup:
+        _assignment, _config = lookup
+        if _config.test_type == "periodic":
+            _student = (await db.execute(
+                select(User).where(User.id == _assignment.student_id)
+            )).scalar_one_or_none()
+            _token = create_access_token(subject=_assignment.student_id)
+            return StartMasteryResponse(
+                session=MasterySessionInfo(
+                    id="", assignment_id=_assignment.id,
+                    current_stage=1, words_practiced=0, words_advanced=0,
+                    best_combo=0, started_at="",
+                ),
+                stage_summary=StageSummary(),
+                questions=[],
+                total_words=0,
+                question_count=0,
+                access_token=_token,
+                student_name=_student.name if _student else "학생",
+                assignment_type="stage_test",
+                current_level=1,
+            )
 
     try:
         session, questions, masteries, all_words, assignment, student_name, current_level, question_count = \
@@ -157,6 +187,7 @@ async def get_batch(
         db, session, masteries, words_map, all_words,
         target_level=target_level,
         batch_size=body.batch_size,
+        timer_override=config.per_question_time_seconds,
     )
 
     summary = await _compute_stage_summary(masteries)
@@ -216,6 +247,7 @@ async def submit_mastery_answer(
             stage=body.stage,
             time_taken_seconds=body.time_taken_seconds,
             question_type=body.question_type,
+            context_mode=body.context_mode,
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -428,7 +460,7 @@ async def mastery_session_report(
         metric_details.append(MetricDetail(**d))
 
     grade_level = report_engine.RANK_TO_GRADE.get(rank, "미정")
-    vocab_desc = report_engine.RANK_TO_VOCAB_DESC.get(rank, "")
+    vocab_desc = report_engine.get_vocab_description(rank, score)
     recommended_book = report_engine.RANK_TO_BOOK.get(rank, "")
 
     session_data = MasterySessionData(

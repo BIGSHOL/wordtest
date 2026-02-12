@@ -226,17 +226,17 @@ export function StudentResultPage() {
                       })()}
                     </div>
                     <div className="flex gap-2">
-                      <div className="flex-1 border border-[#CC0000] rounded p-2 text-center space-y-1">
-                        <p className="text-[10px] font-semibold text-[#CC0000]">학년수준</p>
-                        <p className="text-[10px] font-medium text-[#0D0D0D] leading-tight">{report.grade_level}</p>
+                      <div className="flex-1 border border-[#CC0000] rounded p-2.5 text-center space-y-1">
+                        <p className="text-xs font-bold text-[#CC0000]">학년수준</p>
+                        <p className="text-xs font-semibold text-[#0D0D0D] leading-tight">{report.grade_level}</p>
                       </div>
-                      <div className="flex-1 border border-[#CC0000] rounded p-2 text-center space-y-1">
-                        <p className="text-[10px] font-semibold text-[#CC0000]">어휘수준</p>
-                        <p className="text-[10px] font-medium text-[#0D0D0D] leading-tight">{report.vocab_description}</p>
+                      <div className="flex-1 border border-[#CC0000] rounded p-2.5 text-center space-y-1">
+                        <p className="text-xs font-bold text-[#CC0000]">어휘수준</p>
+                        <p className="text-xs font-semibold text-[#0D0D0D] leading-tight">{report.vocab_description}</p>
                       </div>
-                      <div className="flex-1 border border-[#CC0000] rounded p-2 text-center space-y-1">
-                        <p className="text-[10px] font-semibold text-[#CC0000]">동학년순위</p>
-                        <p className="text-[10px] font-medium text-[#0D0D0D] leading-tight">
+                      <div className="flex-1 border border-[#CC0000] rounded p-2.5 text-center space-y-1">
+                        <p className="text-xs font-bold text-[#CC0000]">동학년순위</p>
+                        <p className="text-xs font-semibold text-[#0D0D0D] leading-tight">
                           {report.peer_ranking ? `상위 ${report.peer_ranking.percentile}%` : '-'}
                         </p>
                       </div>

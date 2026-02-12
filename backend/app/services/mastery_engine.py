@@ -10,6 +10,25 @@ from app.schemas.mastery import (
 )
 
 
+# --- Level-based minimum difficulty ---
+# Higher-level words get harder question types even at low mastery stages.
+
+def _min_stage_for_level(word_level: int) -> int:
+    """Minimum effective stage based on word level.
+
+    Prevents high-level words from getting trivially easy question types.
+    Stage 1-2: multiple choice (easy), Stage 3: listen+type, Stage 4: listen+choice, Stage 5: type
+    """
+    if word_level <= 3:
+        return 1   # 전부 허용
+    elif word_level <= 5:
+        return 2   # 최소 meaning_to_word
+    elif word_level <= 9:
+        return 3   # 최소 listen_and_type
+    else:  # 10-15
+        return 4   # 최소 listen_to_meaning
+
+
 # --- Level-based sentence probability ---
 # Higher levels → more sentence/context-based questions
 
@@ -199,6 +218,7 @@ def generate_mixed_questions(
     masteries: list[WordMastery],
     words_map: dict[str, Word],
     all_words: list[Word],
+    timer_override: int | None = None,
 ) -> list[MasteryQuestion]:
     """Generate mixed-type questions based on each word's internal mastery stage.
 
@@ -224,8 +244,8 @@ def generate_mixed_questions(
         if not word:
             continue
 
-        # Get internal stage from mastery
-        stage = mastery.stage
+        # Get effective stage: max of mastery stage and level-based minimum
+        stage = max(mastery.stage, _min_stage_for_level(word.level))
 
         # Decide context mode based on word level
         prob = _sentence_probability(word.level)
@@ -309,7 +329,7 @@ def generate_mixed_questions(
             question_type=question_type,
             choices=choices,
             correct_answer=correct_answer,
-            timer_seconds=timer,
+            timer_seconds=timer_override if timer_override else timer,
             context_mode=context_mode,
             sentence_blank=sentence_blank,
         ))

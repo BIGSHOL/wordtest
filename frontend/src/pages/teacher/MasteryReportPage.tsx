@@ -207,17 +207,17 @@ export function MasteryReportPage() {
                   })()}
                 </div>
                 <div className="flex gap-2">
-                  <div className="flex-1 border border-[#CC0000] rounded p-2 text-center space-y-1">
-                    <p className="text-[10px] font-semibold text-[#CC0000]">학년수준</p>
-                    <p className="text-[10px] font-medium text-[#0D0D0D] leading-tight">{report.grade_level}</p>
+                  <div className="flex-1 border border-[#CC0000] rounded p-2.5 text-center space-y-1">
+                    <p className="text-xs font-bold text-[#CC0000]">학년수준</p>
+                    <p className="text-xs font-semibold text-[#0D0D0D] leading-tight">{report.grade_level}</p>
                   </div>
-                  <div className="flex-1 border border-[#CC0000] rounded p-2 text-center space-y-1">
-                    <p className="text-[10px] font-semibold text-[#CC0000]">어휘수준</p>
-                    <p className="text-[10px] font-medium text-[#0D0D0D] leading-tight">{report.vocab_description}</p>
+                  <div className="flex-1 border border-[#CC0000] rounded p-2.5 text-center space-y-1">
+                    <p className="text-xs font-bold text-[#CC0000]">어휘수준</p>
+                    <p className="text-xs font-semibold text-[#0D0D0D] leading-tight">{report.vocab_description}</p>
                   </div>
-                  <div className="flex-1 border border-[#CC0000] rounded p-2 text-center space-y-1">
-                    <p className="text-[10px] font-semibold text-[#CC0000]">동학년순위</p>
-                    <p className="text-[10px] font-medium text-[#0D0D0D] leading-tight">
+                  <div className="flex-1 border border-[#CC0000] rounded p-2.5 text-center space-y-1">
+                    <p className="text-xs font-bold text-[#CC0000]">동학년순위</p>
+                    <p className="text-xs font-semibold text-[#0D0D0D] leading-tight">
                       {report.peer_ranking ? `상위 ${report.peer_ranking.percentile}%` : '-'}
                     </p>
                   </div>
@@ -229,29 +229,29 @@ export function MasteryReportPage() {
 
               {/* Right: Stats summary */}
               <div className="w-[180px] shrink-0 border border-[#E8E8E8] rounded-sm p-5 space-y-3 bg-[#FAFAFA]">
-                <h3 className="text-base font-semibold text-[#0D0D0D]">학습 통계</h3>
+                <h3 className="text-lg font-bold text-[#0D0D0D]">학습 통계</h3>
                 <div className="space-y-1">
-                  <p className="text-xs text-[#7A7A7A]">소요시간</p>
-                  <p className="text-lg font-bold text-[#CC0000]">
+                  <p className="text-sm text-[#555]">소요시간</p>
+                  <p className="text-xl font-bold text-[#CC0000]">
                     {report.total_time_seconds != null ? formatTime(report.total_time_seconds) : '-'}
                   </p>
                 </div>
                 <div className="h-px bg-[#E8E8E8]" />
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-[#7A7A7A]">총 문제수</span>
-                  <span className="text-xs font-medium text-[#0D0D0D]">{report.session.total_questions}</span>
+                  <span className="text-sm text-[#555]">총 문제수</span>
+                  <span className="text-sm font-semibold text-[#0D0D0D]">{report.session.total_questions}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-[#7A7A7A]">정답률</span>
-                  <span className="text-xs font-medium text-[#0D0D0D]">{report.session.score}%</span>
+                  <span className="text-sm text-[#555]">정답률</span>
+                  <span className="text-sm font-semibold text-[#0D0D0D]">{report.session.score}%</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-[#7A7A7A]">최고 콤보</span>
-                  <span className="text-xs font-medium text-[#0D0D0D]">{report.session.best_combo}연속</span>
+                  <span className="text-sm text-[#555]">최고 콤보</span>
+                  <span className="text-sm font-semibold text-[#0D0D0D]">{report.session.best_combo}연속</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-[#7A7A7A]">학습 단어</span>
-                  <span className="text-xs font-medium text-[#0D0D0D]">{report.session.words_practiced}개</span>
+                  <span className="text-sm text-[#555]">학습 단어</span>
+                  <span className="text-sm font-semibold text-[#0D0D0D]">{report.session.words_practiced}개</span>
                 </div>
               </div>
             </div>

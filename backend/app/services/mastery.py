@@ -237,10 +237,12 @@ async def start_session_by_code(
 
     # Generate multi-level question pool (current_level + up to 4 more levels)
     words_map = {w.id: w for w in all_words}
+    timer_override = config.per_question_time_seconds  # None = use stage timers
     first_batch = await get_question_pool(
         db, session, masteries, words_map, all_words,
         per_level=SEGMENT_SIZE,
         max_levels=5,
+        timer_override=timer_override,
     )
 
     await db.commit()
@@ -256,6 +258,7 @@ async def get_question_pool(
     all_words: list[Word],
     per_level: int = 10,
     max_levels: int = 5,
+    timer_override: int | None = None,
 ) -> list[MasteryQuestion]:
     """Generate a multi-level question pool for adaptive level progression.
 
@@ -286,13 +289,20 @@ async def get_question_pool(
             and words_map[m.word_id].level == level
         ]
 
-        random.shuffle(level_masteries)
+        # Sort by lesson (ascending) so easier words come first within a level
+        def _lesson_key(m: WordMastery) -> int:
+            w = words_map.get(m.word_id)
+            try:
+                return int(w.lesson) if w and w.lesson else 0
+            except (ValueError, TypeError):
+                return 0
+
+        level_masteries.sort(key=_lesson_key)
         batch = level_masteries[:per_level]
         if not batch:
             continue
 
-        questions = generate_mixed_questions(batch, words_map, all_words)
-        random.shuffle(questions)
+        questions = generate_mixed_questions(batch, words_map, all_words, timer_override=timer_override)
         all_questions.extend(questions)
 
     return all_questions
@@ -306,6 +316,7 @@ async def get_level_questions(
     all_words: list[Word],
     target_level: int,
     batch_size: int = SEGMENT_SIZE,
+    timer_override: int | None = None,
 ) -> list[MasteryQuestion]:
     """Get questions for a specific level with fallback to adjacent levels.
 
@@ -335,21 +346,26 @@ async def get_level_questions(
         else:
             other_masteries.append(m)
 
-    # Randomly sample from available words
-    random.shuffle(target_masteries)
+    # Sort by lesson (ascending) for natural difficulty progression
+    def _lesson_key(m: WordMastery) -> int:
+        w = words_map.get(m.word_id)
+        try:
+            return int(w.lesson) if w and w.lesson else 0
+        except (ValueError, TypeError):
+            return 0
 
+    target_masteries.sort(key=_lesson_key)
     batch = target_masteries[:batch_size]
 
     # Fill from adjacent levels if needed
     if len(batch) < batch_size:
-        random.shuffle(other_masteries)
+        other_masteries.sort(key=_lesson_key)
         batch.extend(other_masteries[:batch_size - len(batch)])
 
     if not batch:
         return []
 
-    questions = generate_mixed_questions(batch, words_map, all_words)
-    random.shuffle(questions)
+    questions = generate_mixed_questions(batch, words_map, all_words, timer_override=timer_override)
     return questions
 
 
@@ -361,6 +377,7 @@ async def submit_answer(
     stage: int,
     time_taken_seconds: float | None = None,
     question_type: str | None = None,
+    context_mode: str | None = None,
 ) -> dict:
     """Submit an answer and process stage transition.
 
@@ -382,8 +399,11 @@ async def submit_answer(
     if not word:
         raise ValueError("Word not found")
 
-    # Determine correct answer based on question_type (or fallback to stage)
-    if question_type:
+    # Determine correct answer based on context_mode / question_type / stage
+    # Sentence mode: answer is always English (fill in the blank)
+    if context_mode == 'sentence':
+        correct = word.english
+    elif question_type:
         if question_type in ('word_to_meaning', 'listen_to_meaning'):
             correct = word.korean
         else:

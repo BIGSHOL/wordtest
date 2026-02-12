@@ -281,6 +281,7 @@ export const useMasteryStore = create<MasteryStore>()((set, get) => ({
         time_taken_seconds: timeTaken,
         stage: question.stage,
         question_type: question.question_type,
+        context_mode: question.context_mode,
       });
 
       // --- XP computation (real-time, frontend-side) ---

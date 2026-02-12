@@ -28,22 +28,22 @@ export function OverallResult({ report }: Props) {
 
   return (
     <div className="flex-1 border border-[#E8E8E8] rounded-sm p-5 space-y-4">
-      <h3 className="text-base font-semibold text-[#0D0D0D]">종합 평가 결과</h3>
+      <h3 className="text-lg font-bold text-[#0D0D0D]">종합 평가 결과</h3>
 
       {/* Level badge + Book info */}
       <div className="flex items-center gap-4">
         {/* Book info */}
         <div className="flex-1 space-y-1">
-          <p className="text-[10px] text-[#7A7A7A]">추천 교재</p>
-          <p className="text-sm font-semibold text-[#CC0000]">
+          <p className="text-xs text-[#7A7A7A]">추천 교재</p>
+          <p className="text-base font-bold text-[#CC0000]">
             {report.recommended_book}
           </p>
         </div>
 
         {/* Level badge */}
-        <div className="w-[72px] h-[72px] rounded-full border-[3px] border-[#CC0000] flex flex-col items-center justify-center">
-          <span className="text-[#CC0000] text-lg font-bold leading-none">Lv.{level}</span>
-          <span className="text-[#CC0000] text-[9px] font-medium leading-tight mt-0.5">
+        <div className="w-[80px] h-[80px] rounded-full border-[3px] border-[#CC0000] flex flex-col items-center justify-center">
+          <span className="text-[#CC0000] text-xl font-bold leading-none">Lv.{level}</span>
+          <span className="text-[#CC0000] text-[11px] font-semibold leading-tight mt-0.5">
             {levelName}
           </span>
         </div>
@@ -68,9 +68,9 @@ export function OverallResult({ report }: Props) {
 
 function InfoBadge({ title, value }: { title: string; value: string }) {
   return (
-    <div className="flex-1 border border-[#CC0000] rounded p-2 text-center space-y-1">
-      <p className="text-[10px] font-semibold text-[#CC0000]">{title}</p>
-      <p className="text-[10px] font-medium text-[#0D0D0D] leading-tight">
+    <div className="flex-1 border border-[#CC0000] rounded p-2.5 text-center space-y-1">
+      <p className="text-xs font-bold text-[#CC0000]">{title}</p>
+      <p className="text-xs font-semibold text-[#0D0D0D] leading-tight">
         {value}
       </p>
     </div>

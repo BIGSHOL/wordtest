@@ -46,6 +46,7 @@ export const masteryService = {
       time_taken_seconds?: number;
       stage: number;
       question_type?: string;
+      context_mode?: string;
     },
   ): Promise<MasteryAnswerResult> {
     const response = await api.post<MasteryAnswerResult>(

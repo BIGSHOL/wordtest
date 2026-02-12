@@ -60,7 +60,7 @@ function barWidth(key: string, score: number, raw?: string | null, totalWordCoun
 export function MetricDetailSection({ details, totalWordCount }: Props) {
   return (
     <div className="space-y-0">
-      <h3 className="text-base font-semibold text-[#0D0D0D] mb-4">
+      <h3 className="text-lg font-bold text-[#0D0D0D] mb-4">
         영역별 세부 평가 결과
       </h3>
 
@@ -86,38 +86,38 @@ export function MetricDetailSection({ details, totalWordCount }: Props) {
           >
             {/* Left: Title + Bars */}
             <div className="w-[280px] shrink-0 space-y-3">
-              <h4 className="text-lg font-semibold text-[#0D0D0D]">
+              <h4 className="text-xl font-bold text-[#0D0D0D]">
                 {KEY_TO_TITLE[detail.key] || detail.name}
               </h4>
 
               {/* My level bar */}
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-[#7A7A7A] w-[55px] shrink-0">
+                <span className="text-xs text-[#555] w-[55px] shrink-0">
                   나의레벨
                 </span>
-                <div className="flex-1 h-4 bg-[#F0F0F0] rounded-sm relative">
+                <div className="flex-1 h-5 bg-[#F0F0F0] rounded-sm relative">
                   <div
                     className="h-full bg-[#CC0000] rounded-sm"
                     style={{ width: `${myBarW}%` }}
                   />
                 </div>
-                <span className="text-xs font-bold text-[#CC0000] w-16 text-right whitespace-nowrap">
+                <span className="text-sm font-bold text-[#CC0000] w-16 text-right whitespace-nowrap">
                   {myLabel}
                 </span>
               </div>
 
               {/* Average bar */}
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-[#7A7A7A] w-[55px] shrink-0">
+                <span className="text-xs text-[#555] w-[55px] shrink-0">
                   동학년평균
                 </span>
-                <div className="flex-1 h-4 bg-[#F0F0F0] rounded-sm relative">
+                <div className="flex-1 h-5 bg-[#F0F0F0] rounded-sm relative">
                   <div
                     className="h-full bg-[#999999] rounded-sm"
                     style={{ width: `${avgBarW}%` }}
                   />
                 </div>
-                <span className="text-xs font-medium text-[#999999] w-16 text-right whitespace-nowrap">
+                <span className="text-sm font-medium text-[#999999] w-16 text-right whitespace-nowrap">
                   {avgLabel}
                 </span>
               </div>
@@ -125,11 +125,11 @@ export function MetricDetailSection({ details, totalWordCount }: Props) {
 
             {/* Right: Description text */}
             <div className="flex-1">
-              <p className="text-xs leading-relaxed text-[#7A7A7A]">
+              <p className="text-sm leading-relaxed text-[#555]">
                 {detail.description}
               </p>
               {detail.raw_value && (
-                <p className="text-xs font-semibold text-[#CC0000] mt-2">
+                <p className="text-sm font-bold text-[#CC0000] mt-2">
                   {detail.key === 'vocabulary_size'
                     ? `내가 알고 있는 단어: ${detail.raw_value}`
                     : detail.raw_value}

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { BookOpen, Hash, AlertCircle, Loader2, Play, RotateCcw, BarChart3, AlertTriangle } from 'lucide-react';
+import { BookOpen, Hash, AlertCircle, Loader2, Play, RotateCcw, BarChart3, AlertTriangle, LogIn } from 'lucide-react';
 import { useTestStore } from '../../stores/testStore';
 import { useMasteryStore } from '../../stores/masteryStore';
+import { useStageTestStore } from '../../stores/stageTestStore';
 
 const CODE_LENGTH = 8;
 const CODE_CHARS = /[^A-Z0-9]/g;
@@ -18,6 +19,7 @@ export function TestStartPage() {
   const [searchParams] = useSearchParams();
   const { startTestByCode } = useTestStore();
   const { startByCode: startMasteryByCode } = useMasteryStore();
+  const { startByCode: startStageTestByCode } = useStageTestStore();
   const [testCode, setTestCode] = useState('');
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,8 +46,14 @@ export function TestStartPage() {
     setIsStarting(true);
     setError(null);
     try {
-      // Try mastery first (new system)
+      // Try mastery first (new system) — also detects stage tests
       const response = await startMasteryByCode(code);
+      if (response.assignment_type === 'stage_test') {
+        // Stage test: call separate start endpoint
+        await startStageTestByCode(code);
+        navigate('/stage-test', { replace: true });
+        return;
+      }
       if (response.assignment_type === 'mastery') {
         navigate('/mastery', { replace: true });
         return;
@@ -346,6 +354,15 @@ export function TestStartPage() {
         <p className="font-display text-xs font-medium text-text-tertiary">
           코드를 입력하고 시작 버튼을 눌러주세요
         </p>
+        <button
+          onClick={() => navigate('/login')}
+          className="flex items-center justify-center gap-2 mt-2"
+        >
+          <LogIn className="w-3.5 h-3.5 text-text-tertiary" />
+          <span className="font-display text-sm font-medium text-text-tertiary hover:text-text-secondary transition-colors">
+            로그인 화면으로
+          </span>
+        </button>
       </div>
       </div>{/* end center container */}
     </div>

@@ -30,38 +30,38 @@ export function ReportHeader({ student, session }: Props) {
             alt="Logo"
             className="h-10 w-auto"
           />
-          <span className="text-[#0D0D0D] text-sm font-medium tracking-tight">
+          <span className="text-[#0D0D0D] text-base font-semibold tracking-tight">
             조슈아 영어 어휘력 테스트
           </span>
         </div>
 
         {/* Info table */}
-        <div className="border border-[#D0D0D0] text-xs">
+        <div className="border border-[#D0D0D0] text-sm">
           <div className="flex">
-            <div className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] w-16">
+            <div className="bg-[#F5F5F5] px-3 py-2 font-bold text-[#333] border-r border-[#D0D0D0] w-20">
               이름
             </div>
-            <div className="px-3 py-1.5 text-[#0D0D0D] w-24 border-r border-[#D0D0D0]">
+            <div className="px-3 py-2 text-[#0D0D0D] w-28 border-r border-[#D0D0D0]">
               {student?.name || '-'}
             </div>
-            <div className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] w-16">
+            <div className="bg-[#F5F5F5] px-3 py-2 font-bold text-[#333] border-r border-[#D0D0D0] w-20">
               학년
             </div>
-            <div className="px-3 py-1.5 text-[#0D0D0D] w-24">
+            <div className="px-3 py-2 text-[#0D0D0D] w-28">
               {student?.grade || '-'}
             </div>
           </div>
           <div className="flex border-t border-[#D0D0D0]">
-            <div className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] w-16 whitespace-nowrap">
+            <div className="bg-[#F5F5F5] px-3 py-2 font-bold text-[#333] border-r border-[#D0D0D0] w-20 whitespace-nowrap">
               소속학원
             </div>
-            <div className="px-3 py-1.5 text-[#0D0D0D] w-24 border-r border-[#D0D0D0]">
+            <div className="px-3 py-2 text-[#0D0D0D] w-28 border-r border-[#D0D0D0]">
               {student?.school_name || '-'}
             </div>
-            <div className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] w-16">
+            <div className="bg-[#F5F5F5] px-3 py-2 font-bold text-[#333] border-r border-[#D0D0D0] w-20">
               응시일
             </div>
-            <div className="px-3 py-1.5 text-[#0D0D0D] w-24">
+            <div className="px-3 py-2 text-[#0D0D0D] w-28">
               {testDate}
             </div>
           </div>

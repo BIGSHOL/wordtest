@@ -22,19 +22,21 @@ from app.models.test_answer import TestAnswer
 # ---------------------------------------------------------------------------
 
 RANK_TO_GRADE: dict[int, str] = {
-    1: "초등 1학년",
-    2: "초등 2학년",
-    3: "초등 3학년",
-    4: "초등 4학년",
-    5: "초등 5학년",
-    6: "초등 6학년",
-    7: "중등 1학년",
-    8: "중등 2학년",
-    9: "중등 3학년",
-    10: "고등 1학년",
+    1: "초등 4학년",       # Iron
+    2: "초등 5학년",       # Bronze
+    3: "초등 6학년",       # Silver
+    4: "중등 1학년",       # Gold
+    5: "중1~중2",         # Platinum
+    6: "중등 2학년",       # Emerald
+    7: "중2~중3",         # Diamond
+    8: "중등 3학년",       # Master
+    9: "중3~고1",         # Grandmaster
+    10: "고등 1학년",      # Challenger
+    11: "고등 2학년",      # Legend
 }
 
-RANK_TO_VOCAB_DESC: dict[int, str] = {
+# Base vocab descriptions per rank (combined with accuracy in get_vocab_description)
+_RANK_VOCAB_LABEL: dict[int, str] = {
     1: "초등 기초 단어",
     2: "초등 필수 단어",
     3: "초등 심화 단어",
@@ -45,7 +47,20 @@ RANK_TO_VOCAB_DESC: dict[int, str] = {
     8: "고등 핵심 어휘",
     9: "수능 필수 어휘",
     10: "고급 학술 어휘",
+    11: "최상위 어휘",
 }
+
+# Keep for backward compat (static, no accuracy)
+RANK_TO_VOCAB_DESC: dict[int, str] = _RANK_VOCAB_LABEL
+
+
+def get_vocab_description(rank: int, accuracy_pct: int) -> str:
+    """Generate one-line vocab description combining rank label + accuracy.
+
+    Example: "초등필수 단어 40% 이해"
+    """
+    label = _RANK_VOCAB_LABEL.get(rank, "어휘")
+    return f"{label} {accuracy_pct}% 이해"
 
 RANK_TO_BOOK: dict[int, str] = {
     1: "POWER VOCA 5000-01",
@@ -58,6 +73,7 @@ RANK_TO_BOOK: dict[int, str] = {
     8: "POWER VOCA 5000-08",
     9: "POWER VOCA 5000-09",
     10: "POWER VOCA 5000-10",
+    11: "POWER VOCA 수능기출",
 }
 
 # Per-metric interpretive descriptions by rank range
@@ -192,10 +208,13 @@ async def calculate_peer_ranking(
 ) -> dict | None:
     """Calculate peer ranking (percentile) within same grade.
 
-    Returns None if no peers found or grade is unknown.
+    Falls back to estimated dummy ranking when insufficient peer data.
     """
-    if not grade or score is None:
-        return None
+    if score is None:
+        return _estimate_peer_ranking(50)
+
+    if not grade:
+        return _estimate_peer_ranking(score)
 
     # Find all completed test scores from students with same grade
     peer_scores_q = (
@@ -215,7 +234,8 @@ async def calculate_peer_ranking(
     peer_scores = [row[0] for row in result.fetchall() if row[0] is not None]
 
     if len(peer_scores) < 2:
-        return None
+        # Not enough real peers → return estimated dummy ranking
+        return _estimate_peer_ranking(score)
 
     # Calculate percentile (higher score = lower percentile number = better)
     better_count = sum(1 for s in peer_scores if s <= score)
@@ -224,6 +244,36 @@ async def calculate_peer_ranking(
     return {
         "percentile": percentile,
         "total_peers": len(peer_scores),
+    }
+
+
+def _estimate_peer_ranking(score: int) -> dict:
+    """Estimate peer ranking from score when real peer data is unavailable.
+
+    Maps accuracy (0-100) to a plausible percentile among ~120 virtual peers.
+    Higher score → lower percentile (= better rank).
+    """
+    import random
+    random.seed(score)  # deterministic for same score
+
+    if score >= 90:
+        percentile = random.randint(3, 10)
+    elif score >= 80:
+        percentile = random.randint(10, 25)
+    elif score >= 70:
+        percentile = random.randint(20, 40)
+    elif score >= 60:
+        percentile = random.randint(35, 55)
+    elif score >= 50:
+        percentile = random.randint(45, 65)
+    elif score >= 40:
+        percentile = random.randint(55, 75)
+    else:
+        percentile = random.randint(70, 90)
+
+    return {
+        "percentile": percentile,
+        "total_peers": random.randint(95, 130),
     }
 
 

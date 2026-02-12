@@ -43,7 +43,7 @@ export function LevelChartTable({ currentRank }: Props) {
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-bold text-[#0D0D0D]">Level Chart</h3>
+      <h3 className="text-lg font-bold text-[#0D0D0D]">Level Chart</h3>
 
       {/* Wrapper for circle overflow */}
       <div className="relative">
@@ -51,23 +51,23 @@ export function LevelChartTable({ currentRank }: Props) {
           {/* Level row */}
           <div className="flex border-b-2 border-[#AAAAAA]">
             <div className="w-[50px] shrink-0 bg-[#F5F5F5] flex items-center justify-center border-r border-[#BBBBBB] py-2">
-              <span className="text-[10px] font-semibold text-[#333]">레벨</span>
+              <span className="text-xs font-bold text-[#333]">레벨</span>
             </div>
             {LEVELS.map((lv) => {
               const isCurrent = lv.rank === currentRank;
               return (
                 <div
                   key={lv.rank}
-                  className="flex-1 min-w-0 flex items-center justify-center border-r border-[#BBBBBB] last:border-r-0 py-2 relative"
+                  className="flex-1 min-w-0 flex items-center justify-center border-r border-[#BBBBBB] last:border-r-0 py-2.5 relative"
                   style={{
                     backgroundColor: isCurrent ? '#CC000020' : lv.bg,
                   }}
                 >
                   <span
-                    className="text-[8px] text-center whitespace-pre-line leading-tight"
+                    className="text-[16px] text-center whitespace-pre-line leading-tight"
                     style={{
                       color: lv.color,
-                      fontWeight: isCurrent ? 700 : 400,
+                      fontWeight: isCurrent ? 700 : 500,
                     }}
                   >
                     {lv.name}
@@ -80,20 +80,20 @@ export function LevelChartTable({ currentRank }: Props) {
           {/* Textbook row */}
           <div className="flex">
             <div className="w-[50px] shrink-0 bg-[#F5F5F5] flex items-center justify-center border-r border-[#BBBBBB] py-2">
-              <span className="text-[10px] font-semibold text-[#333]">교재</span>
+              <span className="text-xs font-bold text-[#333]">교재</span>
             </div>
             {BOOKS.map((book, i) => {
               const isCurrent = i + 1 === currentRank;
               return (
                 <div
                   key={i}
-                  className="flex-1 min-w-0 flex items-center justify-center border-r border-[#BBBBBB] last:border-r-0 py-2"
+                  className="flex-1 min-w-0 flex items-center justify-center border-r border-[#BBBBBB] last:border-r-0 py-2.5"
                   style={{
                     backgroundColor: isCurrent ? '#FFF0F0' : undefined,
                   }}
                 >
                   <span
-                    className="text-[8px] text-center whitespace-pre-line leading-tight"
+                    className="text-[11px] text-center whitespace-pre-line leading-tight"
                     style={{
                       color: isCurrent ? '#CC0000' : '#555555',
                       fontWeight: isCurrent ? 700 : 400,

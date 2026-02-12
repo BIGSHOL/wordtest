@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { List, ChevronRight } from 'lucide-react';
+import { List, ChevronRight, LogIn } from 'lucide-react';
 import { useTestStore } from '../../stores/testStore';
 import { useAuthStore } from '../../stores/auth';
 import { statsService } from '../../services/stats';
@@ -185,8 +185,8 @@ export function ResultPage() {
         )}
       </div>
 
-      {/* Bottom Button */}
-      <div className="px-6 pt-3 pb-10 w-full md:max-w-[900px]">
+      {/* Bottom Buttons */}
+      <div className="px-6 pt-3 pb-10 w-full md:max-w-[900px] flex flex-col items-center gap-3">
         <button
           onClick={() => navigate(homePath, { replace: true })}
           className="flex items-center justify-center gap-2 w-full h-[52px] rounded-2xl text-white bg-[#CC0000] hover:bg-[#CC0000]/90 transition-colors"
@@ -194,6 +194,15 @@ export function ResultPage() {
         >
           <span className="font-display text-base font-bold">
             홈으로 돌아가기
+          </span>
+        </button>
+        <button
+          onClick={() => navigate('/login', { replace: true })}
+          className="flex items-center justify-center gap-2"
+        >
+          <LogIn className="w-3.5 h-3.5 text-text-tertiary" />
+          <span className="font-display text-sm font-medium text-text-tertiary hover:text-text-secondary transition-colors">
+            로그인 화면으로
           </span>
         </button>
       </div>

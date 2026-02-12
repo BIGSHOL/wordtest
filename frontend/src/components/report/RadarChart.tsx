@@ -70,7 +70,7 @@ export function RadarChart({ metrics }: Props) {
           100% { stroke-width: 3;   stroke-opacity: 1; }
         }
       `}</style>
-      <h3 className="text-base font-semibold text-[#0D0D0D] self-start">
+      <h3 className="text-lg font-bold text-[#0D0D0D] self-start">
         영역별 평가
       </h3>
 
@@ -115,8 +115,8 @@ export function RadarChart({ metrics }: Props) {
             <text
               x={LABEL_POS[i].x}
               y={LABEL_POS[i].y}
-              fontSize={10}
-              fontWeight={500}
+              fontSize={12}
+              fontWeight={600}
               fill="#0D0D0D"
             >
               {axis.label}
@@ -124,7 +124,8 @@ export function RadarChart({ metrics }: Props) {
             <text
               x={VAL_POS[i].x}
               y={VAL_POS[i].y}
-              fontSize={9}
+              fontSize={11}
+              fontWeight={600}
               fill="#CC0000"
             >
               {Math.round(metrics[axis.key])}/10
