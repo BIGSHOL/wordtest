@@ -113,6 +113,7 @@ export interface MasteryStore {
   selectedAnswer: string | null;
   typedAnswer: string;
   answerResult: MasteryAnswerResult | null;
+  feedbackQuestion: MasteryQuestion | null;  // snapshot during feedback phase
 
   // UI
   isLoading: boolean;
@@ -154,6 +155,7 @@ const initialState = {
   selectedAnswer: null,
   typedAnswer: '',
   answerResult: null,
+  feedbackQuestion: null,
   isLoading: false,
   isSubmitting: false,
   error: null,
@@ -338,6 +340,7 @@ export const useMasteryStore = create<MasteryStore>()((set, get) => ({
 
       set({
         answerResult: result,
+        feedbackQuestion: question,  // snapshot current question for feedback phase
         combo: newCombo,
         bestCombo: newBestCombo,
         correctCount: state.correctCount + (result.is_correct ? 1 : 0),
@@ -403,6 +406,7 @@ export const useMasteryStore = create<MasteryStore>()((set, get) => ({
         selectedAnswer: null,
         typedAnswer: '',
         answerResult: null,
+        feedbackQuestion: null,
       });
 
       // Prefetch when 3 questions remain in pool
@@ -431,6 +435,7 @@ export const useMasteryStore = create<MasteryStore>()((set, get) => ({
         selectedAnswer: null,
         typedAnswer: '',
         answerResult: null,
+        feedbackQuestion: null,
       });
 
       if (state.session) {
@@ -464,9 +469,12 @@ export const useMasteryStore = create<MasteryStore>()((set, get) => ({
 
 // --- Selectors ---
 
-/** Get the current question from the active pool. */
+/** Get the current question from the active pool.
+ *  During feedback phase, returns the snapshot to prevent UI flash
+ *  when currentBook changes due to XP level-up/down. */
 export function useCurrentQuestion(): MasteryQuestion | null {
   return useMasteryStore((s) => {
+    if (s.feedbackQuestion) return s.feedbackQuestion;
     const pool = s.levelPools[s.currentBook];
     if (!pool) return null;
     const idx = s.poolIndex[s.currentBook] ?? 0;
