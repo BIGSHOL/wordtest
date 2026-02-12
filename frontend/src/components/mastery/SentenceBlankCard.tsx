@@ -149,7 +149,7 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
       {sentenceEn && (
         <button
           onClick={() => speakSentence(sentenceEn)}
-          className="flex items-center gap-2 rounded-full bg-accent-indigo-light px-4 py-2 mt-1"
+          className="flex items-center gap-2 rounded-full bg-accent-indigo-light px-4 py-2 mt-1 active:scale-95 transition-transform"
         >
           <Volume2 className="w-4 h-4 text-accent-indigo" />
           <span className="font-display text-[12px] font-medium text-accent-indigo">문장 듣기</span>

@@ -26,12 +26,24 @@ const _prefetchingLevels = new Set<number>();
 
 // --- XP Configuration ---
 
-/** XP needed to clear one lesson in a given book. Book 1: 10, Book 2: 15, ..., Book 10: 55 */
+/** XP needed to clear one lesson in a given book. Book 1: 3, Book 5: 7, Book 10: 12 */
 function getLessonXp(book: number): number {
-  return 5 + book * 5;
+  return 2 + book;
 }
 
-/** Compute XP change for an answer. */
+/** XP breakdown per answer. */
+export interface XpBreakdown {
+  base: number;
+  speed: number;
+  combo: number;
+  total: number;
+}
+
+/** Compute XP change for an answer (returns breakdown).
+ *
+ * Both reward and penalty scale with currentBook so higher levels
+ * are more volatile — leveling up is faster but mistakes hurt more.
+ */
 function computeXpChange(params: {
   isCorrect: boolean;
   questionLevel: number;
@@ -40,22 +52,31 @@ function computeXpChange(params: {
   timerLimit: number;
   combo: number;
   consecutiveWrong: number;
-}): number {
-  const { isCorrect, questionLevel, currentBook, timeTaken, timerLimit, combo, consecutiveWrong } = params;
+}): XpBreakdown {
+  const { isCorrect, questionLevel, currentBook, timeTaken, combo, consecutiveWrong } = params;
 
   if (isCorrect) {
-    // Base XP: current level = 7, lower level = 3
-    let xp = questionLevel < currentBook ? 3 : 7;
-    // Speed bonus: answer within 50% of time limit
-    if (timeTaken <= timerLimit * 0.5) xp += 5;
+    // Base XP scales with level: same/higher = 8+book*2, lower = max(4, book)
+    const base = questionLevel < currentBook
+      ? Math.max(4, currentBook)
+      : 8 + currentBook * 2;
+    // Speed bonus: graduated by actual answer time (seconds)
+    let speed = 0;
+    if (timeTaken <= 1) speed = 5;
+    else if (timeTaken <= 2) speed = 4;
+    else if (timeTaken <= 3) speed = 3;
+    else if (timeTaken <= 5) speed = 2;
+    else if (timeTaken <= 8) speed = 1;
     // Combo bonus: 3-4→+1, 5-9→+2, 10-14→+3, 15-19→+4, 20+→+5
-    if (combo >= 3) xp += Math.min(Math.floor(combo / 5) + 1, 5);
-    return xp;
+    const comboBonus = combo >= 3 ? Math.min(Math.floor(combo / 5) + 1, 5) : 0;
+    return { base, speed, combo: comboBonus, total: base + speed + comboBonus };
   } else {
-    // Escalating penalty for consecutive wrong answers
-    if (consecutiveWrong >= 2) return -12;
-    if (consecutiveWrong >= 1) return -8;
-    return -5;
+    // Escalating penalty scales with level (higher level = bigger penalty)
+    let penalty: number;
+    if (consecutiveWrong >= 2) penalty = -(8 + currentBook);
+    else if (consecutiveWrong >= 1) penalty = -(5 + currentBook);
+    else penalty = -(3 + currentBook);
+    return { base: penalty, speed: 0, combo: 0, total: penalty };
   }
 }
 
@@ -86,6 +107,7 @@ export interface MasteryStore {
   totalAnswered: number;
   consecutiveWrong: number;
   lastXpChange: number;
+  lastXpBreakdown: XpBreakdown | null;
 
   // Answer state
   selectedAnswer: string | null;
@@ -128,6 +150,7 @@ const initialState = {
   totalAnswered: 0,
   consecutiveWrong: 0,
   lastXpChange: 0,
+  lastXpBreakdown: null,
   selectedAnswer: null,
   typedAnswer: '',
   answerResult: null,
@@ -263,7 +286,7 @@ export const useMasteryStore = create<MasteryStore>()((set, get) => ({
       const newCombo = result.is_correct ? state.combo + 1 : 0;
       const newBestCombo = Math.max(state.bestCombo, newCombo);
 
-      const xpChange = computeXpChange({
+      const xpBreakdown = computeXpChange({
         isCorrect: result.is_correct,
         questionLevel: question.word.level,
         currentBook: state.currentBook,
@@ -273,7 +296,7 @@ export const useMasteryStore = create<MasteryStore>()((set, get) => ({
         consecutiveWrong: newConsecutiveWrong,
       });
 
-      let newXp = state.xp + xpChange;
+      let newXp = state.xp + xpBreakdown.total;
       let newBook = state.currentBook;
       let newLesson = state.currentLesson;
       const lessonXp = getLessonXp(newBook);
@@ -324,7 +347,8 @@ export const useMasteryStore = create<MasteryStore>()((set, get) => ({
         currentBook: newBook,
         currentLesson: newLesson,
         displayRank: wordLevelToRank(newBook),
-        lastXpChange: xpChange,
+        lastXpChange: xpBreakdown.total,
+        lastXpBreakdown: xpBreakdown,
       });
 
       return result;

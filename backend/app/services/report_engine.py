@@ -295,7 +295,7 @@ async def calculate_member_averages(
     return {
         "vocabulary_level": round(float(avg_level), 1),
         "accuracy": round(float(avg_score) / 10, 1),
-        "speed": 5.0,  # Cannot easily calculate avg speed across students
+        "speed": 7.0,  # Dummy ~4.5s avg answer time
         "vocabulary_size": round(float(avg_level) * 0.8, 1),  # Approximate
     }
 

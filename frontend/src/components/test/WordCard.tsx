@@ -24,7 +24,7 @@ export const WordCard = memo(function WordCard({ word }: WordCardProps) {
       </h2>
       <button
         onClick={() => speakWord(word)}
-        className="flex items-center gap-2 rounded-full bg-accent-indigo-light px-5 py-2.5"
+        className="flex items-center gap-2 rounded-full bg-accent-indigo-light px-5 py-2.5 active:scale-95 transition-transform"
       >
         <Volume2 className="w-[18px] h-[18px] text-accent-indigo" />
         <span className="font-display text-[13px] font-medium text-accent-indigo">발음 듣기</span>

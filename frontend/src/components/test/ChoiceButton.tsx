@@ -86,6 +86,7 @@ export const ChoiceButton = memo(function ChoiceButton({ index, text, state, onC
         opacity: s.opacity,
         boxShadow: s.shadow,
         cursor: isDisabled ? 'default' : 'pointer',
+        pointerEvents: isDisabled ? 'none' : 'auto',
       }}
     >
       <div

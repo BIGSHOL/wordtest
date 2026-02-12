@@ -1,6 +1,7 @@
 /**
  * Mastery session header - adaptive level display with XP bar.
  * Shows rank badge with gradient + level change animations + XP progress.
+ * Cartoon-style XP popup with base/speed/combo breakdown.
  */
 import { useEffect, useRef, useState, memo } from 'react';
 import {
@@ -8,6 +9,7 @@ import {
 } from 'lucide-react';
 import { getLevelRank } from '../../types/rank';
 import { ComboCounter } from './ComboCounter';
+import type { XpBreakdown } from '../../stores/masteryStore';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   shield: Shield, sword: Sword, award: Award, crown: Crown,
@@ -23,6 +25,7 @@ interface MasteryHeaderProps {
   lessonXp: number;        // XP needed for this lesson
   levelLabel: string;      // "1-3" format
   lastXpChange: number;    // XP change from last answer
+  lastXpBreakdown: XpBreakdown | null;
   onExit: () => void;
 }
 
@@ -35,6 +38,7 @@ export const MasteryHeader = memo(function MasteryHeader({
   lessonXp,
   levelLabel,
   lastXpChange,
+  lastXpBreakdown,
   onExit,
 }: MasteryHeaderProps) {
   const rank = getLevelRank(level);
@@ -42,20 +46,20 @@ export const MasteryHeader = memo(function MasteryHeader({
   const prevLevelRef = useRef(level);
   const [flashDelta, setFlashDelta] = useState(0);
   const [flashKey, setFlashKey] = useState(0);
-  const [xpPopup, setXpPopup] = useState<{ value: number; key: number } | null>(null);
+  const [xpPopup, setXpPopup] = useState<{ breakdown: XpBreakdown; key: number } | null>(null);
   const xpPopupCounter = useRef(0);
 
   // XP popup effect
   const prevXpChangeRef = useRef(0);
   useEffect(() => {
-    if (lastXpChange !== 0 && lastXpChange !== prevXpChangeRef.current) {
+    if (lastXpChange !== 0 && lastXpChange !== prevXpChangeRef.current && lastXpBreakdown) {
       prevXpChangeRef.current = lastXpChange;
       xpPopupCounter.current += 1;
-      setXpPopup({ value: lastXpChange, key: xpPopupCounter.current });
-      const t = setTimeout(() => setXpPopup(null), 1200);
+      setXpPopup({ breakdown: lastXpBreakdown, key: xpPopupCounter.current });
+      const t = setTimeout(() => setXpPopup(null), 1600);
       return () => clearTimeout(t);
     }
-  }, [lastXpChange, currentIndex]);
+  }, [lastXpChange, lastXpBreakdown, currentIndex]);
 
   useEffect(() => {
     if (prevLevelRef.current !== level) {
@@ -107,10 +111,19 @@ export const MasteryHeader = memo(function MasteryHeader({
           0% { transform: scale(1); opacity: 0.6; }
           100% { transform: scale(2); opacity: 0; }
         }
-        @keyframes mastery-xp-fade {
-          0% { opacity: 1; transform: translateY(0); }
-          60% { opacity: 1; transform: translateY(6px); }
-          100% { opacity: 0; transform: translateY(12px); }
+        @keyframes mastery-xp-popup {
+          0% { opacity: 0; transform: translateY(8px) scale(0.7); }
+          15% { opacity: 1; transform: translateY(-2px) scale(1.15); }
+          30% { transform: translateY(0) scale(1); }
+          75% { opacity: 1; transform: translateY(0) scale(1); }
+          100% { opacity: 0; transform: translateY(6px) scale(0.9); }
+        }
+        @keyframes mastery-xp-penalty {
+          0% { opacity: 0; transform: translateY(-4px) scale(0.8); }
+          15% { opacity: 1; transform: translateY(2px) scale(1.1); }
+          30% { transform: translateY(0) scale(1); }
+          75% { opacity: 1; }
+          100% { opacity: 0; transform: translateY(8px) scale(0.9); }
         }
         @keyframes mastery-shake {
           0%, 100% { transform: translateX(0); }
@@ -206,18 +219,81 @@ export const MasteryHeader = memo(function MasteryHeader({
                 }}
               />
             </div>
-            {/* XP change popup - fades down from bar */}
+            {/* XP breakdown popup - cartoon style */}
             {xpPopup && (
-              <span
+              <div
                 key={xpPopup.key}
-                className="absolute left-1/2 -translate-x-1/2 top-full mt-0.5 font-display text-[11px] font-bold pointer-events-none whitespace-nowrap select-none"
+                className="absolute left-1/2 top-full mt-1 pointer-events-none select-none"
                 style={{
-                  color: xpPopup.value >= 0 ? '#22C55E' : '#EF4444',
-                  animation: 'mastery-xp-fade 1.2s ease-out forwards',
+                  transform: 'translateX(-50%)',
+                  animation: xpPopup.breakdown.total >= 0
+                    ? 'mastery-xp-popup 1.6s ease-out forwards'
+                    : 'mastery-xp-penalty 1.6s ease-out forwards',
                 }}
               >
-                {xpPopup.value >= 0 ? '+' : ''}{xpPopup.value} XP
-              </span>
+                {xpPopup.breakdown.total >= 0 ? (
+                  /* Positive: show breakdown */
+                  <div className="flex items-center gap-1 whitespace-nowrap">
+                    {/* Base */}
+                    <span
+                      style={{
+                        fontFamily: "'Bangers', cursive",
+                        fontSize: '18px',
+                        color: '#FFFFFF',
+                        WebkitTextStroke: '1.5px #22C55E',
+                        textShadow: '0 2px 4px rgba(34,197,94,0.4)',
+                        letterSpacing: '0.5px',
+                      }}
+                    >
+                      +{xpPopup.breakdown.base}
+                    </span>
+                    {/* Speed bonus */}
+                    {xpPopup.breakdown.speed > 0 && (
+                      <span
+                        style={{
+                          fontFamily: "'Bangers', cursive",
+                          fontSize: '16px',
+                          color: '#FDE047',
+                          WebkitTextStroke: '1px #CA8A04',
+                          textShadow: '0 1px 3px rgba(202,138,4,0.5)',
+                          letterSpacing: '0.5px',
+                        }}
+                      >
+                        +{xpPopup.breakdown.speed}
+                      </span>
+                    )}
+                    {/* Combo bonus */}
+                    {xpPopup.breakdown.combo > 0 && (
+                      <span
+                        style={{
+                          fontFamily: "'Bangers', cursive",
+                          fontSize: '16px',
+                          color: '#67E8F9',
+                          WebkitTextStroke: '1px #0891B2',
+                          textShadow: '0 1px 3px rgba(8,145,178,0.5)',
+                          letterSpacing: '0.5px',
+                        }}
+                      >
+                        +{xpPopup.breakdown.combo}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  /* Negative: penalty */
+                  <span
+                    style={{
+                      fontFamily: "'Bangers', cursive",
+                      fontSize: '20px',
+                      color: '#FCA5A5',
+                      WebkitTextStroke: '1.5px #DC2626',
+                      textShadow: '0 2px 6px rgba(220,38,38,0.5)',
+                      letterSpacing: '1px',
+                    }}
+                  >
+                    {xpPopup.breakdown.total}
+                  </span>
+                )}
+              </div>
             )}
           </div>
         </div>

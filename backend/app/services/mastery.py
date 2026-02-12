@@ -3,7 +3,7 @@ import uuid
 import random
 from datetime import timedelta
 
-from sqlalchemy import select, func, and_, Integer
+from sqlalchemy import select, func, and_, delete, Integer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.word import Word
@@ -216,7 +216,17 @@ async def start_session_by_code(
     )
     session = session_result.scalar_one_or_none()
 
-    if not session:
+    if session:
+        # Reusing existing session: clear old answers & reset counters
+        await db.execute(
+            delete(LearningAnswer).where(LearningAnswer.session_id == session.id)
+        )
+        session.words_practiced = 0
+        session.words_advanced = 0
+        session.words_demoted = 0
+        session.best_combo = 0
+        session.started_at = now_kst()
+    else:
         session = LearningSession(
             id=str(uuid.uuid4()),
             student_id=assignment.student_id,

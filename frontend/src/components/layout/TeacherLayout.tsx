@@ -32,7 +32,7 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen min-w-[1024px]">
       {/* Sidebar */}
       <aside className="w-[260px] bg-surface border-r border-border-subtle flex flex-col shrink-0">
         {/* Logo */}

@@ -58,3 +58,39 @@
   --radius-xl: 16px;
   --radius-2xl: 20px;
 }
+
+/* ── Mobile touch/interaction optimizations ── */
+
+/* 탭 하이라이트 제거 */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 버튼/링크: 더블탭 줌 방지, 텍스트 선택 방지 */
+button, a, [role="button"] {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Input: 더블탭 줌 방지 (텍스트 선택은 허용) */
+input, textarea, select {
+  touch-action: manipulation;
+}
+
+/* Sticky hover 방지: 터치 디바이스에서 hover 효과 비활성화 */
+@media (hover: none) and (pointer: coarse) {
+  .hover\:bg-bg-muted:hover,
+  .hover\:text-wrong:hover,
+  .hover\:bg-wrong-light:hover {
+    background: inherit;
+    color: inherit;
+  }
+}
+
+/* 스크롤 최적화 */
+.overflow-y-auto,
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}

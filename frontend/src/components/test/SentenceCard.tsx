@@ -55,7 +55,7 @@ export const SentenceCard = memo(function SentenceCard({ sentence, word }: Sente
       </div>
       <button
         onClick={handleSpeak}
-        className="flex items-center gap-2 rounded-full bg-accent-indigo-light px-5 py-2.5"
+        className="flex items-center gap-2 rounded-full bg-accent-indigo-light px-5 py-2.5 active:scale-95 transition-transform"
       >
         <Volume2 className="w-[18px] h-[18px] text-accent-indigo" />
         <span className="font-display text-[13px] font-medium text-accent-indigo">예문 듣기</span>

@@ -20,7 +20,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["tts"])
 
-GEMINI_TTS_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent"
+GEMINI_TTS_MODELS = [
+    "gemini-2.5-flash-lite-preview-tts",   # 1순위: Flash Lite (최저비용)
+    "gemini-2.5-flash-preview-tts",        # 2순위: Flash (429 시 폴백)
+]
+GEMINI_TTS_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
 # In-memory LRU cache (L1): fast access for recent requests
 # DB cache (L2): persistent, survives restarts
@@ -145,7 +149,7 @@ async def text_to_speech(
             "X-TTS-Cache": "db",
         })
 
-    # L3: Call Gemini API
+    # L3: Call Gemini API (Flash → Flash Lite 순서로 시도)
     payload = {
         "contents": [{"parts": [{"text": text}]}],
         "generationConfig": {
@@ -158,14 +162,20 @@ async def text_to_speech(
         },
     }
 
+    resp = None
+    used_model = None
     async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(
-            f"{GEMINI_TTS_URL}?key={settings.GEMINI_API_KEY}",
-            json=payload,
-        )
+        for model in GEMINI_TTS_MODELS:
+            url = f"{GEMINI_TTS_BASE}/{model}:generateContent?key={settings.GEMINI_API_KEY}"
+            resp = await client.post(url, json=payload)
+            used_model = model
+            if resp.status_code == 200:
+                break
+            logger.warning("Gemini TTS [%s] error %s for '%s': %s", model, resp.status_code, text[:30], resp.text[:200])
+            if resp.status_code not in (429, 503):
+                break  # 429/503만 다음 모델로 폴백, 그 외 에러는 중단
 
-    if resp.status_code != 200:
-        logger.warning("Gemini TTS error %s for '%s': %s", resp.status_code, text[:30], resp.text[:200])
+    if not resp or resp.status_code != 200:
         return JSONResponse(status_code=502, content={"detail": "TTS API error"})
 
     data = resp.json()
@@ -190,4 +200,5 @@ async def text_to_speech(
     return Response(content=audio_bytes, media_type=mime, headers={
         "Cache-Control": "public, max-age=86400",
         "X-TTS-Cache": "miss",
+        "X-TTS-Model": used_model or "",
     })

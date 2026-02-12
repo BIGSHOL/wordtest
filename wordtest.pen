@@ -12702,7 +12702,7 @@
       "name": "Teacher - Test Settings",
       "clip": true,
       "width": 1440,
-      "height": 1050,
+      "height": 1250,
       "fill": "#F8F8F6",
       "children": [
         {
@@ -16020,6 +16020,81 @@
                             },
                             {
                               "type": "frame",
+                              "id": "qPOSt",
+                              "name": "type2card",
+                              "width": "fill_container",
+                              "fill": "#F8F8F6",
+                              "cornerRadius": 12,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "#E8E8E6"
+                              },
+                              "gap": 12,
+                              "padding": [
+                                16,
+                                20
+                              ],
+                              "children": [
+                                {
+                                  "type": "frame",
+                                  "id": "dtc97",
+                                  "name": "t2checkNew",
+                                  "width": 20,
+                                  "height": 20,
+                                  "fill": "#E8E8E6",
+                                  "cornerRadius": 4,
+                                  "justifyContent": "center",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "icon_font",
+                                      "id": "mTF1S",
+                                      "name": "t2checkIcon",
+                                      "width": 14,
+                                      "height": 14,
+                                      "iconFontName": "check",
+                                      "iconFontFamily": "lucide",
+                                      "fill": "#FFFFFF"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "PkRcQ",
+                                  "name": "t2infoNew",
+                                  "width": "fill_container",
+                                  "layout": "vertical",
+                                  "gap": 4,
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "BrbVw",
+                                      "name": "type2name",
+                                      "fill": "#3D3C3A",
+                                      "content": "유형 2: 뜻 → 단어 고르기",
+                                      "fontFamily": "Outfit",
+                                      "fontSize": 14,
+                                      "fontWeight": "600"
+                                    },
+                                    {
+                                      "type": "text",
+                                      "id": "ev2b6",
+                                      "name": "type2detail",
+                                      "fill": "#9C9B99",
+                                      "textGrowth": "fixed-width",
+                                      "width": "fill_container",
+                                      "content": "한국어 뜻을 보고 올바른 영어 단어를 4개 보기 중 선택",
+                                      "fontFamily": "Outfit",
+                                      "fontSize": 12,
+                                      "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
                               "id": "AhEPc",
                               "name": "type2card",
                               "width": "fill_container",
@@ -16073,7 +16148,7 @@
                                       "id": "aJDy0",
                                       "name": "type2name",
                                       "fill": "#2D9CAE",
-                                      "content": "유형 2: 예문 빈칸 채우기",
+                                      "content": "유형 3: 예문 빈칸 채우기",
                                       "fontFamily": "Outfit",
                                       "fontSize": 14,
                                       "fontWeight": "700"
@@ -16091,6 +16166,126 @@
                                       "fontWeight": "normal"
                                     }
                                   ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "TMbMg",
+                      "name": "cardTestType",
+                      "width": "fill_container",
+                      "fill": "#FFFFFF",
+                      "cornerRadius": 16,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "$border-subtle"
+                      },
+                      "layout": "vertical",
+                      "gap": 20,
+                      "padding": [
+                        24,
+                        28
+                      ],
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "9gfnB",
+                          "name": "ttHead",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": 6,
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "63ARY",
+                              "name": "ttTitle",
+                              "fill": "$text-primary",
+                              "content": "테스트 유형",
+                              "fontFamily": "Outfit",
+                              "fontSize": 16,
+                              "fontWeight": "700"
+                            },
+                            {
+                              "type": "text",
+                              "id": "xh8om",
+                              "name": "ttDesc",
+                              "fill": "$text-secondary",
+                              "content": "문제 출제 방식을 선택합니다",
+                              "fontFamily": "Outfit",
+                              "fontSize": 12,
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "Tv266",
+                          "name": "ttBody",
+                          "width": "fill_container",
+                          "gap": 12,
+                          "children": [
+                            {
+                              "type": "frame",
+                              "id": "r4Qht",
+                              "name": "optPeriodic",
+                              "fill": "#EBF8FA",
+                              "cornerRadius": 10,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 2,
+                                "fill": "#2D9CAE"
+                              },
+                              "padding": [
+                                10,
+                                20
+                              ],
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "gSiXr",
+                                  "name": "optPeriodicT",
+                                  "fill": "#2D9CAE",
+                                  "content": "정기형",
+                                  "fontFamily": "Outfit",
+                                  "fontSize": 13,
+                                  "fontWeight": "700"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "trV1W",
+                              "name": "optPlacement",
+                              "fill": "#F8F8F6",
+                              "cornerRadius": 10,
+                              "stroke": {
+                                "align": "inside",
+                                "thickness": 1,
+                                "fill": "$border-subtle"
+                              },
+                              "padding": [
+                                10,
+                                20
+                              ],
+                              "justifyContent": "center",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "Gzwwk",
+                                  "name": "optPlacementT",
+                                  "fill": "$text-secondary",
+                                  "content": "적응형",
+                                  "fontFamily": "Outfit",
+                                  "fontSize": 13,
+                                  "fontWeight": "500"
                                 }
                               ]
                             }
@@ -16250,6 +16445,68 @@
                                       "fontFamily": "Outfit",
                                       "fontSize": 13,
                                       "fontWeight": "normal"
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "id": "0205T",
+                              "name": "bookRow",
+                              "width": "fill_container",
+                              "gap": 12,
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "id": "Rs00J",
+                                  "name": "bookLabel",
+                                  "fill": "$text-secondary",
+                                  "content": "교재 선택",
+                                  "fontFamily": "Outfit",
+                                  "fontSize": 13,
+                                  "fontWeight": "500"
+                                },
+                                {
+                                  "type": "frame",
+                                  "id": "To3e1",
+                                  "name": "bookSelect",
+                                  "width": "fill_container",
+                                  "fill": "#F8F8F6",
+                                  "cornerRadius": 8,
+                                  "stroke": {
+                                    "align": "inside",
+                                    "thickness": 1,
+                                    "fill": "$border-subtle"
+                                  },
+                                  "gap": 8,
+                                  "padding": [
+                                    8,
+                                    16
+                                  ],
+                                  "justifyContent": "space_between",
+                                  "alignItems": "center",
+                                  "children": [
+                                    {
+                                      "type": "text",
+                                      "id": "OnZyq",
+                                      "name": "bookSelectT",
+                                      "fill": "$text-primary",
+                                      "content": "POWER VOCA 5000-04",
+                                      "fontFamily": "Outfit",
+                                      "fontSize": 13,
+                                      "fontWeight": "normal"
+                                    },
+                                    {
+                                      "type": "icon_font",
+                                      "id": "U6myB",
+                                      "name": "bookSelectIcon",
+                                      "width": 16,
+                                      "height": 16,
+                                      "iconFontName": "chevron-down",
+                                      "iconFontFamily": "lucide",
+                                      "fill": "$text-tertiary"
                                     }
                                   ]
                                 }

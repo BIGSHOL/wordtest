@@ -14,7 +14,7 @@ import { FeedbackBanner } from '../../components/test/FeedbackBanner';
 import { useTestStore } from '../../stores/testStore';
 import { useAuthStore } from '../../stores/auth';
 import { useTimer } from '../../hooks/useTimer';
-import { playSound, stopSound, stopAllSounds } from '../../hooks/useSound';
+import { playSound, stopSound, stopAllSounds, unlockAudio } from '../../hooks/useSound';
 import { preloadWordAudio, preloadSentenceAudio, batchPreloadPool, randomizeTtsVoice } from '../../utils/tts';
 
 const TIMER_SECONDS = 15;
@@ -168,6 +168,7 @@ export function TestPage() {
 
   const handleChoiceClick = (choice: string) => {
     if (answerResult || isSubmitting) return;
+    unlockAudio();
     stopAllSounds();
     selectAnswer(choice);
     submitAnswer(TIMER_SECONDS - secondsLeft);
@@ -276,7 +277,7 @@ export function TestPage() {
       </div>
 
       {/* Footer Area */}
-      <div className="h-[70px] px-5 md:px-8 flex items-center lg:justify-center" onClick={answerResult ? handleNext : undefined}>
+      <div className="min-h-[70px] px-5 md:px-8 flex items-center lg:justify-center" onClick={answerResult ? handleNext : undefined}>
         {answerResult ? (
           <button onClick={handleNext} className="w-full md:w-[640px] md:mx-auto lg:w-[640px]">
             <FeedbackBanner

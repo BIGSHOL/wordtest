@@ -712,9 +712,10 @@ async def get_mastery_report(
         if row[0].is_correct and row[0].time_taken_sec
     ]
     if correct_times:
-        avg_time = sum(correct_times) / len(correct_times)
+        avg_time = round(sum(correct_times) / len(correct_times), 1)
         speed_score = round(max(0.0, min(10.0, 10.0 - (avg_time / 3.0))), 1)
     else:
+        avg_time = None
         speed_score = 5.0
 
     vocab_raw, vocab_score = await report_engine.calculate_vocab_size(
@@ -746,10 +747,11 @@ async def get_mastery_report(
         "vocabulary_size": vocab_score,
     }
     details_raw = report_engine.get_metric_descriptions(rank, metrics_dict)
+    avg_speed_time = 4.5  # Dummy member avg answer time
     raw_values = {
         "vocabulary_level": f"Lv.{rank}",
         "accuracy": f"{score}%",
-        "speed": f"{speed_score}/10",
+        "speed": f"평균 {avg_time}초" if avg_time else "-",
         "vocabulary_size": f"{vocab_raw:,}단어",
     }
     metric_details = []

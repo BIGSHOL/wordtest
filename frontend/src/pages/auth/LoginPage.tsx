@@ -107,7 +107,7 @@ export function LoginPage() {
       </div>
 
       {/* Right Panel (PC) / Full screen (Mobile) */}
-      <div className="flex-1 flex flex-col justify-center items-center bg-[#F5F4F1] lg:bg-white px-6 py-15 lg:px-15">
+      <div className="flex-1 flex flex-col justify-center items-center bg-[#F5F4F1] lg:bg-white px-6 py-8 lg:py-15 lg:px-15">
         {/* Mobile-only branding */}
         <div className="flex flex-col items-center gap-3 mb-8 lg:hidden">
           <div

@@ -11,8 +11,8 @@ import { useNavigate } from 'react-router-dom';
 import { useMasteryStore, useCurrentQuestion, useLessonXp, useLevelLabel } from '../../stores/masteryStore';
 import { useTimer } from '../../hooks/useTimer';
 import { isTypingQuestion, isListenQuestion } from '../../types/mastery';
-import { preloadWordAudio, stopAllSounds as stopTtsSounds, randomizeTtsVoice } from '../../utils/tts';
-import { playSound, stopSound } from '../../hooks/useSound';
+import { preloadWordAudio, speakWord, stopAllSounds as stopTtsSounds, randomizeTtsVoice } from '../../utils/tts';
+import { playSound, stopSound, unlockAudio } from '../../hooks/useSound';
 
 // Components
 import { MasteryHeader } from '../../components/mastery/MasteryHeader';
@@ -39,7 +39,7 @@ export function MasteryPage() {
     selectedAnswer, typedAnswer, answerResult,
     combo, isLoading, isComplete, finalResult,
     currentBook, displayRank, correctCount, totalAnswered,
-    xp, lastXpChange,
+    xp, lastXpChange, lastXpBreakdown,
   } = store;
 
   const currentQuestion = useCurrentQuestion();
@@ -125,6 +125,7 @@ export function MasteryPage() {
   const handleChoiceClick = useCallback(
     (choice: string) => {
       if (answerResult || submittingRef.current) return;
+      unlockAudio(); // 모바일: 사용자 탭 컨텍스트에서 오디오 잠금 해제
       store.selectAnswer(choice);
       timer.pause();
       submittingRef.current = true;
@@ -139,6 +140,7 @@ export function MasteryPage() {
   // Handle typing submission
   const handleTypingSubmit = useCallback(() => {
     if (answerResult || !typedAnswer.trim() || submittingRef.current) return;
+    unlockAudio(); // 모바일: 사용자 제출 컨텍스트에서 오디오 잠금 해제
     timer.pause();
     submittingRef.current = true;
     const elapsed = timerSeconds - timer.secondsLeft;
@@ -159,6 +161,12 @@ export function MasteryPage() {
     stopSound('two');
     playSound(answerResult.is_correct ? 'correct' : 'wrong');
 
+    // 효과음 후 단어 발음 재생 (겹침 방지를 위해 400ms 딜레이)
+    const wordEnglish = currentQuestion?.word?.english;
+    const pronounceTimer = setTimeout(() => {
+      if (wordEnglish) speakWord(wordEnglish);
+    }, 400);
+
     const delay = answerResult.is_correct ? FEEDBACK_DELAY_CORRECT : FEEDBACK_DELAY_WRONG;
     const t = setTimeout(() => {
       submittingRef.current = false;
@@ -166,7 +174,7 @@ export function MasteryPage() {
       stopSound('two');
       store.nextQuestion();
     }, delay);
-    return () => clearTimeout(t);
+    return () => { clearTimeout(t); clearTimeout(pronounceTimer); };
   }, [answerResult]);
 
   // Handle exit
@@ -341,6 +349,7 @@ export function MasteryPage() {
         lessonXp={lessonXp}
         levelLabel={levelLabel}
         lastXpChange={lastXpChange}
+        lastXpBreakdown={lastXpBreakdown}
         onExit={handleExit}
       />
 
@@ -391,7 +400,7 @@ export function MasteryPage() {
       </div>
 
       {/* Footer: feedback banner */}
-      <div className="h-[70px] px-5 md:px-8 flex items-center">
+      <div className="min-h-[70px] px-5 md:px-8 flex items-center">
         {answerResult && (
           <div className="w-full md:w-[640px] md:mx-auto">
             <FeedbackBanner

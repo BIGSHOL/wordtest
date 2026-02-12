@@ -52,6 +52,24 @@ const VAL_POS = [
 export function RadarChart({ metrics }: Props) {
   return (
     <div className="flex-1 border border-[#E8E8E8] rounded-sm p-5 flex flex-col items-center gap-3">
+      <style>{`
+        @keyframes radar-heartbeat {
+          0%   { transform: scale(1);    opacity: 0.15; }
+          14%  { transform: scale(1.06); opacity: 0.25; }
+          28%  { transform: scale(1);    opacity: 0.15; }
+          42%  { transform: scale(1.04); opacity: 0.22; }
+          56%  { transform: scale(1);    opacity: 0.15; }
+          100% { transform: scale(1);    opacity: 0.15; }
+        }
+        @keyframes radar-stroke-pulse {
+          0%   { stroke-width: 3;   stroke-opacity: 1; }
+          14%  { stroke-width: 4;   stroke-opacity: 1; }
+          28%  { stroke-width: 3;   stroke-opacity: 1; }
+          42%  { stroke-width: 3.5; stroke-opacity: 1; }
+          56%  { stroke-width: 3;   stroke-opacity: 1; }
+          100% { stroke-width: 3;   stroke-opacity: 1; }
+        }
+      `}</style>
       <h3 className="text-base font-semibold text-[#0D0D0D] self-start">
         영역별 평가
       </h3>
@@ -67,13 +85,28 @@ export function RadarChart({ metrics }: Props) {
         <line x1={CX} y1={CY - R} x2={CX} y2={CY + R} stroke="#D0D0D0" strokeWidth={1.5} />
         <line x1={CX - R} y1={CY} x2={CX + R} y2={CY} stroke="#D0D0D0" strokeWidth={1.5} />
 
-        {/* Data shape */}
+        {/* Data shape - fill (heartbeat pulse) */}
         <path
           d={dataPath(metrics)}
-          fill="#CC000025"
+          fill="#CC0000"
+          stroke="none"
+          strokeLinejoin="round"
+          style={{
+            transformOrigin: `${CX}px ${CY}px`,
+            animation: 'radar-heartbeat 1.8s ease-in-out infinite',
+          }}
+        />
+
+        {/* Data shape - stroke (synced pulse) */}
+        <path
+          d={dataPath(metrics)}
+          fill="none"
           stroke="#CC0000"
           strokeWidth={3}
           strokeLinejoin="round"
+          style={{
+            animation: 'radar-stroke-pulse 1.8s ease-in-out infinite',
+          }}
         />
 
         {/* Labels + values */}

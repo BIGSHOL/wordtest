@@ -10,8 +10,6 @@ import { statsService } from '../../services/stats';
 import { ArrowLeft, Printer } from 'lucide-react';
 import type { User } from '../../types/auth';
 import type { MasteryReport } from '../../types/report';
-
-
 import { RadarChart } from '../../components/report/RadarChart';
 import { LevelChartTable } from '../../components/report/LevelChartTable';
 import { MetricDetailSection } from '../../components/report/MetricDetailSection';
@@ -263,52 +261,29 @@ export function MasteryReportPage() {
               </div>
             )}
 
-            {/* 6. Answer O/X Grid */}
-            {report.answers.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-base font-semibold text-[#0D0D0D]">문제별 정답 현황</h3>
-                <div className="flex flex-wrap gap-1.5">
-                  {report.answers.map((a) => (
-                    <div
-                      key={a.question_order}
-                      className="w-8 h-8 rounded flex items-center justify-center text-xs font-bold"
-                      style={{
-                        backgroundColor: a.is_correct ? '#DCFCE7' : '#FEE2E2',
-                        color: a.is_correct ? '#16A34A' : '#DC2626',
-                      }}
-                      title={`${a.word_english} (${a.is_correct ? 'O' : 'X'})`}
-                    >
-                      {a.is_correct ? 'O' : 'X'}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-4 text-xs text-[#7A7A7A]">
-                  <span>정답: <strong className="text-green-600">{report.session.correct_count}</strong></span>
-                  <span>오답: <strong className="text-red-500">{report.session.total_questions - report.session.correct_count}</strong></span>
-                  <span>총 문제: <strong className="text-[#0D0D0D]">{report.session.total_questions}</strong></span>
-                </div>
-              </div>
-            )}
-
-            {/* 7. Wrong answers detail */}
-            {report.answers.filter((a) => !a.is_correct).length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-base font-semibold text-[#0D0D0D]">오답 분석</h3>
-                <div className="border border-[#E8E8E8] rounded overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-[#FEF2F2]">
-                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">번호</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">단어</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">정답</th>
-                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">내 답</th>
-                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#DC2626]">단계</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {report.answers
-                        .filter((a) => !a.is_correct)
-                        .map((a) => (
+            {/* 6. Wrong answers detail (filter out data anomalies) */}
+            {(() => {
+              const realWrong = report.answers.filter((a) =>
+                !a.is_correct &&
+                a.selected_answer?.toLowerCase() !== a.word_english.toLowerCase() &&
+                a.selected_answer !== a.correct_answer
+              );
+              return realWrong.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-base font-semibold text-[#0D0D0D]">오답 분석</h3>
+                  <div className="border border-[#E8E8E8] rounded overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-[#FEF2F2]">
+                          <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">번호</th>
+                          <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">단어</th>
+                          <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">정답</th>
+                          <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">내 답</th>
+                          <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#DC2626]">단계</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {realWrong.map((a) => (
                           <tr key={a.question_order} className="border-t border-[#F0F0F0]">
                             <td className="px-3 py-2 text-[#7A7A7A]">{a.question_order}</td>
                             <td className="px-3 py-2 font-medium text-[#0D0D0D]">{a.word_english}</td>
@@ -317,11 +292,12 @@ export function MasteryReportPage() {
                             <td className="px-3 py-2 text-center"><StageLabel stage={a.stage} /></td>
                           </tr>
                         ))}
-                    </tbody>
-                  </table>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         </div>
       )}

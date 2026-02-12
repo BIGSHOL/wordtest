@@ -206,12 +206,22 @@ export function DashboardPage() {
                           {test.completed_at ? new Date(test.completed_at).toLocaleDateString('ko-KR', { year: '2-digit', month: 'numeric', day: 'numeric' }) : '-'}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1.5">
-                            <span className={`w-2 h-2 rounded-full ${test.test_type === 'mastery' ? 'bg-violet-500' : 'bg-[#5A8F6B]'}`}></span>
-                            <span className="text-xs text-text-secondary">
-                              {test.test_type === 'mastery' ? '마스터리' : '완료'}
+                          {test.completed_at ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-[#5A8F6B]"></span>
+                              <span className="text-xs text-text-secondary">완료</span>
                             </span>
-                          </span>
+                          ) : test.score !== null ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                              <span className="text-xs text-text-secondary">진행중</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                              <span className="text-xs text-text-secondary">미완료</span>
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           {test.test_type === 'mastery' ? (

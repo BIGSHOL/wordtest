@@ -1,4 +1,5 @@
 const cache = new Map<string, HTMLAudioElement>();
+let audioUnlocked = false;
 
 function getAudio(src: string): HTMLAudioElement {
   let audio = cache.get(src);
@@ -9,8 +10,31 @@ function getAudio(src: string): HTMLAudioElement {
   return audio;
 }
 
+/**
+ * 모바일 오디오 잠금 해제 — 사용자 제스처(tap/click) 컨텍스트 안에서 호출해야 함.
+ * 모든 효과음 Audio 요소를 무음으로 한 번 play→pause 하여
+ * 이후 useEffect/setTimeout 등 비-제스처 컨텍스트에서도 재생 가능하게 함.
+ */
+export function unlockAudio() {
+  if (audioUnlocked) return;
+  audioUnlocked = true;
+  const names: Array<SoundName> = ['correct', 'wrong', 'timer', 'two', 'lvlup', 'lvldown', 'perfect'];
+  for (const name of names) {
+    const audio = getAudio(`/sounds/${name}.mp3`);
+    const prevVol = audio.volume;
+    audio.volume = 0;
+    audio.play().then(() => {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.volume = prevVol;
+    }).catch(() => {});
+  }
+}
+
+type SoundName = 'correct' | 'wrong' | 'timer' | 'two' | 'lvlup' | 'lvldown' | 'perfect';
+
 export function playSound(
-  name: 'correct' | 'wrong' | 'timer' | 'two' | 'lvlup' | 'lvldown' | 'perfect',
+  name: SoundName,
   options?: { volume?: number; startAt?: number },
 ) {
   const audio = getAudio(`/sounds/${name}.mp3`);

@@ -117,7 +117,7 @@ export const ListenCard = memo(function ListenCard({
 
       <button
         onClick={play}
-        className="flex items-center gap-1.5 text-accent-indigo font-display text-[13px] font-medium"
+        className="flex items-center gap-1.5 text-accent-indigo font-display text-[13px] font-medium active:scale-95 transition-transform"
       >
         <RefreshCw className="w-3.5 h-3.5" />
         다시 듣기
