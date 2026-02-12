@@ -46,10 +46,33 @@ export function TestStartPage() {
     setIsStarting(true);
     setError(null);
     try {
-      // Try mastery first (new system) — also detects stage tests
+      // Try mastery first (new system) — also detects stage tests and legacy engines
       const response = await startMasteryByCode(code);
+      const engine = response.engine_type;
+
+      // Route by engine_type if available, else by assignment_type
+      if (engine) {
+        if (engine.startsWith('xp_')) {
+          // XP engines → mastery page (questions already loaded)
+          navigate('/mastery', { replace: true });
+          return;
+        }
+        if (engine === 'legacy_stage' || engine === 'legacy_listen') {
+          // Legacy stage/listen → stage test page
+          await startStageTestByCode(code);
+          navigate('/stage-test', { replace: true });
+          return;
+        }
+        if (engine === 'legacy_word') {
+          // Legacy word → legacy test page
+          await startTestByCode(code);
+          navigate('/test', { replace: true });
+          return;
+        }
+      }
+
+      // Fallback: route by assignment_type (backward compat for NULL engine_type)
       if (response.assignment_type === 'stage_test') {
-        // Stage test: call separate start endpoint
         await startStageTestByCode(code);
         navigate('/stage-test', { replace: true });
         return;
@@ -95,8 +118,12 @@ export function TestStartPage() {
     setError(null);
     try {
       const response = await startMasteryByCode(completedInfo.code, true);
-      if (response.assignment_type === 'mastery') {
+      const engine = response.engine_type;
+      if (engine?.startsWith('xp_') || response.assignment_type === 'mastery') {
         navigate('/mastery', { replace: true });
+      } else if (engine === 'legacy_stage' || engine === 'legacy_listen' || response.assignment_type === 'stage_test') {
+        await startStageTestByCode(completedInfo.code, true);
+        navigate('/stage-test', { replace: true });
       }
     } catch {
       setError('재응시를 시작할 수 없습니다');

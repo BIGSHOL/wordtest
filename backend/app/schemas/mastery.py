@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 # --- Stage configuration ---
 
-STAGE_TIMERS = {1: 5, 2: 5, 3: 15, 4: 10, 5: 15}
+STAGE_TIMERS = {1: 10, 2: 10, 3: 20, 4: 15, 5: 20}
 
 STAGE_QUESTION_TYPES = {
     1: "word_to_meaning",     # English word → pick Korean meaning
@@ -91,6 +91,7 @@ class StartMasteryResponse(BaseModel):
     access_token: Optional[str] = None
     student_name: Optional[str] = None
     assignment_type: str = "mastery"
+    engine_type: Optional[str] = None
     current_level: int = 1
 
 

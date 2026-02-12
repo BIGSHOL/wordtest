@@ -11,6 +11,8 @@ interface TypingInputProps {
   onSubmit: () => void;
   disabled?: boolean;
   placeholder?: string;
+  /** When true, 0 key triggers replay instead of input (listen stages) */
+  isListenMode?: boolean;
 }
 
 export const TypingInput = memo(function TypingInput({
@@ -19,6 +21,7 @@ export const TypingInput = memo(function TypingInput({
   onSubmit,
   disabled,
   placeholder = '영어 단어를 입력하세요',
+  isListenMode = false,
 }: TypingInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const composingRef = useRef(false);
@@ -31,6 +34,11 @@ export const TypingInput = memo(function TypingInput({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // In listen mode, 0 key = replay (handled by ListenCard global listener)
+      if (isListenMode && e.key === '0') {
+        e.preventDefault();
+        return;
+      }
       if (e.key === 'Enter' && !composingRef.current && value.trim().length > 0) {
         e.preventDefault();
         onSubmit();

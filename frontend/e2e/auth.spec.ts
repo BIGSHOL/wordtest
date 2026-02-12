@@ -17,7 +17,7 @@ test.describe('Authentication', () => {
 
     // Should redirect to dashboard
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 10_000 });
-    await expect(page.locator('text=대시보드')).toBeVisible();
+    await expect(page.getByRole('heading', { name: '대시보드' })).toBeVisible();
   });
 
   test('teacher can login and logout', async ({ page }) => {
@@ -70,7 +70,11 @@ test.describe('Authentication', () => {
     // Login as student via UI (username-based login)
     await loginViaUI(page, studentUsername, studentPw);
 
-    await expect(page).toHaveURL(/\/student/, { timeout: 10_000 });
-    await expect(page.locator('text=테스트 시작')).toBeVisible();
+    await expect(page).toHaveURL(/\/(student|test)/, { timeout: 10_000 });
+    // Student main page shows either '코드 입력하러 가기' or '레벨 테스트 시작'
+    await expect(
+      page.getByRole('button', { name: '코드 입력하러 가기' })
+        .or(page.locator('text=레벨 테스트 시작'))
+    ).toBeVisible({ timeout: 5_000 });
   });
 });

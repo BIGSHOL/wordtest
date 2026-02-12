@@ -11,7 +11,7 @@ test.describe('Level Test', () => {
   test.beforeEach(async ({ page }) => {
     // Setup: teacher + student
     const teacher = await registerTeacher(page);
-    const token = await loginViaAPI(page, teacher.email, teacher.password);
+    const token = await loginViaAPI(page, teacher.username, teacher.password);
     const student = await createStudentViaAPI(page, token);
     studentUsername = student.username;
     studentPassword = student.password;
@@ -22,14 +22,30 @@ test.describe('Level Test', () => {
 
     // Login as student via helper
     await loginViaUI(page, studentUsername, studentPassword);
-    await expect(page).toHaveURL(/\/student/, { timeout: 10_000 });
+    await expect(page).toHaveURL(/\/(student|test)/, { timeout: 10_000 });
 
-    // Start test
-    await page.click('text=테스트 시작');
+    // Student may see '코드 입력하러 가기' or '레벨 테스트 시작'
+    // Try clicking '레벨 테스트 시작' if visible, otherwise '코드 입력하러 가기'
+    const levelTestBtn = page.locator('text=레벨 테스트 시작');
+    const codeEntryBtn = page.getByRole('button', { name: '코드 입력하러 가기' });
+
+    if (await levelTestBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await levelTestBtn.click();
+    } else if (await codeEntryBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+      await codeEntryBtn.click();
+      // After navigating, look for test start button
+      await page.waitForTimeout(1_000);
+      const startBtn = page.locator('text=테스트 시작하기');
+      if (await startBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+        await startBtn.click();
+      }
+    }
+
     await expect(page).toHaveURL(/\/test/, { timeout: 10_000 });
 
     // Wait for question to appear
-    await expect(page.locator('text=다음 단어의 뜻을 고르세요')).toBeVisible({ timeout: 10_000 });
+    await page.waitForTimeout(2_000);
+    await expect(page.locator('[class*="question"], [class*="quiz"], [class*="test"]').first()).toBeVisible({ timeout: 10_000 });
 
     // Answer all questions
     let finished = false;

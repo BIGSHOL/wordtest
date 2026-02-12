@@ -38,10 +38,10 @@ export const ListenCard = memo(function ListenCard({
   }, [word, isSentence, sentenceEn]);
 
   useEffect(() => {
-    // Auto-play on mount
+    // Auto-play on mount (100ms delay for smooth render)
     if (!playedRef.current) {
       playedRef.current = true;
-      const timer = setTimeout(play, 300);
+      const timer = setTimeout(play, 100);
       return () => clearTimeout(timer);
     }
   }, [word, sentenceEn]);
@@ -50,6 +50,18 @@ export const ListenCard = memo(function ListenCard({
   useEffect(() => {
     playedRef.current = false;
   }, [word]);
+
+  // Keyboard shortcut: press 0 to replay pronunciation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '0') {
+        e.preventDefault();
+        play();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [play]);
 
   const prompt = isSentence
     ? (stage === 3 ? '문장을 듣고 빈칸의 단어를 입력하세요' : '문장을 듣고 빈칸 단어의 뜻을 고르세요')
@@ -121,6 +133,7 @@ export const ListenCard = memo(function ListenCard({
       >
         <RefreshCw className="w-3.5 h-3.5" />
         다시 듣기
+        <kbd className="ml-1 px-1.5 py-0.5 rounded bg-accent-indigo/10 text-[11px] font-mono">0</kbd>
       </button>
     </div>
   );

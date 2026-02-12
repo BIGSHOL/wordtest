@@ -15,7 +15,9 @@ from app.models.test_config import TestConfig
 from app.models.user import User
 from app.core.timezone import now_kst
 from app.services.mastery_engine import (
-    generate_stage_questions, generate_mixed_questions, check_typing_answer,
+    generate_stage_questions, generate_mixed_questions,
+    generate_word_questions, generate_listen_questions,
+    check_typing_answer,
 )
 from app.schemas.mastery import StageSummary, MasteryQuestion, STAGE_TIMERS
 
@@ -24,6 +26,26 @@ SEGMENT_SIZE = 10  # Questions per segment (5 segments = 50 total)
 BATCH_SIZE_DEFAULT = 50
 # SRS review intervals (days after mastering)
 REVIEW_INTERVALS = [3, 7, 30]
+
+# XP engine types that route through this service
+XP_ENGINE_TYPES = {"xp_word", "xp_stage", "xp_listen"}
+
+
+def _generate_by_engine(
+    engine_type: str | None,
+    masteries: list,
+    words_map: dict,
+    all_words: list,
+    timer_override: int | None = None,
+) -> list[MasteryQuestion]:
+    """Dispatch question generation based on engine_type."""
+    if engine_type == "xp_word":
+        return generate_word_questions(masteries, words_map, all_words, timer_override=timer_override)
+    elif engine_type == "xp_listen":
+        return generate_listen_questions(masteries, words_map, all_words, timer_override=timer_override)
+    else:
+        # xp_stage or None (default) → mixed questions
+        return generate_mixed_questions(masteries, words_map, all_words, timer_override=timer_override)
 
 
 def get_required_streak(word_level: int) -> int:
@@ -62,6 +84,7 @@ async def _get_words_for_config(db: AsyncSession, config: TestConfig) -> list[Wo
     query = select(Word).where(
         Word.level >= config.level_range_min,
         Word.level <= config.level_range_max,
+        Word.is_excluded == False,
     )
 
     effective_end = config.book_name_end or config.book_name
@@ -238,11 +261,13 @@ async def start_session_by_code(
     # Generate multi-level question pool (current_level + up to 4 more levels)
     words_map = {w.id: w for w in all_words}
     timer_override = config.per_question_time_seconds  # None = use stage timers
+    engine_type = assignment.engine_type
     first_batch = await get_question_pool(
         db, session, masteries, words_map, all_words,
         per_level=SEGMENT_SIZE,
         max_levels=5,
         timer_override=timer_override,
+        engine_type=engine_type,
     )
 
     await db.commit()
@@ -259,6 +284,7 @@ async def get_question_pool(
     per_level: int = 10,
     max_levels: int = 5,
     timer_override: int | None = None,
+    engine_type: str | None = None,
 ) -> list[MasteryQuestion]:
     """Generate a multi-level question pool for adaptive level progression.
 
@@ -302,7 +328,7 @@ async def get_question_pool(
         if not batch:
             continue
 
-        questions = generate_mixed_questions(batch, words_map, all_words, timer_override=timer_override)
+        questions = _generate_by_engine(engine_type, batch, words_map, all_words, timer_override=timer_override)
         all_questions.extend(questions)
 
     return all_questions
@@ -317,6 +343,7 @@ async def get_level_questions(
     target_level: int,
     batch_size: int = SEGMENT_SIZE,
     timer_override: int | None = None,
+    engine_type: str | None = None,
 ) -> list[MasteryQuestion]:
     """Get questions for a specific level with fallback to adjacent levels.
 
@@ -365,7 +392,7 @@ async def get_level_questions(
     if not batch:
         return []
 
-    questions = generate_mixed_questions(batch, words_map, all_words, timer_override=timer_override)
+    questions = _generate_by_engine(engine_type, batch, words_map, all_words, timer_override=timer_override)
     return questions
 
 

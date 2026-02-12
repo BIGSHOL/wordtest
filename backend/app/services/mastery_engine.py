@@ -143,6 +143,28 @@ def _is_phrase(text: str) -> bool:
     return ' ' in text.strip()
 
 
+def _has_tilde(text: str) -> bool:
+    """Check if Korean meaning starts with ~ (e.g. ~하다, ~을 먹다)."""
+    return text.strip().startswith('~')
+
+
+def _pick_korean_distractors(
+    correct: str, all_korean: list[str], count: int = 3,
+) -> list[str]:
+    """Pick Korean meaning distractors matching the correct answer's pattern.
+
+    If the correct answer starts with ~, prefer other ~ meanings as distractors
+    so the ~ prefix doesn't give away the answer.
+    """
+    correct_has_tilde = _has_tilde(correct)
+    same_type = [k for k in all_korean if k != correct and _has_tilde(k) == correct_has_tilde]
+    if len(same_type) >= count:
+        return random.sample(same_type, count)
+    other_type = [k for k in all_korean if k != correct and _has_tilde(k) != correct_has_tilde]
+    pool = same_type + other_type
+    return random.sample(pool, min(count, len(pool)))
+
+
 def _pick_english_distractors(
     correct: str, all_english: list[str], count: int = 3,
 ) -> list[str]:
@@ -229,8 +251,7 @@ def generate_stage_questions(
             else:
                 # English → Korean meaning (4 choices)
                 correct_answer = word.korean
-                wrong = [k for k in unique_korean if k != word.korean]
-                sampled = random.sample(wrong, min(3, len(wrong)))
+                sampled = _pick_korean_distractors(word.korean, unique_korean)
                 choices = [correct_answer] + sampled
                 random.shuffle(choices)
 
@@ -255,8 +276,7 @@ def generate_stage_questions(
             else:
                 # Listen → Korean meaning (4 choices)
                 correct_answer = word.korean
-                wrong = [k for k in unique_korean if k != word.korean]
-                sampled = random.sample(wrong, min(3, len(wrong)))
+                sampled = _pick_korean_distractors(word.korean, unique_korean)
                 choices = [correct_answer] + sampled
                 random.shuffle(choices)
 
@@ -355,8 +375,7 @@ def generate_mixed_questions(
                 # word_to_meaning: English → Korean meaning
                 question_type = "word_to_meaning"
                 correct_answer = word.korean
-                wrong = [k for k in unique_korean if k != word.korean]
-                sampled = random.sample(wrong, min(n_distractors, len(wrong)))
+                sampled = _pick_korean_distractors(word.korean, unique_korean, n_distractors)
                 choices = [correct_answer] + sampled
                 random.shuffle(choices)
                 timer = _base_timer_for_level(word.level, stage)
@@ -387,8 +406,7 @@ def generate_mixed_questions(
                 # listen_to_meaning: Listen → Korean meaning
                 question_type = "listen_to_meaning"
                 correct_answer = word.korean
-                wrong = [k for k in unique_korean if k != word.korean]
-                sampled = random.sample(wrong, min(n_distractors, len(wrong)))
+                sampled = _pick_korean_distractors(word.korean, unique_korean, n_distractors)
                 choices = [correct_answer] + sampled
                 random.shuffle(choices)
             timer = _base_timer_for_level(word.level, stage)
@@ -434,6 +452,171 @@ def edit_distance(s1: str, s2: str) -> int:
         prev_row = curr_row
 
     return prev_row[-1]
+
+
+def generate_word_questions(
+    masteries: list[WordMastery],
+    words_map: dict[str, Word],
+    all_words: list[Word],
+    timer_override: int | None = None,
+) -> list[MasteryQuestion]:
+    """Generate word-only questions (no listen/audio).
+
+    Question types: word_to_meaning, meaning_to_word, meaning_and_type (based on level).
+    Used by xp_word and legacy_word engines.
+    """
+    if not masteries or not all_words:
+        return []
+
+    unique_korean = list({w.korean for w in all_words if w.korean})
+    unique_english = list({w.english for w in all_words})
+
+    questions: list[MasteryQuestion] = []
+
+    for mastery in masteries:
+        word = words_map.get(mastery.word_id)
+        if not word:
+            continue
+
+        # Sentence mode probability based on word level
+        prob = _sentence_probability(word.level)
+        has_example = bool(word.example_en and word.example_ko)
+        use_sentence = has_example and (random.random() < prob)
+
+        sentence_blank = None
+        if use_sentence and word.example_en:
+            sentence_blank = _make_sentence_blank(word.example_en, word.english)
+            if not sentence_blank:
+                use_sentence = False
+
+        context_mode = "sentence" if use_sentence else "word"
+
+        n_choices = _choice_count_for_level(word.level)
+        n_distractors = n_choices - 1
+
+        choices = None
+        correct_answer = ""
+        question_type = ""
+
+        # Typing probability for higher-level words
+        if random.random() < _typing_probability(word.level):
+            question_type = "meaning_and_type"
+            correct_answer = word.english
+            timer = _base_timer_for_level(word.level, 5)
+        elif use_sentence:
+            question_type = "meaning_to_word"
+            correct_answer = word.english
+            sampled = _pick_english_distractors(word.english, unique_english, n_distractors)
+            choices = [correct_answer] + sampled
+            random.shuffle(choices)
+            timer = _base_timer_for_level(word.level, 2)
+        elif random.random() < 0.5:
+            question_type = "word_to_meaning"
+            correct_answer = word.korean
+            sampled = _pick_korean_distractors(word.korean, unique_korean, n_distractors)
+            choices = [correct_answer] + sampled
+            random.shuffle(choices)
+            timer = _base_timer_for_level(word.level, 1)
+        else:
+            question_type = "meaning_to_word"
+            correct_answer = word.english
+            sampled = _pick_english_distractors(word.english, unique_english, n_distractors)
+            choices = [correct_answer] + sampled
+            random.shuffle(choices)
+            timer = _base_timer_for_level(word.level, 2)
+
+        questions.append(MasteryQuestion(
+            word_mastery_id=mastery.id,
+            word=_word_response(word),
+            stage=mastery.stage,
+            question_type=question_type,
+            choices=choices,
+            correct_answer=correct_answer,
+            timer_seconds=timer_override if timer_override else timer,
+            context_mode=context_mode,
+            sentence_blank=sentence_blank,
+        ))
+
+    return questions
+
+
+def generate_listen_questions(
+    masteries: list[WordMastery],
+    words_map: dict[str, Word],
+    all_words: list[Word],
+    timer_override: int | None = None,
+) -> list[MasteryQuestion]:
+    """Generate listen-only questions (audio-focused).
+
+    Question types: listen_and_type, listen_to_meaning (50:50).
+    Used by xp_listen and legacy_listen engines.
+    """
+    if not masteries or not all_words:
+        return []
+
+    unique_korean = list({w.korean for w in all_words if w.korean})
+    unique_english = list({w.english for w in all_words})
+
+    questions: list[MasteryQuestion] = []
+
+    for mastery in masteries:
+        word = words_map.get(mastery.word_id)
+        if not word:
+            continue
+
+        # Sentence mode probability based on word level
+        prob = _sentence_probability(word.level)
+        has_example = bool(word.example_en and word.example_ko)
+        use_sentence = has_example and (random.random() < prob)
+
+        sentence_blank = None
+        if use_sentence and word.example_en:
+            sentence_blank = _make_sentence_blank(word.example_en, word.english)
+            if not sentence_blank:
+                use_sentence = False
+
+        context_mode = "sentence" if use_sentence else "word"
+
+        n_choices = _choice_count_for_level(word.level)
+        n_distractors = n_choices - 1
+
+        choices = None
+        correct_answer = ""
+
+        # 50:50 between listen_and_type and listen_to_meaning
+        if random.random() < 0.5:
+            # listen_and_type: hear pronunciation → type English word
+            question_type = "listen_and_type"
+            correct_answer = word.english
+            timer = _base_timer_for_level(word.level, 3)
+        else:
+            # listen_to_meaning: hear pronunciation → pick Korean meaning
+            question_type = "listen_to_meaning"
+            if use_sentence:
+                correct_answer = word.english
+                sampled = _pick_english_distractors(word.english, unique_english, n_distractors)
+                choices = [correct_answer] + sampled
+                random.shuffle(choices)
+            else:
+                correct_answer = word.korean
+                sampled = _pick_korean_distractors(word.korean, unique_korean, n_distractors)
+                choices = [correct_answer] + sampled
+                random.shuffle(choices)
+            timer = _base_timer_for_level(word.level, 4)
+
+        questions.append(MasteryQuestion(
+            word_mastery_id=mastery.id,
+            word=_word_response(word),
+            stage=mastery.stage,
+            question_type=question_type,
+            choices=choices,
+            correct_answer=correct_answer,
+            timer_seconds=timer_override if timer_override else timer,
+            context_mode=context_mode,
+            sentence_blank=sentence_blank,
+        ))
+
+    return questions
 
 
 def check_typing_answer(submitted: str, correct: str) -> tuple[bool, bool]:

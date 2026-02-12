@@ -25,6 +25,7 @@ export interface StartStageTestResponse {
   access_token?: string;
   student_name?: string;
   assignment_type: 'stage_test';
+  engine_type?: string | null;
 }
 
 export interface StageTestAnswerResponse {

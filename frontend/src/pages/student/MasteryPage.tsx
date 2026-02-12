@@ -401,6 +401,7 @@ export function MasteryPage() {
               onChange={store.setTypedAnswer}
               onSubmit={handleTypingSubmit}
               disabled={!!answerResult}
+              isListenMode={isListen}
             />
           ) : (
             <div className="flex flex-col gap-3 w-full">

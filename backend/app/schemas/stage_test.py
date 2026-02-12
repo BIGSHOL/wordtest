@@ -54,6 +54,7 @@ class StartStageTestResponse(BaseModel):
     access_token: Optional[str] = None
     student_name: Optional[str] = None
     assignment_type: str = "stage_test"
+    engine_type: Optional[str] = None
 
 
 class StageTestAnswerResponse(BaseModel):

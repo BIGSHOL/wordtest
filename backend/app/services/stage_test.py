@@ -18,7 +18,10 @@ from app.models.test_assignment import TestAssignment
 from app.models.test_config import TestConfig
 from app.models.user import User
 from app.core.timezone import now_kst
-from app.services.mastery_engine import generate_stage_questions, check_typing_answer
+from app.services.mastery_engine import (
+    generate_stage_questions, generate_word_questions, generate_listen_questions,
+    check_typing_answer,
+)
 from app.services.mastery import (
     _get_assignment_and_config,
     _get_words_for_config,
@@ -44,7 +47,11 @@ async def start_by_code(
 
     assignment, config = lookup
 
-    if config.test_type != "periodic":
+    engine_type = assignment.engine_type
+    # Allow legacy_stage, legacy_listen, legacy_word engines + fallback for periodic
+    if engine_type not in ("legacy_stage", "legacy_listen", "legacy_word", None):
+        raise ValueError("This test code is not for a stage/legacy test")
+    if engine_type is None and config.test_type != "periodic":
         raise ValueError("This test code is not for a stage test")
 
     # Get student info
@@ -145,9 +152,12 @@ async def start_by_code(
     # Generate initial batch of questions (first wave at stage 1)
     random.shuffle(masteries)
     initial_masteries = masteries[:INITIAL_BATCH]
-    initial_questions = generate_stage_questions(
-        initial_masteries, words_map, 1, all_words
-    )
+    if engine_type == "legacy_listen":
+        initial_questions = generate_listen_questions(initial_masteries, words_map, all_words)
+    elif engine_type == "legacy_word":
+        initial_questions = generate_word_questions(initial_masteries, words_map, all_words)
+    else:
+        initial_questions = generate_stage_questions(initial_masteries, words_map, 1, all_words)
     random.shuffle(initial_questions)
 
     await db.commit()
@@ -161,6 +171,7 @@ async def start_by_code(
         "max_fails": MAX_FAILS_DEFAULT,
         "student_name": student.name or "학생",
         "student_id": assignment.student_id,
+        "engine_type": engine_type,
     }
 
 
@@ -214,6 +225,9 @@ async def generate_questions_for_words(
 
     all_words = await _get_words_for_config(db, config)
 
+    # Dispatch by engine_type
+    engine_type = assignment.engine_type
+
     # Group masteries by stage and generate
     stage_groups: dict[int, list[WordMastery]] = {}
     for m in masteries:
@@ -224,7 +238,12 @@ async def generate_questions_for_words(
 
     all_questions: list[MasteryQuestion] = []
     for stage, stage_masteries in stage_groups.items():
-        questions = generate_stage_questions(stage_masteries, words_map, stage, all_words)
+        if engine_type == "legacy_listen":
+            questions = generate_listen_questions(stage_masteries, words_map, all_words)
+        elif engine_type == "legacy_word":
+            questions = generate_word_questions(stage_masteries, words_map, all_words)
+        else:
+            questions = generate_stage_questions(stage_masteries, words_map, stage, all_words)
         all_questions.extend(questions)
 
     random.shuffle(all_questions)

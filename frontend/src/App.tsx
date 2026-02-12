@@ -40,6 +40,7 @@ const WrongWordsPage = lazyRetry(() => import('./pages/student/WrongWordsPage'))
 const MasteryPage = lazyRetry(() => import('./pages/student/MasteryPage'));
 const StageTestPage = lazyRetry(() => import('./pages/student/StageTestPage'));
 const StudentReportPage = lazyRetry(() => import('./pages/student/StudentReportPage'));
+const StageTestPreview = lazyRetry(() => import('./pages/dev/StageTestPreview'));
 
 function PageLoader() {
   return (
@@ -55,6 +56,9 @@ function App() {
       <div className="min-h-screen bg-background">
         <Suspense fallback={<PageLoader />}>
         <Routes>
+          {/* Dev preview (no auth) */}
+          <Route path="/dev/stage-preview" element={<StageTestPreview />} />
+
           {/* Auth */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />

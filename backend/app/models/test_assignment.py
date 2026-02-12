@@ -34,6 +34,9 @@ class TestAssignment(Base):
     assignment_type: Mapped[str] = mapped_column(
         String(20), nullable=False, default="mastery"
     )
+    engine_type: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True, default=None
+    )
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="pending"
     )

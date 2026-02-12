@@ -31,6 +31,7 @@ class TestAssignmentResponse(BaseModel):
     question_types: Optional[str] = None
     lesson_range: Optional[str] = None
     assignment_type: str = "mastery"
+    engine_type: Optional[str] = None
     status: str
     assigned_at: datetime
     test_session_id: Optional[str] = None

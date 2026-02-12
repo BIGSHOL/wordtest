@@ -7,6 +7,15 @@
  * - Question types determined by internal mastery stage (invisible to user)
  */
 
+// --- Engine type ---
+export type EngineType =
+  | 'xp_word'       // XP + 4-choice only
+  | 'xp_stage'      // XP + 5-stage cycle
+  | 'xp_listen'     // XP + audio-focused
+  | 'legacy_word'   // Fixed range + 4-choice
+  | 'legacy_stage'  // Fixed range + 5-stage
+  | 'legacy_listen'; // Fixed range + audio-focused
+
 // --- Question type configuration ---
 
 export type QuestionType =
@@ -49,11 +58,11 @@ export function getQuestionTimer(type: string): number {
 export type StageNumber = 1 | 2 | 3 | 4 | 5;
 
 export const STAGE_CONFIG = {
-  1: { name: '단어 뜻 고르기', timer: 5, type: 'choice' as const, color: '#86EFAC' },
-  2: { name: '영단어 고르기', timer: 5, type: 'choice' as const, color: '#4ADE80' },
-  3: { name: '발음 듣고 쓰기', timer: 15, type: 'typing' as const, color: '#22C55E' },
-  4: { name: '발음 듣고 뜻 고르기', timer: 10, type: 'choice' as const, color: '#16A34A' },
-  5: { name: '뜻 보고 영단어 쓰기', timer: 15, type: 'typing' as const, color: '#15803D' },
+  1: { name: '단어 뜻 고르기', timer: 10, type: 'choice' as const, color: '#86EFAC' },
+  2: { name: '영단어 고르기', timer: 10, type: 'choice' as const, color: '#4ADE80' },
+  3: { name: '발음 듣고 쓰기', timer: 20, type: 'typing' as const, color: '#22C55E' },
+  4: { name: '발음 듣고 뜻 고르기', timer: 15, type: 'choice' as const, color: '#16A34A' },
+  5: { name: '뜻 보고 영단어 쓰기', timer: 20, type: 'typing' as const, color: '#15803D' },
 } as const;
 
 // --- API response types ---
@@ -109,6 +118,7 @@ export interface StartMasteryResponse {
   access_token?: string;
   student_name?: string;
   assignment_type: string;
+  engine_type?: EngineType | null;
   current_level: number;
 }
 

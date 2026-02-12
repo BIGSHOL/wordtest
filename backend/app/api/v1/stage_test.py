@@ -71,6 +71,7 @@ async def start_stage_test_by_code(
         max_fails=result["max_fails"],
         access_token=access_token,
         student_name=result["student_name"],
+        engine_type=result.get("engine_type"),
     )
 
 

@@ -78,16 +78,25 @@ async def start_mastery_by_code(
             detail="Test code is required",
         )
 
-    # Early detection: route stage tests (periodic) without creating a session
+    # Early detection: route non-XP engines without creating a mastery session
     from app.services.mastery import _get_assignment_and_config as _lookup
     lookup = await _lookup(db, code)
     if lookup:
         _assignment, _config = lookup
-        if _config.test_type == "periodic":
+        _engine = _assignment.engine_type
+
+        # Determine routing: engine_type takes priority, fallback to test_type
+        is_legacy_stage = (_engine in ("legacy_stage", "legacy_listen")) or (
+            not _engine and _config.test_type == "periodic"
+        )
+        is_legacy_word = _engine == "legacy_word"
+
+        if is_legacy_stage or is_legacy_word:
             _student = (await db.execute(
                 select(User).where(User.id == _assignment.student_id)
             )).scalar_one_or_none()
             _token = create_access_token(subject=_assignment.student_id)
+            _atype = "stage_test" if is_legacy_stage else "legacy"
             return StartMasteryResponse(
                 session=MasterySessionInfo(
                     id="", assignment_id=_assignment.id,
@@ -100,7 +109,8 @@ async def start_mastery_by_code(
                 question_count=0,
                 access_token=_token,
                 student_name=_student.name if _student else "학생",
-                assignment_type="stage_test",
+                assignment_type=_atype,
+                engine_type=_engine,
                 current_level=1,
             )
 
@@ -135,6 +145,7 @@ async def start_mastery_by_code(
         access_token=access_token,
         student_name=student_name,
         assignment_type="mastery",
+        engine_type=assignment.engine_type,
         current_level=current_level,
     )
 
@@ -188,6 +199,7 @@ async def get_batch(
         target_level=target_level,
         batch_size=body.batch_size,
         timer_override=config.per_question_time_seconds,
+        engine_type=assignment.engine_type,
     )
 
     summary = await _compute_stage_summary(masteries)

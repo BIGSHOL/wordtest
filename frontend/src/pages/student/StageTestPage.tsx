@@ -26,7 +26,6 @@ import {
 import { playSound, stopSound, unlockAudio } from '../../hooks/useSound';
 
 // Shared quiz components
-import { GradientProgressBar } from '../../components/test/GradientProgressBar';
 import { TimerBar } from '../../components/test/TimerBar';
 import { FeedbackBanner } from '../../components/test/FeedbackBanner';
 import { WordCard } from '../../components/test/WordCard';
@@ -35,6 +34,7 @@ import { ChoiceButton } from '../../components/test/ChoiceButton';
 import { ListenCard } from '../../components/mastery/ListenCard';
 import { TypingInput } from '../../components/mastery/TypingInput';
 import { SentenceBlankCard } from '../../components/mastery/SentenceBlankCard';
+import { StageProgressBar } from '../../components/stage-test/StageProgressBar';
 
 import { Loader2, Trophy, LogIn, X, Zap } from 'lucide-react';
 
@@ -42,14 +42,14 @@ const MIN_FEEDBACK_CORRECT = 800;
 const MIN_FEEDBACK_WRONG = 1800;
 const PRONOUNCE_DELAY = 400;
 
-// Stage colors for badge
+// Stage colors for badge — distinct per stage (matches Pencil design)
 const STAGE_COLORS = [
   '', // 0 unused
-  '#86EFAC', // stage 1
-  '#4ADE80', // stage 2
-  '#22C55E', // stage 3
-  '#16A34A', // stage 4
-  '#15803D', // stage 5
+  '#94A3B8', // stage 1 - slate
+  '#3B82F6', // stage 2 - blue
+  '#F59E0B', // stage 3 - amber/gold
+  '#F97316', // stage 4 - orange
+  '#22C55E', // stage 5 - green (near mastery)
 ];
 
 export function StageTestPage() {
@@ -413,30 +413,31 @@ export function StageTestPage() {
   const wordStage = currentWord?.stage ?? currentQuestion.stage;
   const stageColor = STAGE_COLORS[wordStage] || STAGE_COLORS[1];
   const stageConfig = STAGE_CONFIG[wordStage as keyof typeof STAGE_CONFIG];
-  const progressDone = masteredCount + skippedCount;
 
   return (
     <div className="min-h-screen bg-bg-cream flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between h-14 px-4 md:px-8">
+      <div className="flex items-center justify-between h-14 px-4 md:px-8 lg:px-20">
         {/* Left: exit button */}
         <button
           onClick={handleExit}
-          className="w-9 h-9 rounded-xl bg-bg-surface flex items-center justify-center"
-          style={{ border: '1px solid #E5E4E1' }}
+          className="w-10 h-10 rounded-full flex items-center justify-center"
         >
-          <X className="w-4 h-4 text-text-primary" />
+          <X className="w-[22px] h-[22px] text-text-primary" />
         </button>
 
-        {/* Center: stage badge + progress */}
+        {/* Center: stage badge */}
         <div className="flex items-center gap-3">
           <div
-            className="flex items-center gap-1.5 rounded-full px-3 py-1"
-            style={{ background: `${stageColor}20`, border: `1.5px solid ${stageColor}` }}
+            className="flex items-center gap-1.5 rounded-full px-3.5 py-[5px]"
+            style={{
+              background: `linear-gradient(135deg, ${stageColor}, ${stageColor}CC)`,
+              boxShadow: `0 0 8px ${stageColor}30`,
+            }}
           >
-            <Zap className="w-3.5 h-3.5" style={{ color: stageColor }} />
-            <span className="font-display text-xs font-bold" style={{ color: stageColor }}>
-              Stage {wordStage}/5
+            <Zap className="w-3.5 h-3.5 text-white" />
+            <span className="font-display text-[13px] font-bold text-white">
+              Stage {wordStage}
             </span>
           </div>
           {stageConfig && (
@@ -447,14 +448,13 @@ export function StageTestPage() {
         </div>
 
         {/* Right: mastered count */}
-        <div className="flex items-center gap-1.5">
-          <span className="font-display text-sm font-bold text-green-600">{masteredCount}</span>
-          <span className="font-display text-xs text-text-tertiary">/{totalWords}</span>
-        </div>
+        <span className="font-display text-[15px] font-semibold text-text-secondary">
+          {totalAnswered} / {totalWords}
+        </span>
       </div>
 
-      {/* Progress Bar - based on mastered+skipped / total */}
-      <GradientProgressBar current={progressDone} total={totalWords} />
+      {/* Stage segment progress bar */}
+      <StageProgressBar words={words} totalWords={totalWords} />
 
       {/* Content Area */}
       <div className="flex-1 flex flex-col justify-center items-center gap-6 px-5 py-6 md:px-8 md:gap-7">
@@ -482,6 +482,7 @@ export function StageTestPage() {
               onChange={store.setTypedAnswer}
               onSubmit={handleTypingSubmit}
               disabled={!!answerResult}
+              isListenMode={isListen}
             />
           ) : (
             <div className="flex flex-col gap-3 w-full">

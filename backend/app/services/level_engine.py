@@ -82,6 +82,7 @@ async def generate_questions(
     query = select(Word).where(
         Word.level >= level_min,
         Word.level <= level_max,
+        Word.is_excluded == False,
     )
 
     effective_end = book_name_end or book_name
@@ -238,8 +239,17 @@ async def generate_questions(
             correct = word.english
         else:
             # word_meaning (default): show english, choices are korean meanings
-            wrong_meanings = [k for k in unique_korean_meanings if k != word.korean]
-            sampled = random.sample(wrong_meanings, min(3, len(wrong_meanings)))
+            # Match ~ prefix pattern so tilde answers don't stand out
+            correct_has_tilde = word.korean.strip().startswith('~')
+            same_type = [k for k in unique_korean_meanings
+                         if k != word.korean and k.strip().startswith('~') == correct_has_tilde]
+            if len(same_type) >= 3:
+                sampled = random.sample(same_type, 3)
+            else:
+                other = [k for k in unique_korean_meanings
+                         if k != word.korean and k.strip().startswith('~') != correct_has_tilde]
+                pool = same_type + other
+                sampled = random.sample(pool, min(3, len(pool)))
             choices = [word.korean] + sampled
             correct = word.korean
             qtype = "word_meaning"
