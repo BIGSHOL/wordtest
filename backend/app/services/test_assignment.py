@@ -20,11 +20,59 @@ async def _get_book_level(db: AsyncSession, book_name: str) -> int:
     return result.scalar() or 1
 
 
+def _resolve_engine(test_type: str, mode: str) -> tuple[str, str]:
+    """Resolve engine_type and assignment_type from test_type + question mode."""
+    is_xp = test_type == "placement"
+    engine_type = f"xp_{mode}" if is_xp else f"legacy_{mode}"
+    if is_xp:
+        assignment_type = "mastery"
+    elif mode == "word":
+        assignment_type = "legacy"
+    else:
+        assignment_type = "stage_test"
+    return engine_type, assignment_type
+
+
+def _mode_to_question_types(mode: str) -> str:
+    """Map engine mode to legacy question_types string for TestConfig."""
+    mapping = {
+        "word": "word_meaning,meaning_word",
+        "stage": "word_meaning,meaning_word,sentence_blank",
+        "listen": "word_meaning",
+    }
+    return mapping.get(mode, "word_meaning")
+
+
+def _build_lesson_range(
+    book_name: str | None, book_end: str | None,
+    lesson_start: str | None, lesson_end: str | None,
+    is_cross_book: bool, level_min: int, level_max: int,
+) -> str | None:
+    """Build human-readable lesson range string."""
+    if is_cross_book and lesson_start and lesson_end:
+        return f"{book_name} {lesson_start} ~ {book_end} {lesson_end}"
+    elif lesson_start and lesson_end:
+        return f"{lesson_start}-{lesson_end}"
+    elif level_min and level_max:
+        if level_min == level_max:
+            return f"Lv{level_min}"
+        return f"Lv{level_min}-{level_max}"
+    return None
+
+
 async def assign_test(
     db: AsyncSession, teacher_id: str, data: AssignTestRequest
 ) -> list[TestAssignmentResponse]:
     """Create a TestConfig and assign it to multiple students with individual codes."""
-    question_types_str = ",".join(data.question_types)
+    # Determine engine mode from question_types[0]
+    mode = data.question_types[0] if data.question_types else "word"
+    # Support legacy values: map old question type names to mode
+    if mode in ("word_meaning", "meaning_word", "sentence_blank"):
+        mode = "word"
+
+    engine_type, assignment_type = _resolve_engine(data.test_type, mode)
+    question_types_str = _mode_to_question_types(mode)
+
     time_limit = data.per_question_time_seconds * data.question_count
     is_placement = data.test_type == "placement"
 
@@ -69,7 +117,8 @@ async def assign_test(
             student_id=student_id,
             teacher_id=teacher_id,
             test_code=individual_code,
-            assignment_type="mastery",
+            assignment_type=assignment_type,
+            engine_type=engine_type,
         )
         db.add(assignment)
         assignments.append(assignment)
@@ -86,12 +135,10 @@ async def assign_test(
     )
     students_map = {s.id: s for s in student_result.scalars().all()}
 
-    if is_cross_book and data.lesson_range_start and data.lesson_range_end:
-        lesson_range = f"{data.book_name} {data.lesson_range_start} ~ {book_end} {data.lesson_range_end}"
-    elif data.lesson_range_start and data.lesson_range_end:
-        lesson_range = f"{data.lesson_range_start}-{data.lesson_range_end}"
-    else:
-        lesson_range = None
+    lesson_range = _build_lesson_range(
+        data.book_name, book_end, data.lesson_range_start, data.lesson_range_end,
+        is_cross_book, level_min, level_max,
+    )
 
     responses = []
     for a in assignments:
@@ -110,6 +157,7 @@ async def assign_test(
                 question_types=question_types_str,
                 lesson_range=lesson_range,
                 assignment_type=a.assignment_type,
+                engine_type=a.engine_type,
                 status=a.status,
                 assigned_at=a.assigned_at,
                 test_session_id=a.test_session_id,
@@ -150,12 +198,12 @@ async def list_assignments_by_teacher(
 
     responses = []
     for assignment, config, student in rows:
-        lesson_range = None
         is_cross = config.book_name_end and config.book_name_end != config.book_name
-        if is_cross and config.lesson_range_start and config.lesson_range_end:
-            lesson_range = f"{config.book_name} {config.lesson_range_start} ~ {config.book_name_end} {config.lesson_range_end}"
-        elif config.lesson_range_start and config.lesson_range_end:
-            lesson_range = f"{config.lesson_range_start}-{config.lesson_range_end}"
+        lesson_range = _build_lesson_range(
+            config.book_name, config.book_name_end,
+            config.lesson_range_start, config.lesson_range_end,
+            is_cross, config.level_range_min, config.level_range_max,
+        )
 
         responses.append(
             TestAssignmentResponse(
@@ -171,6 +219,7 @@ async def list_assignments_by_teacher(
                 question_types=config.question_types,
                 lesson_range=lesson_range,
                 assignment_type=assignment.assignment_type,
+                engine_type=assignment.engine_type,
                 status=assignment.status,
                 assigned_at=assignment.assigned_at,
                 test_session_id=assignment.test_session_id,

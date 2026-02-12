@@ -34,21 +34,21 @@ const TIME_OPTIONS = [
   { label: '20초', value: 20 },
   { label: '30초', value: 30 },
 ];
-const QUESTION_TYPE_OPTIONS = [
+const ENGINE_MODE_OPTIONS = [
   {
-    value: 'word_meaning',
-    label: '유형 1: 단어 → 뜻 고르기',
-    desc: '영어 단어를 보고 올바른 한국어 뜻을 4개 보기 중 선택',
+    value: 'word',
+    label: '워드 모드',
+    desc: '영어↔한국어 4지선다 (단어→뜻, 뜻→단어)',
   },
   {
-    value: 'meaning_word',
-    label: '유형 2: 뜻 → 단어 고르기',
-    desc: '한국어 뜻을 보고 올바른 영어 단어를 4개 보기 중 선택',
+    value: 'stage',
+    label: '스테이지 모드',
+    desc: '5단계 순환 학습 (선다형 → 듣기 → 타이핑)',
   },
   {
-    value: 'sentence_blank',
-    label: '유형 3: 예문 빈칸 채우기',
-    desc: '예문의 빈칸에 들어갈 올바른 영어 단어를 4개 보기 중 선택',
+    value: 'listen',
+    label: '리스닝 모드',
+    desc: '듣기 중심 학습 (발음 듣고 뜻 고르기 / 타이핑)',
   },
 ];
 
@@ -134,11 +134,8 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
       ? parseInt(config.customQuestionCount) || 0
       : config.questionCount;
 
-  const toggleType = (type: string) => {
-    const types = config.questionTypes.includes(type)
-      ? config.questionTypes.filter((t) => t !== type)
-      : [...config.questionTypes, type];
-    if (types.length > 0) update({ questionTypes: types });
+  const selectMode = (mode: string) => {
+    update({ questionTypes: [mode] });
   };
 
   const isSameBook = config.bookStart === config.bookEnd;
@@ -235,16 +232,16 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
 
       <Divider />
 
-      {/* Section: Question Types */}
+      {/* Section: Engine Mode */}
       <div style={{ padding: '18px 24px' }}>
         <h3 className="text-[13px] font-bold text-text-primary mb-3">문제 유형</h3>
         <div className="space-y-2">
-          {QUESTION_TYPE_OPTIONS.map((option) => {
-            const isSelected = config.questionTypes.includes(option.value);
+          {ENGINE_MODE_OPTIONS.map((option) => {
+            const isSelected = config.questionTypes[0] === option.value;
             return (
               <button
                 key={option.value}
-                onClick={() => toggleType(option.value)}
+                onClick={() => selectMode(option.value)}
                 className="w-full flex items-center gap-3 rounded-xl transition-all text-left"
                 style={{
                   padding: '12px 16px',
@@ -253,7 +250,7 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
                 }}
               >
                 <span
-                  className="rounded flex items-center justify-center shrink-0"
+                  className="rounded-full flex items-center justify-center shrink-0"
                   style={{
                     width: 18,
                     height: 18,

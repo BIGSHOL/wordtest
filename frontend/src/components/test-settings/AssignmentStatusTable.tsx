@@ -20,16 +20,25 @@ function formatDate(dateStr: string): string {
   return `${y}.${m}.${day}`;
 }
 
-function formatQuestionTypes(types: string | null): string {
-  if (!types) return '-';
-  const labels: Record<string, string> = {
-    word_meaning: '1',
-    meaning_word: '2',
-    sentence_blank: '3',
-  };
-  const parts = types.split(',').map((t) => t.trim());
-  const nums = parts.map((t) => labels[t] || t);
-  return `유형${nums.join('+')}`;
+const ENGINE_LABELS: Record<string, string> = {
+  xp_word: 'XP 워드',
+  xp_stage: 'XP 스테이지',
+  xp_listen: 'XP 리스닝',
+  legacy_word: '레거시 워드',
+  legacy_stage: '레거시 스테이지',
+  legacy_listen: '레거시 리스닝',
+};
+
+function formatEngineType(engineType?: string | null, questionTypes?: string | null): string {
+  if (engineType && ENGINE_LABELS[engineType]) return ENGINE_LABELS[engineType];
+  if (!questionTypes) return '-';
+  // Fallback: new mode values
+  const modeLabels: Record<string, string> = { word: '워드', stage: '스테이지', listen: '리스닝' };
+  const parts = questionTypes.split(',').map((t) => t.trim());
+  if (parts.length === 1 && modeLabels[parts[0]]) return modeLabels[parts[0]];
+  // Legacy fallback
+  const oldLabels: Record<string, string> = { word_meaning: '1', meaning_word: '2', sentence_blank: '3' };
+  return `유형${parts.map((t) => oldLabels[t] || t).join('+')}`;
 }
 
 export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewResult }: Props) {
@@ -98,7 +107,7 @@ export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewRe
                     {item.per_question_time_seconds ?? '-'}초
                   </td>
                   <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
-                    {formatQuestionTypes(item.question_types)}
+                    {formatEngineType(item.engine_type, item.question_types)}
                   </td>
                   <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
                     {item.lesson_range || '-'}

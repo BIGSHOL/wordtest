@@ -35,7 +35,7 @@ export function TestSettingsPage() {
     questionCount: 20,
     customQuestionCount: '',
     perQuestionTime: 10,
-    questionTypes: ['word_meaning'],
+    questionTypes: ['word'],
     bookStart: '',
     bookEnd: '',
     lessonStart: '',

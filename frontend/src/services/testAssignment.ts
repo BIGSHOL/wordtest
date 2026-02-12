@@ -27,7 +27,8 @@ export interface TestAssignmentItem {
   per_question_time_seconds: number | null;
   question_types: string | null;
   lesson_range: string | null;
-  assignment_type?: 'mastery' | 'legacy';
+  assignment_type?: 'mastery' | 'legacy' | 'stage_test';
+  engine_type?: string | null;
   status: 'pending' | 'in_progress' | 'completed';
   assigned_at: string;
   test_session_id: string | null;
