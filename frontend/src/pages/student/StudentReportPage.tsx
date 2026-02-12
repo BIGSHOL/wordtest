@@ -7,6 +7,7 @@ import { useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import {
   Printer, Shield, Sword, Award, Crown, Gem, Diamond, Star, Flame, Trophy,
+  ChevronDown,
 } from 'lucide-react';
 import type { MasteryReport } from '../../types/report';
 import { getLevelRank } from '../../types/rank';
@@ -52,6 +53,33 @@ function StageLabel({ stage }: { stage: number }) {
   );
 }
 
+function CollapsibleSection({
+  title,
+  defaultOpen = true,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center justify-between w-full group"
+      >
+        <h3 className="text-base font-semibold text-[#0D0D0D]">{title}</h3>
+        <ChevronDown
+          className="w-5 h-5 text-[#7A7A7A] transition-transform duration-200 group-hover:text-[#0D0D0D]"
+          style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
+        />
+      </button>
+      {open && <div className="mt-3">{children}</div>}
+    </div>
+  );
+}
+
 export function StudentReportPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const [report, setReport] = useState<MasteryReport | null>(null);
@@ -87,6 +115,12 @@ export function StudentReportPage() {
       </div>
     );
   }
+
+  const realWrong = report.answers.filter((a) =>
+    !a.is_correct &&
+    a.selected_answer?.toLowerCase() !== a.word_english.toLowerCase() &&
+    a.selected_answer !== a.correct_answer
+  );
 
   return (
     <div className="min-h-screen bg-[#F8F8F6]">
@@ -132,107 +166,111 @@ export function StudentReportPage() {
           </div>
 
           {/* 2. Overview row */}
-          <div className="flex gap-5">
-            {/* Left: Overall result */}
-            <div className="flex-1 border border-[#E8E8E8] rounded-sm p-5 space-y-4 bg-[#FAFAFA]">
-              <h3 className="text-base font-semibold text-[#0D0D0D]">종합 학습 결과</h3>
-              <div className="flex items-center gap-4">
-                <div className="flex-1 space-y-1">
-                  <p className="text-[10px] text-[#7A7A7A]">추천 교재</p>
-                  <p className="text-sm font-semibold text-[#CC0000]">{report.recommended_book}</p>
-                </div>
-                {(() => {
-                  const rank = getLevelRank(level);
-                  const Icon = RANK_ICON_MAP[rank.icon] || Award;
-                  const [c0, c1] = rank.colors;
-                  return (
-                    <div className="relative flex flex-col items-center gap-1">
-                      <div className="relative w-[76px] h-[76px] flex items-center justify-center">
-                        <div
-                          className="absolute inset-0 rounded-full animate-[spin_8s_linear_infinite]"
-                          style={{
-                            background: `conic-gradient(from 0deg, ${c0}00, ${c0}BB, ${c1}BB, ${c0}00)`,
-                            mask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
-                            WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
-                          }}
-                        />
-                        <div
-                          className="absolute rounded-full animate-[pulse_3s_ease-in-out_infinite]"
-                          style={{ inset: 4, background: `radial-gradient(circle, ${c0}20 0%, ${c0}00 70%)` }}
-                        />
-                        <div
-                          className="w-[68px] h-[68px] rounded-full flex flex-col items-center justify-center relative z-10"
-                          style={{ background: `linear-gradient(160deg, ${c0}28, ${c1}18)`, border: `2.5px solid ${c1}90` }}
-                        >
-                          <Icon style={{ color: c1, width: 20, height: 20 }} />
-                          <span className="text-[11px] font-bold leading-none mt-0.5" style={{ color: c1 }}>Lv.{level}</span>
+          <CollapsibleSection title="종합 학습 결과">
+            <div className="flex gap-5">
+              {/* Left: Overall result */}
+              <div className="flex-1 border border-[#E8E8E8] rounded-sm p-5 space-y-4 bg-[#FAFAFA]">
+                <div className="flex items-center gap-4">
+                  <div className="flex-1 space-y-1">
+                    <p className="text-[10px] text-[#7A7A7A]">추천 교재</p>
+                    <p className="text-sm font-semibold text-[#CC0000]">{report.recommended_book}</p>
+                  </div>
+                  {(() => {
+                    const rank = getLevelRank(level);
+                    const Icon = RANK_ICON_MAP[rank.icon] || Award;
+                    const [c0, c1] = rank.colors;
+                    return (
+                      <div className="relative flex flex-col items-center gap-1">
+                        <div className="relative w-[76px] h-[76px] flex items-center justify-center">
+                          <div
+                            className="absolute inset-0 rounded-full animate-[spin_8s_linear_infinite]"
+                            style={{
+                              background: `conic-gradient(from 0deg, ${c0}00, ${c0}BB, ${c1}BB, ${c0}00)`,
+                              mask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
+                              WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
+                            }}
+                          />
+                          <div
+                            className="absolute rounded-full animate-[pulse_3s_ease-in-out_infinite]"
+                            style={{ inset: 4, background: `radial-gradient(circle, ${c0}20 0%, ${c0}00 70%)` }}
+                          />
+                          <div
+                            className="w-[68px] h-[68px] rounded-full flex flex-col items-center justify-center relative z-10"
+                            style={{ background: `linear-gradient(160deg, ${c0}28, ${c1}18)`, border: `2.5px solid ${c1}90` }}
+                          >
+                            <Icon style={{ color: c1, width: 20, height: 20 }} />
+                            <span className="text-[11px] font-bold leading-none mt-0.5" style={{ color: c1 }}>Lv.{level}</span>
+                          </div>
                         </div>
+                        <span className="text-[9px] font-semibold" style={{ color: c1 }}>{levelName}</span>
                       </div>
-                      <span className="text-[9px] font-semibold" style={{ color: c1 }}>{levelName}</span>
-                    </div>
-                  );
-                })()}
+                    );
+                  })()}
+                </div>
+                <div className="flex gap-2">
+                  <div className="flex-1 border border-[#CC0000] rounded p-2 text-center space-y-1">
+                    <p className="text-[10px] font-semibold text-[#CC0000]">학년수준</p>
+                    <p className="text-[10px] font-medium text-[#0D0D0D] leading-tight">{report.grade_level}</p>
+                  </div>
+                  <div className="flex-1 border border-[#CC0000] rounded p-2 text-center space-y-1">
+                    <p className="text-[10px] font-semibold text-[#CC0000]">어휘수준</p>
+                    <p className="text-[10px] font-medium text-[#0D0D0D] leading-tight">{report.vocab_description}</p>
+                  </div>
+                  <div className="flex-1 border border-[#CC0000] rounded p-2 text-center space-y-1">
+                    <p className="text-[10px] font-semibold text-[#CC0000]">동학년순위</p>
+                    <p className="text-[10px] font-medium text-[#0D0D0D] leading-tight">
+                      {report.peer_ranking ? `상위 ${report.peer_ranking.percentile}%` : '-'}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <div className="flex-1 border border-[#CC0000] rounded p-2 text-center space-y-1">
-                  <p className="text-[10px] font-semibold text-[#CC0000]">학년수준</p>
-                  <p className="text-[10px] font-medium text-[#0D0D0D] leading-tight">{report.grade_level}</p>
-                </div>
-                <div className="flex-1 border border-[#CC0000] rounded p-2 text-center space-y-1">
-                  <p className="text-[10px] font-semibold text-[#CC0000]">어휘수준</p>
-                  <p className="text-[10px] font-medium text-[#0D0D0D] leading-tight">{report.vocab_description}</p>
-                </div>
-                <div className="flex-1 border border-[#CC0000] rounded p-2 text-center space-y-1">
-                  <p className="text-[10px] font-semibold text-[#CC0000]">동학년순위</p>
-                  <p className="text-[10px] font-medium text-[#0D0D0D] leading-tight">
-                    {report.peer_ranking ? `상위 ${report.peer_ranking.percentile}%` : '-'}
+
+              {/* Center: Radar chart */}
+              <RadarChart metrics={report.radar_metrics} />
+
+              {/* Right: Stats summary */}
+              <div className="w-[180px] shrink-0 border border-[#E8E8E8] rounded-sm p-5 space-y-3 bg-[#FAFAFA]">
+                <h3 className="text-base font-semibold text-[#0D0D0D]">학습 통계</h3>
+                <div className="space-y-1">
+                  <p className="text-xs text-[#7A7A7A]">소요시간</p>
+                  <p className="text-lg font-bold text-[#CC0000]">
+                    {report.total_time_seconds != null ? formatTime(report.total_time_seconds) : '-'}
                   </p>
                 </div>
+                <div className="h-px bg-[#E8E8E8]" />
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-[#7A7A7A]">총 문제수</span>
+                  <span className="text-xs font-medium text-[#0D0D0D]">{report.session.total_questions}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-[#7A7A7A]">정답률</span>
+                  <span className="text-xs font-medium text-[#0D0D0D]">{report.session.score}%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-[#7A7A7A]">최고 콤보</span>
+                  <span className="text-xs font-medium text-[#0D0D0D]">{report.session.best_combo}연속</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-[#7A7A7A]">학습 단어</span>
+                  <span className="text-xs font-medium text-[#0D0D0D]">{report.session.words_practiced}개</span>
+                </div>
               </div>
             </div>
-
-            {/* Center: Radar chart */}
-            <RadarChart metrics={report.radar_metrics} />
-
-            {/* Right: Stats summary */}
-            <div className="w-[180px] shrink-0 border border-[#E8E8E8] rounded-sm p-5 space-y-3 bg-[#FAFAFA]">
-              <h3 className="text-base font-semibold text-[#0D0D0D]">학습 통계</h3>
-              <div className="space-y-1">
-                <p className="text-xs text-[#7A7A7A]">소요시간</p>
-                <p className="text-lg font-bold text-[#CC0000]">
-                  {report.total_time_seconds != null ? formatTime(report.total_time_seconds) : '-'}
-                </p>
-              </div>
-              <div className="h-px bg-[#E8E8E8]" />
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-[#7A7A7A]">총 문제수</span>
-                <span className="text-xs font-medium text-[#0D0D0D]">{report.session.total_questions}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-[#7A7A7A]">정답률</span>
-                <span className="text-xs font-medium text-[#0D0D0D]">{report.session.score}%</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-[#7A7A7A]">최고 콤보</span>
-                <span className="text-xs font-medium text-[#0D0D0D]">{report.session.best_combo}연속</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-[#7A7A7A]">학습 단어</span>
-                <span className="text-xs font-medium text-[#0D0D0D]">{report.session.words_practiced}개</span>
-              </div>
-            </div>
-          </div>
+          </CollapsibleSection>
 
           {/* 3. Level Chart */}
-          <LevelChartTable currentRank={level} />
+          <CollapsibleSection title="레벨 차트">
+            <LevelChartTable currentRank={level} />
+          </CollapsibleSection>
 
           {/* 4. Metric Detail Section */}
-          <MetricDetailSection details={report.metric_details} totalWordCount={report.total_word_count} />
+          <CollapsibleSection title="학습 역량 분석">
+            <MetricDetailSection details={report.metric_details} totalWordCount={report.total_word_count} />
+          </CollapsibleSection>
 
           {/* 5. Word Mastery Summary Table */}
           {report.word_summaries.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-base font-semibold text-[#0D0D0D]">단어별 학습 결과</h3>
+            <CollapsibleSection title="단어별 학습 결과">
               <div className="border border-[#E8E8E8] rounded overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
@@ -274,7 +312,37 @@ export function StudentReportPage() {
                   </tbody>
                 </table>
               </div>
-            </div>
+            </CollapsibleSection>
+          )}
+
+          {/* 6. Wrong answers detail */}
+          {realWrong.length > 0 && (
+            <CollapsibleSection title="오답 분석">
+              <div className="border border-[#E8E8E8] rounded overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-[#FEF2F2]">
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">번호</th>
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">단어</th>
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">정답</th>
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">내 답</th>
+                      <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#DC2626]">단계</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {realWrong.map((a) => (
+                      <tr key={a.question_order} className="border-t border-[#F0F0F0]">
+                        <td className="px-3 py-2 text-[#7A7A7A]">{a.question_order}</td>
+                        <td className="px-3 py-2 font-medium text-[#0D0D0D]">{a.word_english}</td>
+                        <td className="px-3 py-2 text-green-600">{a.correct_answer}</td>
+                        <td className="px-3 py-2 text-red-500">{a.selected_answer || '(시간초과)'}</td>
+                        <td className="px-3 py-2 text-center"><StageLabel stage={a.stage} /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CollapsibleSection>
           )}
         </div>
       </div>
