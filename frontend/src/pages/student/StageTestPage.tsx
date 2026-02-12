@@ -63,15 +63,12 @@ export function StageTestPage() {
     skippedCount,
     totalAnswered,
     correctCount,
-    combo,
     bestCombo,
-    maxFails,
     selectedAnswer,
     typedAnswer,
     answerResult,
     isLoading,
     isComplete,
-    completionResult,
     error,
   } = store;
 
