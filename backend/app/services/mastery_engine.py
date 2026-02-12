@@ -98,19 +98,22 @@ def _typing_probability(word_level: int) -> float:
 # Higher levels → more sentence/context-based questions
 
 def _sentence_probability(word_level: int) -> float:
-    """Return probability [0..1] of using sentence mode for a given word level."""
+    """Return probability [0..1] of using sentence mode for a given word level.
+
+    Capped at 0.5 max to keep most questions as pure word problems.
+    """
     if word_level <= 3:
         return 0.0
     elif word_level <= 5:
-        return 0.2
+        return 0.1
     elif word_level <= 7:
-        return 0.4
+        return 0.2
     elif word_level <= 9:
-        return 0.6
+        return 0.3
     elif word_level <= 12:
-        return 0.8
+        return 0.4
     else:  # 13-15
-        return 1.0
+        return 0.5
 
 
 def _make_sentence_blank(sentence: str, target_word: str) -> str | None:
@@ -498,12 +501,8 @@ def generate_word_questions(
         correct_answer = ""
         question_type = ""
 
-        # Typing probability for higher-level words
-        if random.random() < _typing_probability(word.level):
-            question_type = "meaning_and_type"
-            correct_answer = word.english
-            timer = _base_timer_for_level(word.level, 5)
-        elif use_sentence:
+        # Word engine: choice-only (no typing) — typing is stage-only
+        if use_sentence:
             question_type = "meaning_to_word"
             correct_answer = word.english
             sampled = _pick_english_distractors(word.english, unique_english, n_distractors)

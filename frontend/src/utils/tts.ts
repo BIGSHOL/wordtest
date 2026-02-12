@@ -48,7 +48,29 @@ export function randomizeTtsVoice() {
 }
 
 /**
- * 백그라운드에서 Dictionary API → Backend TTS 순서로 음원을 미리 로드
+ * Dictionary API에서 원어민 녹음 URL 가져오기 (단일 단어만)
+ */
+function fetchDictionaryAudio(word: string): Promise<string | null> {
+  if (word.includes(' ')) return Promise.resolve(null); // 구(phrase)는 지원 안함
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 3000);
+  return fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, {
+    signal: controller.signal,
+  })
+    .then((res) => { clearTimeout(timeoutId); return res.ok ? res.json() : null; })
+    .then((data) => {
+      if (!data) return null;
+      return data?.[0]?.phonetics
+        ?.map((p: { audio?: string }) => p.audio)
+        ?.find((url: string) => url && url.length > 0) || null;
+    })
+    .catch(() => null);
+}
+
+/**
+ * 백그라운드에서 음원을 미리 로드
+ * 1차: Backend TTS (Edge TTS → Gemini 폴백, 서버에서 처리)
+ * 2차: Dictionary API (백엔드 다운 시 단일 단어만)
  */
 export function preloadWordAudio(word: string) {
   const cleaned = cleanForTts(word);
@@ -56,42 +78,33 @@ export function preloadWordAudio(word: string) {
   if (!key || audioCache.has(key) || preloadingWords.has(key)) return;
   preloadingWords.add(key);
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 3000);
-
-  fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(key)}`, {
-    signal: controller.signal,
-  })
-    .then((res) => { clearTimeout(timeoutId); return res.ok ? res.json() : null; })
-    .then((data) => {
-      if (!data) return null;
-      const audioUrl = data?.[0]?.phonetics
-        ?.map((p: { audio?: string }) => p.audio)
-        ?.find((url: string) => url && url.length > 0);
-      if (audioUrl) {
-        const audio = new Audio(audioUrl);
-        audio.preload = 'auto';
-        addToCache(audioCache, key, audio);
-        return 'done';
-      }
-      return null;
-    })
-    .then((result) => {
-      if (!result && !audioCache.has(key) && !backendTtsDown) {
-        return fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(cleaned)}&voice=${sessionVoice}`)
-          .then((r) => {
-            if (!r.ok) { backendFailCount++; if (backendFailCount >= 3) backendTtsDown = true; return null; }
-            backendFailCount = 0;
-            return r.blob();
-          })
-          .then((blob) => {
-            if (!blob) return;
+  const tryBackend = backendTtsDown
+    ? Promise.resolve(false)
+    : fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(cleaned)}&voice=${sessionVoice}`)
+        .then((r) => {
+          if (!r.ok) { backendFailCount++; if (backendFailCount >= 3) backendTtsDown = true; return false; }
+          backendFailCount = 0;
+          return r.blob().then((blob) => {
             const url = URL.createObjectURL(blob);
             const audio = new Audio(url);
             audio.preload = 'auto';
             addToCache(audioCache, key, audio);
+            return true;
           });
-      }
+        })
+        .catch(() => false);
+
+  tryBackend
+    .then((ok) => {
+      if (ok || audioCache.has(key)) return;
+      // Fallback: Dictionary API (단일 단어만)
+      return fetchDictionaryAudio(key).then((audioUrl) => {
+        if (audioUrl && !audioCache.has(key)) {
+          const audio = new Audio(audioUrl);
+          audio.preload = 'auto';
+          addToCache(audioCache, key, audio);
+        }
+      });
     })
     .catch(() => {})
     .finally(() => preloadingWords.delete(key));
@@ -139,7 +152,7 @@ async function playFromBackend(text: string): Promise<boolean> {
 }
 
 /**
- * 단어 발음 재생: 프리로드된 음원 → Backend TTS (Edge Neural)
+ * 단어 발음 재생: 캐시 → Backend (Edge→Gemini) → Dictionary API
  */
 export async function speakWord(word: string): Promise<void> {
   const cleaned = cleanForTts(word);
@@ -149,7 +162,16 @@ export async function speakWord(word: string): Promise<void> {
     await playAndWait(cached);
     return;
   }
-  await playFromBackend(cleaned);
+  const ok = await playFromBackend(cleaned);
+  if (!ok) {
+    // Fallback: Dictionary API
+    const audioUrl = await fetchDictionaryAudio(key);
+    if (audioUrl) {
+      const audio = new Audio(audioUrl);
+      addToCache(audioCache, key, audio);
+      await playAndWait(audio);
+    }
+  }
 }
 
 /**
@@ -176,8 +198,9 @@ const sentenceCache = new Map<string, HTMLAudioElement>();
 
 /** 문제 표시 시 호출 — 백그라운드에서 TTS 미리 로드 */
 export function preloadSentenceAudio(sentence: string) {
-  if (!sentence || sentenceCache.has(sentence) || backendTtsDown) return;
-  fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(sentence)}&voice=${sessionVoice}`)
+  const cleaned = cleanForTts(sentence);
+  if (!cleaned || sentenceCache.has(sentence) || backendTtsDown) return;
+  fetch(`${API_BASE}/api/v1/tts?text=${encodeURIComponent(cleaned)}&voice=${sessionVoice}`)
     .then((r) => {
       if (!r.ok) { backendFailCount++; if (backendFailCount >= 3) backendTtsDown = true; return null; }
       backendFailCount = 0;
@@ -193,7 +216,7 @@ export function preloadSentenceAudio(sentence: string) {
     .catch(() => {});
 }
 
-/** 문장 발음: preloaded → Backend TTS (Edge Neural) */
+/** 문장 발음: preloaded → Backend TTS (Edge→Gemini) */
 export async function speakSentence(text: string) {
   // 1) Preloaded cache (즉시 재생)
   const cached = sentenceCache.get(text);
@@ -203,8 +226,8 @@ export async function speakSentence(text: string) {
     return;
   }
 
-  // 2) Backend TTS (Edge Neural)
-  await playFromBackend(text);
+  // 2) Backend TTS (Edge → Gemini)
+  await playFromBackend(cleanForTts(text));
 }
 
 /**

@@ -133,7 +133,7 @@ export const ListenCard = memo(function ListenCard({
       >
         <RefreshCw className="w-3.5 h-3.5" />
         다시 듣기
-        <kbd className="ml-1 px-1.5 py-0.5 rounded bg-accent-indigo/10 text-[11px] font-mono">0</kbd>
+        <kbd className="ml-1 px-1.5 py-0.5 rounded bg-accent-indigo/10 text-[11px] font-mono hidden md:inline">0</kbd>
       </button>
     </div>
   );
