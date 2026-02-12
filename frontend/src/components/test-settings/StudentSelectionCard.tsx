@@ -24,6 +24,7 @@ const RANK_BADGE_STYLES: Record<string, { bg: string; text: string }> = {
   Master: { bg: '#F0E8FF', text: '#7C3AED' },
   Grandmaster: { bg: '#FEF2F2', text: '#DC2626' },
   Challenger: { bg: '#FFF8DC', text: '#D4A843' },
+  LEGEND: { bg: '#FFF5F5', text: '#999999' },
 };
 
 function getRankBadgeStyle(rank: string | null | undefined) {

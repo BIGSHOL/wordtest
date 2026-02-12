@@ -19,6 +19,11 @@ export const RANKS: RankInfo[] = [
   { rank: 8, name: 'Master', nameKo: '마스터', icon: 'star', colors: ['#C084FC', '#7C3AED'], iconColor: '#F3E8FF', bgColor: '#150D20' },
   { rank: 9, name: 'Grandmaster', nameKo: '그랜드마스터', icon: 'flame', colors: ['#FCA5A5', '#DC2626'], iconColor: '#FEF2F2', bgColor: '#1F0D0D' },
   { rank: 10, name: 'Challenger', nameKo: '챌린저', icon: 'trophy', colors: ['#FFD700', '#DC2626'], iconColor: '#FEF3C7', bgColor: '#1A0A00' },
+  { rank: 11, name: 'LEGEND', nameKo: '레전드', icon: 'trophy', colors: ['#FFD700', '#B8860B'], iconColor: '#FFF8DC', bgColor: '#1A1500' },
+  { rank: 12, name: 'LEGEND', nameKo: '레전드', icon: 'trophy', colors: ['#FFD700', '#B8860B'], iconColor: '#FFF8DC', bgColor: '#1A1500' },
+  { rank: 13, name: 'LEGEND', nameKo: '레전드', icon: 'trophy', colors: ['#FFD700', '#B8860B'], iconColor: '#FFF8DC', bgColor: '#1A1500' },
+  { rank: 14, name: 'LEGEND', nameKo: '레전드', icon: 'trophy', colors: ['#FFD700', '#B8860B'], iconColor: '#FFF8DC', bgColor: '#1A1500' },
+  { rank: 15, name: 'LEGEND', nameKo: '레전드', icon: 'trophy', colors: ['#FFD700', '#B8860B'], iconColor: '#FFF8DC', bgColor: '#1A1500' },
 ];
 
 /**
@@ -31,9 +36,9 @@ export function getLevelRank(rank: number): RankInfo {
   return RANKS[index];
 }
 
-/** Map word DB level (1-15) to rank (1-10). Mirrors backend word_level_to_rank(). */
+/** Map word DB level (1-15) to rank (1-15). Mirrors backend word_level_to_rank(). */
 export function wordLevelToRank(wordLevel: number): number {
-  return Math.min(wordLevel, 10);
+  return Math.min(wordLevel, 15);
 }
 
 export interface AnswerDetail {

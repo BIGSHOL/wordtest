@@ -32,7 +32,11 @@ RANK_TO_GRADE: dict[int, str] = {
     8: "중등 3학년",       # Master
     9: "중3~고1",         # Grandmaster
     10: "고등 1학년",      # Challenger
-    11: "고등 2학년",      # Legend
+    11: "고등 2학년",      # Legend 1
+    12: "고등 2~3학년",    # Legend 2
+    13: "고등 3학년",      # Legend 3
+    14: "수능 준비",       # Legend 4
+    15: "수능 완성",       # Legend 5
 }
 
 # Base vocab descriptions per rank (combined with accuracy in get_vocab_description)
@@ -47,7 +51,11 @@ _RANK_VOCAB_LABEL: dict[int, str] = {
     8: "고등 핵심 어휘",
     9: "수능 필수 어휘",
     10: "고급 학술 어휘",
-    11: "최상위 어휘",
+    11: "수능 기출 기초",
+    12: "수능 기출 핵심",
+    13: "수능 기출 심화",
+    14: "수능 기출 고급",
+    15: "수능 기출 완성",
 }
 
 # Keep for backward compat (static, no accuracy)
@@ -73,7 +81,11 @@ RANK_TO_BOOK: dict[int, str] = {
     8: "POWER VOCA 5000-08",
     9: "POWER VOCA 5000-09",
     10: "POWER VOCA 5000-10",
-    11: "POWER VOCA 수능기출",
+    11: "POWER VOCA 수능 기출 5000-01",
+    12: "POWER VOCA 수능 기출 5000-02",
+    13: "POWER VOCA 수능 기출 5000-03",
+    14: "POWER VOCA 수능 기출 5000-04",
+    15: "POWER VOCA 수능 기출 5000-05",
 }
 
 # Per-metric interpretive descriptions by rank range
@@ -194,7 +206,7 @@ async def calculate_vocab_size(
     # Total words in scope for normalization (all levels up to rank+1)
     scope_words_q = (
         select(func.count(Word.id))
-        .where(Word.level <= min(determined_rank + 1, 10))
+        .where(Word.level <= min(determined_rank + 1, 15))
     )
     scope_result = await db.execute(scope_words_q)
     scope_words = scope_result.scalar() or 1

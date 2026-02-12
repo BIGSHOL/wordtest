@@ -19,7 +19,7 @@ const LEVEL_NAMES: Record<number, string> = {
   8: 'Master',
   9: 'Grandmaster',
   10: 'Challenger',
-  11: 'Legend',
+  11: 'LEGEND', 12: 'LEGEND', 13: 'LEGEND', 14: 'LEGEND', 15: 'LEGEND',
 };
 
 export function OverallResult({ report }: Props) {

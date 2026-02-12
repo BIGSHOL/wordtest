@@ -16,8 +16,8 @@ class TestWordLevelToRank:
     def test_level_10_maps_to_rank_10(self):
         assert word_level_to_rank(10) == 10
 
-    def test_level_15_capped_at_rank_10(self):
-        assert word_level_to_rank(15) == 10
+    def test_level_15_maps_to_rank_15(self):
+        assert word_level_to_rank(15) == 15
 
 
 class TestFormatRankLabel:

@@ -25,7 +25,8 @@ const RANK_ICON_MAP: Record<string, React.ComponentType<{ className?: string; st
 const LEVEL_NAMES: Record<number, string> = {
   1: 'Iron', 2: 'Bronze', 3: 'Silver', 4: 'Gold', 5: 'Platinum',
   6: 'Emerald', 7: 'Diamond', 8: 'Master', 9: 'Grandmaster',
-  10: 'Challenger', 11: 'Legend',
+  10: 'Challenger',
+  11: 'LEGEND', 12: 'LEGEND', 13: 'LEGEND', 14: 'LEGEND', 15: 'LEGEND',
 };
 
 function formatTime(seconds: number): string {

@@ -19,7 +19,7 @@ const LEVELS = [
   { rank: 8, name: 'Master', color: '#CC0000', bg: '#F0E8FF' },
   { rank: 9, name: 'Grand\nmaster', color: '#DC2626', bg: '#FEF2F2' },
   { rank: 10, name: 'Challenger', color: '#D4A843', bg: '#FFF8DC' },
-  { rank: 11, name: 'Legend', color: '#999999', bg: '#FFF5F5' },
+  { rank: 11, name: 'LEGEND+', color: '#999999', bg: '#FFF5F5' },
 ];
 
 const BOOKS = [
@@ -33,12 +33,14 @@ const BOOKS = [
   'POWER VOCA\n5000-08',
   'POWER VOCA\n5000-09',
   'POWER VOCA\n5000-10',
-  'POWER VOCA\n수능기출',
+  'POWER VOCA\n수능 기출',
 ];
 
 export function LevelChartTable({ currentRank }: Props) {
+  // Map levels 11-15 to the LEGEND+ column (rank 11)
+  const chartRank = currentRank && currentRank >= 11 ? 11 : currentRank;
   // Calculate circle center position: 50px header + fraction of remaining width
-  const fraction = currentRank ? (currentRank - 0.5) / 11 : 0;
+  const fraction = chartRank ? (chartRank - 0.5) / 11 : 0;
   const circleLeft = `calc(${fraction * 100}% + ${50 * (1 - fraction)}px)`;
 
   return (
@@ -54,7 +56,7 @@ export function LevelChartTable({ currentRank }: Props) {
               <span className="text-xs font-bold text-[#333]">레벨</span>
             </div>
             {LEVELS.map((lv) => {
-              const isCurrent = lv.rank === currentRank;
+              const isCurrent = lv.rank === chartRank;
               return (
                 <div
                   key={lv.rank}
@@ -83,7 +85,7 @@ export function LevelChartTable({ currentRank }: Props) {
               <span className="text-xs font-bold text-[#333]">교재</span>
             </div>
             {BOOKS.map((book, i) => {
-              const isCurrent = i + 1 === currentRank;
+              const isCurrent = i + 1 === chartRank;
               return (
                 <div
                   key={i}
@@ -108,7 +110,7 @@ export function LevelChartTable({ currentRank }: Props) {
         </div>
 
         {/* Red circle marker - outside overflow-hidden so it can extend beyond table */}
-        {currentRank && currentRank >= 1 && currentRank <= 11 && (
+        {currentRank && currentRank >= 1 && currentRank <= 15 && (
           <div
             className="absolute top-1/2 pointer-events-none"
             style={{

@@ -10,7 +10,7 @@ Each rank has sub-levels matching the number of lessons in that book.
 
 Book → Rank mapping:
   - Power Voca 5000-01~10  (word level 1-10)  → Rank 1-10
-  - 수능기출 5000-01~05    (word level 11-15) → Rank 10 (advanced tier)
+  - 수능기출 5000-01~05    (word level 11-15) → Rank 11-15 (Legend tier)
 """
 import random
 from collections import defaultdict
@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.models.word import Word
 
-MAX_RANK = 10
+MAX_RANK = 15
 
 RANK_NAMES = {
     1: "Iron",
@@ -31,6 +31,11 @@ RANK_NAMES = {
     8: "Master",
     9: "Grandmaster",
     10: "Challenger",
+    11: "Legend",
+    12: "Legend",
+    13: "Legend",
+    14: "Legend",
+    15: "Legend",
 }
 
 RANK_NAMES_KO = {
@@ -44,6 +49,11 @@ RANK_NAMES_KO = {
     8: "마스터",
     9: "그랜드마스터",
     10: "챌린저",
+    11: "레전드",
+    12: "레전드",
+    13: "레전드",
+    14: "레전드",
+    15: "레전드",
 }
 
 
@@ -278,7 +288,7 @@ def determine_level(
 
     Returns:
         (rank, sublevel) tuple.
-        rank: 1-10 (mapped from word_level via word_level_to_rank).
+        rank: 1-15 (mapped from word_level via word_level_to_rank).
         sublevel: lesson index (1-based) within that rank.
 
     Algorithm:
