@@ -15,6 +15,37 @@ const KEY_TO_TITLE: Record<string, string> = {
   vocabulary_size: 'Vocabulary Size',
 };
 
+/** Format a 0-10 normalized score into human-readable label per metric key. */
+function formatScore(key: string, score: number, raw?: string | null): string {
+  switch (key) {
+    case 'vocabulary_level':
+      return `Lv.${Number.isInteger(score) ? score : score.toFixed(1)}`;
+    case 'accuracy':
+      return `${Math.round(score * 10)}%`;
+    case 'speed':
+      return `${(Math.round((10 - score) * 30) / 10).toFixed(1)}초`;
+    case 'vocabulary_size':
+      if (raw) return raw; // "1,748개" from backend
+      return `${Math.round(score * 250)}개`;
+    default:
+      return String(Math.round(score));
+  }
+}
+
+/** Estimate avg raw value for vocabulary_size using my_score / raw_value ratio. */
+function formatAvgScore(key: string, avgScore: number, myScore: number, raw?: string | null): string {
+  if (key === 'vocabulary_size') {
+    // Derive from my ratio: if myScore → rawCount, then avgScore → avgCount
+    const rawCount = raw ? parseInt(raw.replace(/[^0-9]/g, ''), 10) : 0;
+    if (rawCount > 0 && myScore > 0) {
+      const avgCount = Math.round((avgScore / myScore) * rawCount);
+      return `${avgCount.toLocaleString()}개`;
+    }
+    return `${Math.round(avgScore * 250)}개`;
+  }
+  return formatScore(key, avgScore);
+}
+
 export function MetricDetailSection({ details }: Props) {
   return (
     <div className="space-y-0">
@@ -23,8 +54,8 @@ export function MetricDetailSection({ details }: Props) {
       </h3>
 
       {details.map((detail) => {
-        const isSpeed = detail.key === 'speed';
-        const toSeconds = (score: number) => Math.round((10 - score) * 30) / 10;
+        const myLabel = formatScore(detail.key, detail.my_score, detail.raw_value);
+        const avgLabel = formatAvgScore(detail.key, detail.avg_score, detail.my_score, detail.raw_value);
 
         return (
           <div
@@ -48,8 +79,8 @@ export function MetricDetailSection({ details }: Props) {
                     style={{ width: `${Math.max(5, (detail.my_score / 10) * 100)}%` }}
                   />
                 </div>
-                <span className="text-xs font-bold text-[#CC0000] w-10 text-right">
-                  {isSpeed ? `${toSeconds(detail.my_score)}초` : Math.round(detail.my_score)}
+                <span className="text-xs font-bold text-[#CC0000] w-16 text-right whitespace-nowrap">
+                  {myLabel}
                 </span>
               </div>
 
@@ -64,8 +95,8 @@ export function MetricDetailSection({ details }: Props) {
                     style={{ width: `${Math.max(5, (detail.avg_score / 10) * 100)}%` }}
                   />
                 </div>
-                <span className="text-xs font-medium text-[#999999] w-10 text-right">
-                  {isSpeed ? `${toSeconds(detail.avg_score)}초` : detail.avg_score.toFixed(1)}
+                <span className="text-xs font-medium text-[#999999] w-16 text-right whitespace-nowrap">
+                  {avgLabel}
                 </span>
               </div>
             </div>

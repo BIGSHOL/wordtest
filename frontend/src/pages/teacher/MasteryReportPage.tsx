@@ -153,7 +153,7 @@ export function MasteryReportPage() {
             {/* 2. Overview row */}
             <div className="flex gap-5">
               {/* Left: Overall result */}
-              <div className="flex-1 border border-[#E8E8E8] rounded-sm p-5 space-y-4">
+              <div className="flex-1 border border-[#E8E8E8] rounded-sm p-5 space-y-4 bg-[#FAFAFA]">
                 <h3 className="text-base font-semibold text-[#0D0D0D]">종합 학습 결과</h3>
                 <div className="flex items-center gap-4">
                   <div className="flex-1 space-y-1">
@@ -172,7 +172,7 @@ export function MasteryReportPage() {
                           <div
                             className="absolute inset-0 rounded-full animate-[spin_8s_linear_infinite]"
                             style={{
-                              background: `conic-gradient(from 0deg, ${c0}00, ${c0}99, ${c1}99, ${c0}00)`,
+                              background: `conic-gradient(from 0deg, ${c0}00, ${c0}BB, ${c1}BB, ${c0}00)`,
                               mask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
                               WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
                             }}
@@ -182,24 +182,24 @@ export function MasteryReportPage() {
                             className="absolute rounded-full animate-[pulse_3s_ease-in-out_infinite]"
                             style={{
                               inset: 4,
-                              background: `radial-gradient(circle, ${c0}12 0%, ${c0}00 70%)`,
+                              background: `radial-gradient(circle, ${c0}20 0%, ${c0}00 70%)`,
                             }}
                           />
                           {/* Badge circle */}
                           <div
                             className="w-[68px] h-[68px] rounded-full flex flex-col items-center justify-center relative z-10"
                             style={{
-                              background: `linear-gradient(160deg, ${c0}18, ${c1}10)`,
-                              border: `2.5px solid ${c0}60`,
+                              background: `linear-gradient(160deg, ${c0}28, ${c1}18)`,
+                              border: `2.5px solid ${c1}90`,
                             }}
                           >
-                            <Icon style={{ color: c0, width: 20, height: 20, opacity: 0.85 }} />
-                            <span className="text-[11px] font-bold leading-none mt-0.5" style={{ color: c0 }}>
+                            <Icon style={{ color: c1, width: 20, height: 20 }} />
+                            <span className="text-[11px] font-bold leading-none mt-0.5" style={{ color: c1 }}>
                               Lv.{level}
                             </span>
                           </div>
                         </div>
-                        <span className="text-[9px] font-semibold" style={{ color: c0 }}>{levelName}</span>
+                        <span className="text-[9px] font-semibold" style={{ color: c1 }}>{levelName}</span>
                       </div>
                     );
                   })()}
@@ -226,7 +226,7 @@ export function MasteryReportPage() {
               <RadarChart metrics={report.radar_metrics} />
 
               {/* Right: Stats summary */}
-              <div className="w-[180px] border border-[#E8E8E8] rounded-sm p-5 space-y-3">
+              <div className="w-[180px] border border-[#E8E8E8] rounded-sm p-5 space-y-3 bg-[#FAFAFA]">
                 <h3 className="text-base font-semibold text-[#0D0D0D]">학습 통계</h3>
                 <div className="space-y-1">
                   <p className="text-xs text-[#7A7A7A]">소요시간</p>

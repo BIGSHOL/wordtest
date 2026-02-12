@@ -51,7 +51,7 @@ const VAL_POS = [
 
 export function RadarChart({ metrics }: Props) {
   return (
-    <div className="flex-1 border border-[#E8E8E8] rounded-sm p-5 flex flex-col items-center gap-3">
+    <div className="flex-1 border border-[#E8E8E8] rounded-sm p-5 flex flex-col items-center gap-3 bg-[#FAFAFA]">
       <style>{`
         @keyframes radar-heartbeat {
           0%   { transform: scale(1);    opacity: 0.15; }
