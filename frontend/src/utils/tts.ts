@@ -138,16 +138,28 @@ export function preloadWordAudio(word: string) {
     .finally(() => preloadingWords.delete(key));
 }
 
+/** Play an HTMLAudioElement and resolve when it finishes (with safety timeout). */
+function playAndWait(audio: HTMLAudioElement, timeout = 3000): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, timeout);
+    const done = () => { clearTimeout(timer); resolve(); };
+    audio.onended = done;
+    audio.onerror = done;
+    audio.currentTime = 0;
+    audio.play().catch(done);
+  });
+}
+
 /**
  * 단어 발음 재생: 프리로드된 음원 → Gemini TTS → Web Speech API
+ * Returns a Promise that resolves when playback finishes.
  */
-export async function speakWord(word: string) {
+export async function speakWord(word: string): Promise<void> {
   const cleaned = cleanForTts(word);
   const key = cleaned.toLowerCase();
   const cached = audioCache.get(key);
   if (cached) {
-    cached.currentTime = 0;
-    cached.play().catch(() => {});
+    await playAndWait(cached);
     return;
   }
 
@@ -160,15 +172,33 @@ export async function speakWord(word: string) {
         const blob = await resp.blob();
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
-        audio.onended = () => URL.revokeObjectURL(url);
-        await audio.play();
+        const origOnEnded = () => URL.revokeObjectURL(url);
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(() => { origOnEnded(); resolve(); }, 3000);
+          audio.onended = () => { clearTimeout(timer); origOnEnded(); resolve(); };
+          audio.onerror = () => { clearTimeout(timer); origOnEnded(); resolve(); };
+          audio.play().catch(() => { clearTimeout(timer); resolve(); });
+        });
         return;
       }
     } catch { /* fall through */ }
   }
 
-  // Web Speech API fallback
-  speak(cleaned, 'en-US', { rate: 0.85 });
+  // Web Speech API fallback — wait for utterance end
+  await new Promise<void>((resolve) => {
+    if (!('speechSynthesis' in window)) { resolve(); return; }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(cleaned);
+    utterance.lang = 'en-US';
+    utterance.rate = 0.85;
+    utterance.volume = 1.0;
+    const voice = getEnglishVoice();
+    if (voice) utterance.voice = voice;
+    const timer = setTimeout(resolve, 3000);
+    utterance.onend = () => { clearTimeout(timer); resolve(); };
+    utterance.onerror = () => { clearTimeout(timer); resolve(); };
+    window.speechSynthesis.speak(utterance);
+  });
 }
 
 /**

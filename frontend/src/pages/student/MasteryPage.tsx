@@ -28,8 +28,9 @@ import { SentenceBlankCard } from '../../components/mastery/SentenceBlankCard';
 import { Loader2, Trophy } from 'lucide-react';
 import { getLevelRank } from '../../types/rank';
 
-const FEEDBACK_DELAY_CORRECT = 1500;
-const FEEDBACK_DELAY_WRONG = 1800;
+const MIN_FEEDBACK_CORRECT = 800;
+const MIN_FEEDBACK_WRONG = 1800;
+const PRONOUNCE_DELAY = 400;
 
 export function MasteryPage() {
   const navigate = useNavigate();
@@ -161,20 +162,29 @@ export function MasteryPage() {
     stopSound('two');
     playSound(answerResult.is_correct ? 'correct' : 'wrong');
 
-    // 효과음 후 단어 발음 재생 (겹침 방지를 위해 400ms 딜레이)
+    // 발음 재생 완료까지 기다린 후 다음 문제로 전환
     const wordEnglish = currentQuestion?.word?.english;
-    const pronounceTimer = setTimeout(() => {
-      if (wordEnglish) speakWord(wordEnglish);
-    }, 400);
+    const minDelay = answerResult.is_correct ? MIN_FEEDBACK_CORRECT : MIN_FEEDBACK_WRONG;
+    let cancelled = false;
 
-    const delay = answerResult.is_correct ? FEEDBACK_DELAY_CORRECT : FEEDBACK_DELAY_WRONG;
-    const t = setTimeout(() => {
+    (async () => {
+      // 효과음과 겹치지 않도록 잠시 대기
+      await new Promise((r) => setTimeout(r, PRONOUNCE_DELAY));
+      if (cancelled) return;
+
+      // 단어 발음 재생 & 최소 피드백 표시 시간 동시 대기
+      const speakDone = wordEnglish ? speakWord(wordEnglish) : Promise.resolve();
+      const minWait = new Promise((r) => setTimeout(r, minDelay - PRONOUNCE_DELAY));
+      await Promise.all([speakDone, minWait]);
+      if (cancelled) return;
+
       submittingRef.current = false;
       stopSound('timer');
       stopSound('two');
       store.nextQuestion();
-    }, delay);
-    return () => { clearTimeout(t); clearTimeout(pronounceTimer); };
+    })();
+
+    return () => { cancelled = true; };
   }, [answerResult]);
 
   // Handle exit
