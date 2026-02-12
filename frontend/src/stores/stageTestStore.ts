@@ -33,7 +33,7 @@ export interface StageWord {
   stage: number;
   failCount: number;
   status: WordStatus;
-  difficultyScore: number;
+  difficultyScore?: number;
 }
 
 export interface StageTestStore {
