@@ -30,11 +30,11 @@ TEACHER = {
 
 # Student accounts
 STUDENTS = [
-    {"username": "student01", "password": "test1234", "name": "김민수"},
-    {"username": "student02", "password": "test1234", "name": "이지은"},
-    {"username": "student03", "password": "test1234", "name": "박서준"},
-    {"username": "student04", "password": "test1234", "name": "최예린"},
-    {"username": "student05", "password": "test1234", "name": "정하늘"},
+    {"username": "student01", "password": "test1234", "name": "김민수", "school_name": "조슈아 영어 학원", "grade": "중1"},
+    {"username": "student02", "password": "test1234", "name": "이지은", "school_name": "조슈아 영어 학원", "grade": "중2"},
+    {"username": "student03", "password": "test1234", "name": "박서준", "school_name": "조슈아 영어 학원", "grade": "중3"},
+    {"username": "student04", "password": "test1234", "name": "최예린", "school_name": "조슈아 영어 학원", "grade": "초6"},
+    {"username": "student05", "password": "test1234", "name": "정하늘", "school_name": "조슈아 영어 학원", "grade": "고1"},
 ]
 
 # Test configurations (codes are now per-assignment, not per-config)
@@ -271,7 +271,18 @@ async def seed_students(session: AsyncSession, teacher_id: str):
         )
         existing = result.scalar_one_or_none()
         if existing:
-            print(f"  [SKIP] Student already exists: {s['username']}")
+            # Update school_name and grade for existing students
+            updated = False
+            if s.get("school_name") and existing.school_name != s["school_name"]:
+                existing.school_name = s["school_name"]
+                updated = True
+            if s.get("grade") and existing.grade != s["grade"]:
+                existing.grade = s["grade"]
+                updated = True
+            if updated:
+                print(f"  [UPDATE] Student updated: {s['username']} (school={s.get('school_name')}, grade={s.get('grade')})")
+            else:
+                print(f"  [SKIP] Student already exists: {s['username']}")
             continue
 
         student = User(
@@ -280,6 +291,8 @@ async def seed_students(session: AsyncSession, teacher_id: str):
             name=s["name"],
             role="student",
             teacher_id=teacher_id,
+            school_name=s.get("school_name"),
+            grade=s.get("grade"),
         )
         session.add(student)
         print(f"  [OK] Student created: {s['username']} / {s['password']} ({s['name']})")

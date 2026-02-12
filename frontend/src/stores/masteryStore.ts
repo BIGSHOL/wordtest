@@ -371,8 +371,9 @@ export const useMasteryStore = create<MasteryStore>()((set, get) => ({
       if (state.session) {
         const sessionId = state.session.id;
         const finalLevel = state.currentBook;
+        const bestCombo = state.bestCombo;
         const attemptComplete = (retries: number) => {
-          masteryService.completeBatch(sessionId, finalLevel).then((result) => {
+          masteryService.completeBatch(sessionId, finalLevel, bestCombo).then((result) => {
             set({ finalResult: result });
           }).catch((err) => {
             console.error('[completeBatch] failed:', err);

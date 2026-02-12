@@ -169,6 +169,7 @@ async def get_batch(
 class CompleteBatchRequest(BaseModel):
     session_id: str
     final_level: int = 1
+    best_combo: int = 0
 
 
 @router.post("/complete-batch")
@@ -182,7 +183,7 @@ async def complete_batch_endpoint(
     This prevents JWT expiry from blocking test completion.
     """
     try:
-        result = await complete_batch(db, body.session_id, body.final_level)
+        result = await complete_batch(db, body.session_id, body.final_level, body.best_combo)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:

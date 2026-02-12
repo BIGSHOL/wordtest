@@ -155,6 +155,8 @@ async def update_student_endpoint(
         name=student_in.name,
         password=student_in.password,
         phone_number=student_in.phone_number,
+        school_name=student_in.school_name,
+        grade=student_in.grade,
     )
     return updated
 

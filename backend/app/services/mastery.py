@@ -490,6 +490,7 @@ async def complete_batch(
     db: AsyncSession,
     session_id: str,
     final_level: int,
+    best_combo: int = 0,
 ) -> dict:
     """Save the frontend-determined final level after all 50 questions.
 
@@ -520,6 +521,7 @@ async def complete_batch(
 
     # Save final level + mark session completed
     session.current_level = new_level
+    session.best_combo = best_combo
     session.completed_at = now_kst()
 
     # Update linked TestAssignment status to "completed"

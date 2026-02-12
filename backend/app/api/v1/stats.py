@@ -526,7 +526,7 @@ async def get_enhanced_report(
     accuracy_score = report_engine.calculate_accuracy_score(
         session.correct_count, session.total_questions
     )
-    speed_score = report_engine.calculate_speed_score(answers)
+    speed_score, avg_answer_time = report_engine.calculate_speed_score(answers)
     vocab_raw, vocab_score = await report_engine.calculate_vocab_size(
         db, student_id, determined_rank=rank, test_answers=answers
     )
@@ -561,8 +561,8 @@ async def get_enhanced_report(
     raw_values = {
         "vocabulary_level": f"Lv.{rank}",
         "accuracy": f"{score}%",
-        "speed": f"{speed_score}/10",
-        "vocabulary_size": f"{vocab_raw:,}단어",
+        "speed": f"평균 {avg_answer_time}초" if avg_answer_time else "-",
+        "vocabulary_size": f"{vocab_raw:,}개",
     }
     metric_details = []
     for d in details_raw:
@@ -747,12 +747,11 @@ async def get_mastery_report(
         "vocabulary_size": vocab_score,
     }
     details_raw = report_engine.get_metric_descriptions(rank, metrics_dict)
-    avg_speed_time = 4.5  # Dummy member avg answer time
     raw_values = {
         "vocabulary_level": f"Lv.{rank}",
         "accuracy": f"{score}%",
         "speed": f"평균 {avg_time}초" if avg_time else "-",
-        "vocabulary_size": f"{vocab_raw:,}단어",
+        "vocabulary_size": f"{vocab_raw:,}개",
     }
     metric_details = []
     for d in details_raw:

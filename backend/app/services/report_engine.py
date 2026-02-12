@@ -13,7 +13,6 @@ from sqlalchemy import select, func, and_
 
 from app.models.user import User
 from app.models.word import Word
-from app.models.word_mastery import WordMastery
 from app.models.test_session import TestSession
 from app.models.test_answer import TestAnswer
 
@@ -106,11 +105,12 @@ def _score_tier(score: float) -> str:
     return "high"
 
 
-def calculate_speed_score(answers: list[dict]) -> float:
-    """Calculate speed score (0-10) from correct answers' time_taken_seconds.
+def calculate_speed_score(answers: list[dict]) -> tuple[float, float | None]:
+    """Calculate speed score (0-10) and avg_time from correct answers.
 
     Faster average = higher score.
-    Baseline: 3s per question = 10, 30s per question = 0.
+    Baseline: 0s→10, 30s→0, capped.
+    Returns (score, avg_time_seconds).
     """
     times = [
         a["time_taken_seconds"]
@@ -118,12 +118,11 @@ def calculate_speed_score(answers: list[dict]) -> float:
         if a.get("is_correct") and a.get("time_taken_seconds") is not None
     ]
     if not times:
-        return 5.0  # default when no timing data
+        return 5.0, None
 
-    avg_time = sum(times) / len(times)
-    # Scale: 0s→10, 30s→0, capped
+    avg_time = round(sum(times) / len(times), 1)
     score = max(0.0, min(10.0, 10.0 - (avg_time / 3.0)))
-    return round(score, 1)
+    return round(score, 1), avg_time
 
 
 def calculate_accuracy_score(correct: int, total: int) -> float:
@@ -138,16 +137,15 @@ async def calculate_vocab_size(
     determined_rank: int = 1,
     test_answers: list[dict] | None = None,
 ) -> tuple[int, float]:
-    """Calculate vocabulary size and normalized 0-10 score.
+    """Calculate estimated vocabulary size and normalized 0-10 score.
 
-    Uses a level-based estimation approach:
-    1. For ranks below the determined rank, assume ~80% of words are known
-    2. For the determined rank, use actual test accuracy
-    3. Add any mastered words from word_mastery as bonus
+    Cumulative approach based on curriculum position:
+    - Levels below determined_rank: all words assumed known
+    - At determined_rank: words * test accuracy (partial knowledge)
 
     Returns (raw_count, normalized_score).
     """
-    # Count words per level up to determined rank
+    # Words in all levels below the determined rank (fully known)
     words_below_q = (
         select(func.count(Word.id))
         .where(Word.level < determined_rank)
@@ -174,31 +172,10 @@ async def calculate_vocab_size(
             correct_at_rank = sum(1 for a in rank_answers if a.get("is_correct"))
             current_rank_accuracy = correct_at_rank / len(rank_answers)
 
-    # Estimate known words
-    estimated_below = int(words_below * 0.8)  # 80% of lower-level words
-    estimated_at_rank = int(words_at_rank * current_rank_accuracy * 0.6)
-    raw_count = estimated_below + estimated_at_rank
+    # Cumulative estimate: all lower-level words + partial current level
+    raw_count = words_below + int(words_at_rank * current_rank_accuracy)
 
-    # Add mastered words as bonus (from mastery learning)
-    mastered_q = (
-        select(func.count(WordMastery.id))
-        .where(
-            and_(
-                WordMastery.student_id == student_id,
-                WordMastery.mastered_at.isnot(None),
-            )
-        )
-    )
-    mastered_result = await db.execute(mastered_q)
-    mastered_count = mastered_result.scalar() or 0
-    raw_count = max(raw_count, raw_count + mastered_count // 2)
-
-    # Also count unique correct words from current test
-    if test_answers:
-        test_correct = sum(1 for a in test_answers if a.get("is_correct"))
-        raw_count = max(raw_count, test_correct)
-
-    # Normalize against total words in the test scope (up to determined rank + 1)
+    # Total words in scope for normalization (all levels up to rank+1)
     scope_words_q = (
         select(func.count(Word.id))
         .where(Word.level <= min(determined_rank + 1, 10))
@@ -295,8 +272,8 @@ async def calculate_member_averages(
     return {
         "vocabulary_level": round(float(avg_level), 1),
         "accuracy": round(float(avg_score) / 10, 1),
-        "speed": 7.0,  # Dummy ~4.5s avg answer time
-        "vocabulary_size": round(float(avg_level) * 0.8, 1),  # Approximate
+        "speed": 8.0,  # Dummy ~6s avg answer time
+        "vocabulary_size": round(float(avg_level) * 0.7, 1),  # Approximate
     }
 
 

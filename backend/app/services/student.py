@@ -52,6 +52,8 @@ async def update_student(
     name: str | None = None,
     password: str | None = None,
     phone_number: str | None = None,
+    school_name: str | None = None,
+    grade: str | None = None,
 ) -> User:
     if name is not None:
         student.name = name
@@ -59,6 +61,10 @@ async def update_student(
         student.password_hash = await get_password_hash_async(password)
     if phone_number is not None:
         student.phone_number = phone_number
+    if school_name is not None:
+        student.school_name = school_name
+    if grade is not None:
+        student.grade = grade
     await db.commit()
     await db.refresh(student)
     return student

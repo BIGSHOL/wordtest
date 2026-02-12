@@ -14,3 +14,5 @@ class UpdateStudentRequest(BaseModel):
     name: Optional[str] = None
     password: Optional[str] = None
     phone_number: Optional[str] = None
+    school_name: Optional[str] = None
+    grade: Optional[str] = None

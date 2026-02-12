@@ -59,10 +59,11 @@ export const masteryService = {
   async completeBatch(
     sessionId: string,
     finalLevel: number,
+    bestCombo: number = 0,
   ): Promise<CompleteBatchResponse> {
     const response = await api.post<CompleteBatchResponse>(
       '/api/v1/mastery/complete-batch',
-      { session_id: sessionId, final_level: finalLevel },
+      { session_id: sessionId, final_level: finalLevel, best_combo: bestCombo },
     );
     return response.data;
   },
