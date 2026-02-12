@@ -458,4 +458,7 @@ async def mastery_session_report(
         total_time_seconds=total_time or None,
         total_word_count=total_word_count,
         word_summaries=word_summaries,
+        student_name=student.name,
+        student_grade=student.grade,
+        student_school=student.school_name,
     )

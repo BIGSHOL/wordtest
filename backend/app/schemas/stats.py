@@ -146,6 +146,9 @@ class MasteryReportResponse(BaseModel):
     total_time_seconds: Optional[int] = None
     total_word_count: int = 0
     word_summaries: list[MasteryWordSummary] = []
+    student_name: Optional[str] = None
+    student_grade: Optional[str] = None
+    student_school: Optional[str] = None
 
 
 class DashboardStats(BaseModel):

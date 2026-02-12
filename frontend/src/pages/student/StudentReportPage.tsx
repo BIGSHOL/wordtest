@@ -152,8 +152,16 @@ export function StudentReportPage() {
               <table className="border-collapse border border-[#D0D0D0] text-xs">
                 <tbody>
                   <tr>
-                    <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap w-[60px]">응시일</td>
-                    <td className="px-3 py-1.5 text-[#0D0D0D] whitespace-nowrap min-w-[100px]">
+                    <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap w-[60px]">이름</td>
+                    <td className="px-3 py-1.5 text-[#0D0D0D] border-r border-[#D0D0D0] whitespace-nowrap min-w-[80px]">{report.student_name || '-'}</td>
+                    <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap w-[60px]">학년</td>
+                    <td className="px-3 py-1.5 text-[#0D0D0D] whitespace-nowrap min-w-[60px]">{report.student_grade || '-'}</td>
+                  </tr>
+                  <tr className="border-t border-[#D0D0D0]">
+                    <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap">소속학원</td>
+                    <td className="px-3 py-1.5 text-[#0D0D0D] border-r border-[#D0D0D0] whitespace-nowrap">{report.student_school || '조슈아 영어 학원'}</td>
+                    <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap">응시일</td>
+                    <td className="px-3 py-1.5 text-[#0D0D0D] whitespace-nowrap">
                       {report.session.started_at
                         ? new Date(report.session.started_at).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
                         : '-'}

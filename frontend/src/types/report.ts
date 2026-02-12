@@ -90,4 +90,7 @@ export interface MasteryReport {
   total_time_seconds?: number | null;
   total_word_count?: number;
   word_summaries: MasteryWordSummary[];
+  student_name?: string | null;
+  student_grade?: string | null;
+  student_school?: string | null;
 }
