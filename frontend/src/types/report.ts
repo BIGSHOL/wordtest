@@ -88,5 +88,6 @@ export interface MasteryReport {
   vocab_description: string;
   recommended_book: string;
   total_time_seconds?: number | null;
+  total_word_count?: number;
   word_summaries: MasteryWordSummary[];
 }

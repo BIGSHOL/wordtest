@@ -33,12 +33,18 @@ from app.services.mastery import (
     _get_words_for_config,
     SEGMENT_SIZE,
 )
+from app.models.word import Word
 from app.models.word_mastery import WordMastery
 from app.models.learning_session import LearningSession
 from app.models.learning_answer import LearningAnswer
 from app.models.test_assignment import TestAssignment
 from app.models.test_config import TestConfig
 from app.models.user import User
+from app.schemas.stats import (
+    MasteryReportResponse, MasterySessionData, MasteryAnswerDetail,
+    MasteryWordSummary, RadarMetrics, MetricDetail, PeerRanking,
+)
+from app.services import report_engine
 
 router = APIRouter(prefix="/mastery", tags=["mastery"])
 
@@ -272,3 +278,184 @@ async def mastery_session_summary(
         "completed_at": session.completed_at.isoformat() if session.completed_at else None,
         "best_combo": session.best_combo,
     }
+
+
+@router.get("/session/{session_id}/report", response_model=MasteryReportResponse)
+async def mastery_session_report(
+    session_id: str,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Get full mastery report. No auth - session_id (UUID) acts as token.
+
+    This is the student-facing version of the teacher mastery report.
+    """
+    # Load session
+    session_result = await db.execute(
+        select(LearningSession).where(LearningSession.id == session_id)
+    )
+    session = session_result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    student_id = session.student_id
+
+    # Load student
+    student_result = await db.execute(select(User).where(User.id == student_id))
+    student = student_result.scalar_one_or_none()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    # Load answers with word info
+    answers_result = await db.execute(
+        select(LearningAnswer, Word)
+        .join(Word, LearningAnswer.word_id == Word.id)
+        .where(LearningAnswer.session_id == session_id)
+        .order_by(LearningAnswer.answered_at)
+    )
+    answer_rows = answers_result.fetchall()
+
+    total_q = len(answer_rows)
+    correct_q = sum(1 for row in answer_rows if row[0].is_correct)
+    accuracy_pct = round((correct_q / total_q * 100) if total_q > 0 else 0, 1)
+    total_time = round(sum(row[0].time_taken_sec or 0 for row in answer_rows))
+    score = round(accuracy_pct)
+
+    # Build answers list
+    answers_list = []
+    for idx, (ans, word) in enumerate(answer_rows):
+        answers_list.append(MasteryAnswerDetail(
+            question_order=idx + 1,
+            word_english=word.english,
+            word_korean=word.korean,
+            correct_answer=ans.correct_answer or word.korean,
+            selected_answer=ans.selected_answer,
+            is_correct=ans.is_correct,
+            word_level=word.level,
+            time_taken_seconds=ans.time_taken_sec,
+            stage=ans.stage or 1,
+        ))
+
+    # Word summaries
+    word_data: dict[str, dict] = {}
+    for ans, word in answer_rows:
+        wd = word_data.setdefault(word.id, {"word": word, "attempts": []})
+        wd["attempts"].append(ans)
+
+    mastery_result = await db.execute(
+        select(WordMastery).where(
+            WordMastery.student_id == student_id,
+            WordMastery.word_id.in_(list(word_data.keys())),
+        )
+    )
+    mastery_map = {wm.word_id: wm for wm in mastery_result.scalars().all()}
+
+    word_summaries = []
+    for word_id, wd in word_data.items():
+        word = wd["word"]
+        attempts = wd["attempts"]
+        wm = mastery_map.get(word_id)
+        correct = sum(1 for a in attempts if a.is_correct)
+        times = [a.time_taken_sec for a in attempts if a.time_taken_sec]
+        word_summaries.append(MasteryWordSummary(
+            word_id=word_id,
+            english=word.english,
+            korean=word.korean,
+            final_stage=wm.stage if wm else 1,
+            total_attempts=len(attempts),
+            correct_count=correct,
+            accuracy=round(correct / len(attempts) * 100, 1) if attempts else 0,
+            avg_time_sec=round(sum(times) / len(times), 1) if times else None,
+            mastered=wm.mastered_at is not None if wm else False,
+        ))
+    word_summaries.sort(key=lambda w: (-int(w.mastered), -w.accuracy))
+
+    # Radar metrics
+    rank = session.current_level or 1
+    accuracy_score = report_engine.calculate_accuracy_score(correct_q, total_q)
+    correct_times = [
+        row[0].time_taken_sec for row in answer_rows
+        if row[0].is_correct and row[0].time_taken_sec
+    ]
+    if correct_times:
+        avg_time = round(sum(correct_times) / len(correct_times), 1)
+        speed_score = round(max(0.0, min(10.0, 10.0 - (avg_time / 3.0))), 1)
+    else:
+        avg_time = None
+        speed_score = 5.0
+
+    vocab_raw, vocab_score = await report_engine.calculate_vocab_size(
+        db, student_id, determined_rank=rank
+    )
+
+    radar = RadarMetrics(
+        vocabulary_level=float(rank),
+        accuracy=accuracy_score,
+        speed=speed_score,
+        vocabulary_size=vocab_score,
+    )
+
+    # Peer ranking
+    peer = await report_engine.calculate_peer_ranking(db, student_id, score, student.grade)
+    peer_ranking = PeerRanking(**peer) if peer else None
+
+    # Same-grade averages
+    teacher_id = student.teacher_id
+    if teacher_id:
+        avg_metrics = await report_engine.calculate_member_averages(db, teacher_id, grade=student.grade)
+    else:
+        avg_metrics = {"vocabulary_level": 5.0, "accuracy": 5.0, "speed": 5.0, "vocabulary_size": 5.0}
+
+    total_word_count = await report_engine.get_total_word_count(db)
+
+    # Metric details
+    metrics_dict = {
+        "vocabulary_level": float(rank),
+        "accuracy": accuracy_score,
+        "speed": speed_score,
+        "vocabulary_size": vocab_score,
+    }
+    details_raw = report_engine.get_metric_descriptions(rank, metrics_dict)
+    raw_values = {
+        "vocabulary_level": f"Lv.{rank}",
+        "accuracy": f"{score}%",
+        "speed": f"평균 {avg_time}초" if avg_time else "-",
+        "vocabulary_size": f"{vocab_raw:,}개",
+    }
+    metric_details = []
+    for d in details_raw:
+        d["avg_score"] = avg_metrics.get(d["key"], 5.0)
+        d["raw_value"] = raw_values.get(d["key"])
+        metric_details.append(MetricDetail(**d))
+
+    grade_level = report_engine.RANK_TO_GRADE.get(rank, "미정")
+    vocab_desc = report_engine.RANK_TO_VOCAB_DESC.get(rank, "")
+    recommended_book = report_engine.RANK_TO_BOOK.get(rank, "")
+
+    session_data = MasterySessionData(
+        id=session.id,
+        student_id=student_id,
+        total_questions=total_q,
+        correct_count=correct_q,
+        determined_level=session.current_level,
+        score=score,
+        started_at=str(session.started_at) if session.started_at else None,
+        completed_at=str(session.completed_at) if session.completed_at else None,
+        best_combo=session.best_combo or 0,
+        words_practiced=session.words_practiced or 0,
+        words_advanced=session.words_advanced or 0,
+        words_demoted=session.words_demoted or 0,
+    )
+
+    return MasteryReportResponse(
+        session=session_data,
+        answers=answers_list,
+        radar_metrics=radar,
+        metric_details=metric_details,
+        peer_ranking=peer_ranking,
+        grade_level=grade_level,
+        vocab_description=vocab_desc,
+        recommended_book=recommended_book,
+        total_time_seconds=total_time or None,
+        total_word_count=total_word_count,
+        word_summaries=word_summaries,
+    )

@@ -101,18 +101,15 @@ export function TestStartPage() {
     }
   };
 
-  const handleViewReport = async () => {
+  const handleViewReport = () => {
     if (!completedInfo) return;
-    setIsLoadingResult(true);
-    setError(null);
-    try {
-      const summary = await masteryService.getSessionSummary(completedInfo.sessionId);
-      setResultSummary(summary);
-    } catch {
-      setError('결과를 불러올 수 없습니다');
-    } finally {
-      setIsLoadingResult(false);
-    }
+    // Open full report in a popup window
+    const url = `/mastery-report/${completedInfo.sessionId}`;
+    const w = 960;
+    const h = 800;
+    const left = (window.screen.width - w) / 2;
+    const top = (window.screen.height - h) / 2;
+    window.open(url, 'report', `width=${w},height=${h},left=${left},top=${top},scrollbars=yes,resizable=yes`);
   };
 
   const composingRef = useRef(false);

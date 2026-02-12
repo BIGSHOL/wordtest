@@ -544,9 +544,9 @@ async def get_enhanced_report(
     )
     peer_ranking = PeerRanking(**peer) if peer else None
 
-    # Member averages
+    # Same-grade averages
     teacher_id = student.teacher_id or current_user.id
-    avg_metrics = await report_engine.calculate_member_averages(db, teacher_id)
+    avg_metrics = await report_engine.calculate_member_averages(db, teacher_id, grade=student.grade)
 
     # Metric details with descriptions
     metrics_dict = {
@@ -735,9 +735,12 @@ async def get_mastery_report(
     )
     peer_ranking = PeerRanking(**peer) if peer else None
 
-    # Member averages
+    # Same-grade averages
     teacher_id = student.teacher_id or current_user.id
-    avg_metrics = await report_engine.calculate_member_averages(db, teacher_id)
+    avg_metrics = await report_engine.calculate_member_averages(db, teacher_id, grade=student.grade)
+
+    # Total word count for frontend bar proportions
+    total_word_count = await report_engine.get_total_word_count(db)
 
     # Metric details
     metrics_dict = {
@@ -789,5 +792,6 @@ async def get_mastery_report(
         vocab_description=vocab_desc,
         recommended_book=recommended_book,
         total_time_seconds=total_time or None,
+        total_word_count=total_word_count,
         word_summaries=word_summaries,
     )

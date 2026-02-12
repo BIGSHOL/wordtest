@@ -92,7 +92,7 @@ export function MasteryReportPage() {
           </div>
         </div>
       ) : (
-        <div className="max-w-[900px] mx-auto space-y-6 py-6 px-4">
+        <div className="max-w-[900px] min-w-[860px] mx-auto space-y-6 py-6 px-4">
           {/* Top bar */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -103,7 +103,7 @@ export function MasteryReportPage() {
                 <ArrowLeft className="w-[18px] h-[18px] text-text-primary" />
               </Link>
               <h1 className="font-display text-lg font-bold text-text-primary">
-                마스터리 리포트
+                레벨테스트 리포트
               </h1>
             </div>
 
@@ -125,27 +125,29 @@ export function MasteryReportPage() {
                 <div className="flex flex-col items-start gap-1">
                   <img src="/images/logo-joshua.png" alt="Logo" className="h-10 w-auto" />
                   <span className="text-[#0D0D0D] text-sm font-medium tracking-tight">
-                    조슈아 마스터리 학습 리포트
+                    조슈아 영단어 레벨테스트
                   </span>
                 </div>
-                <div className="border border-[#D0D0D0] text-xs">
-                  <div className="flex">
-                    <div className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] w-16">이름</div>
-                    <div className="px-3 py-1.5 text-[#0D0D0D] flex-1 border-r border-[#D0D0D0]">{student?.name || '-'}</div>
-                    <div className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] w-16">학년</div>
-                    <div className="px-3 py-1.5 text-[#0D0D0D] flex-1">{student?.grade || '-'}</div>
-                  </div>
-                  <div className="flex border-t border-[#D0D0D0]">
-                    <div className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] w-16 whitespace-nowrap">소속학원</div>
-                    <div className="px-3 py-1.5 text-[#0D0D0D] flex-1 border-r border-[#D0D0D0] whitespace-nowrap">{student?.school_name || '조슈아 영어 학원'}</div>
-                    <div className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] w-16">응시일</div>
-                    <div className="px-3 py-1.5 text-[#0D0D0D] flex-1">
-                      {report.session.started_at
-                        ? new Date(report.session.started_at).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-                        : '-'}
-                    </div>
-                  </div>
-                </div>
+                <table className="border-collapse border border-[#D0D0D0] text-xs">
+                  <tbody>
+                    <tr>
+                      <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap w-[60px]">이름</td>
+                      <td className="px-3 py-1.5 text-[#0D0D0D] border-r border-[#D0D0D0] whitespace-nowrap min-w-[80px]">{student?.name || '-'}</td>
+                      <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap w-[60px]">학년</td>
+                      <td className="px-3 py-1.5 text-[#0D0D0D] whitespace-nowrap min-w-[60px]">{student?.grade || '-'}</td>
+                    </tr>
+                    <tr className="border-t border-[#D0D0D0]">
+                      <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap">소속학원</td>
+                      <td className="px-3 py-1.5 text-[#0D0D0D] border-r border-[#D0D0D0] whitespace-nowrap">{student?.school_name || '조슈아 영어 학원'}</td>
+                      <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap">응시일</td>
+                      <td className="px-3 py-1.5 text-[#0D0D0D] whitespace-nowrap">
+                        {report.session.started_at
+                          ? new Date(report.session.started_at).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                          : '-'}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
               <div className="h-[2px] bg-[#CC0000]" />
             </div>
@@ -226,7 +228,7 @@ export function MasteryReportPage() {
               <RadarChart metrics={report.radar_metrics} />
 
               {/* Right: Stats summary */}
-              <div className="w-[180px] border border-[#E8E8E8] rounded-sm p-5 space-y-3 bg-[#FAFAFA]">
+              <div className="w-[180px] shrink-0 border border-[#E8E8E8] rounded-sm p-5 space-y-3 bg-[#FAFAFA]">
                 <h3 className="text-base font-semibold text-[#0D0D0D]">학습 통계</h3>
                 <div className="space-y-1">
                   <p className="text-xs text-[#7A7A7A]">소요시간</p>
@@ -258,7 +260,7 @@ export function MasteryReportPage() {
             <LevelChartTable currentRank={level} />
 
             {/* 4. Metric Detail Section */}
-            <MetricDetailSection details={report.metric_details} />
+            <MetricDetailSection details={report.metric_details} totalWordCount={report.total_word_count} />
 
             {/* 5. Word Mastery Summary Table */}
             {report.word_summaries.length > 0 && (

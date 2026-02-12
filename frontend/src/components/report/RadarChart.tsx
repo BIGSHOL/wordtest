@@ -16,9 +16,9 @@ const R = 90; // max radius from center to axis endpoint
 // Axis endpoints (top, right, bottom, left)
 const AXES = [
   { dx: 0, dy: -R, label: '어휘수준', key: 'vocabulary_level' as const },
-  { dx: R, dy: 0, label: '정답률', key: 'accuracy' as const },
+  { dx: R, dy: 0, label: '정확도', key: 'accuracy' as const },
   { dx: 0, dy: R, label: '속도', key: 'speed' as const },
-  { dx: -R, dy: 0, label: '어휘사이즈', key: 'vocabulary_size' as const },
+  { dx: -R, dy: 0, label: '어휘 범위', key: 'vocabulary_size' as const },
 ];
 
 function gridPath(scale: number): string {

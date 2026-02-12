@@ -38,6 +38,7 @@ const TestPage = lazyRetry(() => import('./pages/student/TestPage'));
 const ResultPage = lazyRetry(() => import('./pages/student/ResultPage'));
 const WrongWordsPage = lazyRetry(() => import('./pages/student/WrongWordsPage'));
 const MasteryPage = lazyRetry(() => import('./pages/student/MasteryPage'));
+const StudentReportPage = lazyRetry(() => import('./pages/student/StudentReportPage'));
 
 function PageLoader() {
   return (
@@ -135,6 +136,10 @@ function App() {
           <Route
             path="/test/start"
             element={<TestStartPage />}
+          />
+          <Route
+            path="/mastery-report/:sessionId"
+            element={<StudentReportPage />}
           />
           <Route
             path="/mastery"

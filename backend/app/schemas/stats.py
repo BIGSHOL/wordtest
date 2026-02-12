@@ -144,6 +144,7 @@ class MasteryReportResponse(BaseModel):
     vocab_description: str
     recommended_book: str
     total_time_seconds: Optional[int] = None
+    total_word_count: int = 0
     word_summaries: list[MasteryWordSummary] = []
 
 
