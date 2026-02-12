@@ -494,7 +494,8 @@ def generate_word_questions(
 
         context_mode = "sentence" if use_sentence else "word"
 
-        n_choices = _choice_count_for_level(word.level)
+        # Word mode is always 4지선다 minimum
+        n_choices = max(4, _choice_count_for_level(word.level))
         n_distractors = n_choices - 1
 
         choices = None
