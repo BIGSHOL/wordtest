@@ -1,5 +1,7 @@
 const cache = new Map<string, HTMLAudioElement>();
 let audioUnlocked = false;
+/** Track which audio elements are still in the unlock play→pause cycle. */
+const unlocking = new Set<string>();
 
 function getAudio(src: string): HTMLAudioElement {
   let audio = cache.get(src);
@@ -20,14 +22,20 @@ export function unlockAudio() {
   audioUnlocked = true;
   const names: Array<SoundName> = ['correct', 'wrong', 'timer', 'two', 'lvlup', 'lvldown', 'perfect'];
   for (const name of names) {
-    const audio = getAudio(`/sounds/${name}.mp3`);
+    const src = `/sounds/${name}.mp3`;
+    const audio = getAudio(src);
+    unlocking.add(src);
     const prevVol = audio.volume;
     audio.volume = 0;
     audio.play().then(() => {
-      audio.pause();
-      audio.currentTime = 0;
-      audio.volume = prevVol;
-    }).catch(() => {});
+      // Only pause if playSound() hasn't taken over this element
+      if (unlocking.has(src)) {
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = prevVol;
+        unlocking.delete(src);
+      }
+    }).catch(() => { unlocking.delete(src); });
   }
 }
 
@@ -37,7 +45,9 @@ export function playSound(
   name: SoundName,
   options?: { volume?: number; startAt?: number },
 ) {
-  const audio = getAudio(`/sounds/${name}.mp3`);
+  const src = `/sounds/${name}.mp3`;
+  unlocking.delete(src); // Cancel unlock callback's pause for this element
+  const audio = getAudio(src);
   audio.currentTime = options?.startAt ?? 0;
   audio.volume = options?.volume ?? 1.0;
   audio.play().catch(() => {});
