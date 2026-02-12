@@ -134,6 +134,8 @@ async def sample_words(db_session: AsyncSession) -> list[Word]:
                 korean=f"단어_{level}_{i}",
                 level=level,
                 category="noun",
+                lesson=f"Lesson {(i % 25) + 1:02d}",
+                is_excluded=False,
             )
             db_session.add(word)
             words.append(word)

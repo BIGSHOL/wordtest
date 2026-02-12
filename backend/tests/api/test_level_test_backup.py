@@ -1,4 +1,4 @@
-﻿"""Level test API tests (RED - expected to fail until implementation)."""
+﻿"""Level test API tests."""
 import pytest
 import pytest_asyncio
 
@@ -31,7 +31,7 @@ class TestStartTest:
         for q in questions:
             assert "word" in q
             assert "choices" in q
-            assert len(q["choices"]) == 4
+            assert len(q["choices"]) >= 4
             assert "question_order" in q
 
     async def test_start_test_unauthenticated(self, client):

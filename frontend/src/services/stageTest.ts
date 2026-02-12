@@ -13,6 +13,7 @@ export interface StageWordInfo {
   stage: number;
   level: number;
   lesson: string;
+  difficulty_score: number;
 }
 
 export interface StartStageTestResponse {
@@ -50,10 +51,11 @@ export const stageTestService = {
   async fetchQuestions(
     sessionId: string,
     wordMasteryIds: string[],
+    errorCounts?: Record<string, number>,
   ): Promise<{ questions: import('../types/mastery').MasteryQuestion[] }> {
     const response = await api.post<{ questions: import('../types/mastery').MasteryQuestion[] }>(
       `/api/v1/stage-test/${sessionId}/questions`,
-      { word_mastery_ids: wordMasteryIds },
+      { word_mastery_ids: wordMasteryIds, error_counts: errorCounts },
     );
     return response.data;
   },

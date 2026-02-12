@@ -14,6 +14,7 @@ class StartStageTestRequest(BaseModel):
 
 class StageTestQuestionsRequest(BaseModel):
     word_mastery_ids: list[str]
+    error_counts: Optional[dict[str, int]] = None
 
 
 class StageTestAnswerRequest(BaseModel):
@@ -43,6 +44,7 @@ class StageWordInfo(BaseModel):
     stage: int
     level: int
     lesson: str
+    difficulty_score: float = 0.0
 
 
 class StartStageTestResponse(BaseModel):

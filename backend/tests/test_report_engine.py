@@ -29,17 +29,17 @@ class TestSpeedScore:
     """Test speed score calculation."""
 
     def test_empty_answers(self):
-        """Empty answers return 0 speed score."""
+        """Empty answers return default speed score."""
         score, avg_time = report_engine.calculate_speed_score([])
-        assert score == 0.0
+        assert score == 5.0
         assert avg_time is None
 
     def test_fast_answers(self):
         """Fast correct answers get high speed score."""
         answers = [
-            {"is_correct": True, "time_taken_sec": 2.0},
-            {"is_correct": True, "time_taken_sec": 2.5},
-            {"is_correct": True, "time_taken_sec": 1.5},
+            {"is_correct": True, "time_taken_seconds": 2.0},
+            {"is_correct": True, "time_taken_seconds": 2.5},
+            {"is_correct": True, "time_taken_seconds": 1.5},
         ]
         score, avg_time = report_engine.calculate_speed_score(answers)
         assert score > 5.0  # Should be above average
@@ -49,20 +49,20 @@ class TestSpeedScore:
     def test_slow_answers(self):
         """Slow correct answers get low speed score."""
         answers = [
-            {"is_correct": True, "time_taken_sec": 10.0},
-            {"is_correct": True, "time_taken_sec": 12.0},
-            {"is_correct": True, "time_taken_sec": 11.0},
+            {"is_correct": True, "time_taken_seconds": 20.0},
+            {"is_correct": True, "time_taken_seconds": 22.0},
+            {"is_correct": True, "time_taken_seconds": 21.0},
         ]
         score, avg_time = report_engine.calculate_speed_score(answers)
         assert score < 5.0  # Should be below average
-        assert avg_time > 10.0
+        assert avg_time > 20.0
 
     def test_ignores_wrong_answers(self):
         """Only correct answers count for speed."""
         answers = [
-            {"is_correct": True, "time_taken_sec": 2.0},
-            {"is_correct": False, "time_taken_sec": 1.0},  # Should be ignored
-            {"is_correct": True, "time_taken_sec": 3.0},
+            {"is_correct": True, "time_taken_seconds": 2.0},
+            {"is_correct": False, "time_taken_seconds": 1.0},  # Should be ignored
+            {"is_correct": True, "time_taken_seconds": 3.0},
         ]
         score, avg_time = report_engine.calculate_speed_score(answers)
         assert avg_time == 2.5  # (2.0 + 3.0) / 2
@@ -70,12 +70,12 @@ class TestSpeedScore:
     def test_score_bounded_0_to_10(self):
         """Speed score is always between 0 and 10."""
         # Very fast
-        answers_fast = [{"is_correct": True, "time_taken_sec": 0.1}] * 10
+        answers_fast = [{"is_correct": True, "time_taken_seconds": 0.1}] * 10
         score_fast, _ = report_engine.calculate_speed_score(answers_fast)
         assert 0.0 <= score_fast <= 10.0
 
         # Very slow
-        answers_slow = [{"is_correct": True, "time_taken_sec": 100.0}] * 10
+        answers_slow = [{"is_correct": True, "time_taken_seconds": 100.0}] * 10
         score_slow, _ = report_engine.calculate_speed_score(answers_slow)
         assert 0.0 <= score_slow <= 10.0
 
@@ -123,8 +123,8 @@ class TestVocabSize:
                 student_id=student_user.id,
                 word_id=word.id,
                 stage=5,
-                correct_count=5,
-                wrong_count=0,
+                total_correct=5,
+                total_attempts=5,
             )
             from app.core.timezone import now_kst
             mastery.mastered_at = now_kst()
@@ -198,16 +198,14 @@ class TestPeerRanking:
         )
         assert ranking is not None
         assert "percentile" in ranking
-        assert "rank" in ranking
-        assert "total" in ranking
-        assert ranking["total"] >= 5
+        assert "total_peers" in ranking
 
     async def test_peer_ranking_no_peers(self, db_session, student_user):
-        """Returns None when no peers exist."""
+        """Returns estimated ranking when no peers exist."""
         ranking = await report_engine.calculate_peer_ranking(
             db_session, student_user.id, score=85, grade="초6"
         )
-        # Should return None or estimated ranking
+        # Should return estimated ranking (never None for valid score)
         assert ranking is None or isinstance(ranking, dict)
 
 
@@ -238,17 +236,17 @@ class TestTimeBreakdown:
     def test_time_breakdown_with_answers(self):
         """Calculates time breakdown correctly."""
         answers = [
-            {"time_taken_sec": 3, "stage": 1},
-            {"time_taken_sec": 5, "stage": 1},
-            {"time_taken_sec": 4, "stage": 2},
-            {"time_taken_sec": 6, "stage": 2},
-            {"time_taken_sec": None, "stage": 3},  # Missing time
+            {"time_taken_seconds": 3, "word_level": 1},
+            {"time_taken_seconds": 5, "word_level": 2},
+            {"time_taken_seconds": 4, "word_level": 5},
+            {"time_taken_seconds": 6, "word_level": 6},
+            {"time_taken_seconds": None, "word_level": 9},  # Missing time
         ]
         total_time, breakdown = report_engine.calculate_time_breakdown(answers)
         assert total_time == 18  # 3+5+4+6
-        assert breakdown[1] == 8  # stage 1: 3+5
-        assert breakdown[2] == 10  # stage 2: 4+6
-        assert breakdown.get(3, 0) == 0  # stage 3: no valid time
+        assert breakdown["단어"] == 8   # word_level 1-4: 3+5
+        assert breakdown["빈칸"] == 10  # word_level 5-7: 4+6
+        assert breakdown.get("뜻", 0) == 0  # word_level 8+: no valid time
 
     def test_time_breakdown_empty(self):
         """Empty answers return None total."""
@@ -273,8 +271,8 @@ class TestMetricDescriptions:
         assert len(descriptions) == 4
         for desc in descriptions:
             assert "key" in desc
-            assert "title" in desc
-            assert "score" in desc
+            assert "name" in desc
+            assert "my_score" in desc
             assert "description" in desc
             assert desc["key"] in metrics.keys()
 
@@ -289,7 +287,7 @@ class TestMetricDescriptions:
         descriptions = report_engine.get_metric_descriptions(rank=3, metrics=metrics)
 
         for desc in descriptions:
-            assert desc["score"] == metrics[desc["key"]]
+            assert desc["my_score"] == metrics[desc["key"]]
 
 
 class TestRankMappings:

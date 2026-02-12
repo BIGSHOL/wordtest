@@ -5,7 +5,7 @@ from sqlalchemy import select
 from app.models.test_config import TestConfig
 from app.models.test_assignment import TestAssignment
 from app.models.learning_session import LearningSession
-from app.models.word_mastery import WordMastery
+from app.models.word_mastery import WordMastery  # noqa: F401
 
 
 @pytest_asyncio.fixture
@@ -15,7 +15,8 @@ async def mastery_config(db_session, teacher_user):
         name="Mastery Test",
         test_type="mastery",
         teacher_id=teacher_user.id,
-        book_filter="Level 1-3",
+        level_range_min=1,
+        level_range_max=3,
         per_question_time_seconds=10,
     )
     db_session.add(config)
@@ -25,13 +26,14 @@ async def mastery_config(db_session, teacher_user):
 
 
 @pytest_asyncio.fixture
-async def mastery_assignment(db_session, student_user, mastery_config):
+async def mastery_assignment(db_session, student_user, teacher_user, mastery_config):
     """Create a mastery test assignment."""
     assignment = TestAssignment(
         test_config_id=mastery_config.id,
         student_id=student_user.id,
+        teacher_id=teacher_user.id,
         test_code="MAST001",
-        status="active",
+        status="pending",
     )
     db_session.add(assignment)
     await db_session.commit()
@@ -180,7 +182,7 @@ class TestCompleteBatch:
         )
         assert response.status_code == 200
         data = response.json()
-        assert "session_id" in data
+        assert "current_level" in data
 
         # Verify session updated
         result = await db_session.execute(
@@ -208,7 +210,7 @@ class TestSubmitMasteryAnswer:
         self, client, db_session, student_headers, mastery_assignment, sample_words
     ):
         """Can submit answer and get result."""
-        # Start session
+        # Start session (this also creates WordMastery records via _ensure_mastery_records)
         start_resp = await client.post(
             "/api/v1/mastery/start-by-code",
             json={"test_code": "MAST001"},
@@ -216,24 +218,14 @@ class TestSubmitMasteryAnswer:
         session_id = start_resp.json()["session"]["id"]
         questions = start_resp.json()["questions"]
 
-        # Create word mastery record
-        word_id = questions[0]["word"]["id"]
-        mastery = WordMastery(
-            student_id=mastery_assignment.student_id,
-            word_id=word_id,
-            stage=1,
-            correct_count=0,
-            wrong_count=0,
-        )
-        db_session.add(mastery)
-        await db_session.commit()
-        await db_session.refresh(mastery)
+        # Use existing word_mastery_id from the started session
+        word_mastery_id = questions[0]["word_mastery_id"]
 
         # Submit answer
         response = await client.post(
             f"/api/v1/mastery/{session_id}/answer",
             json={
-                "word_mastery_id": str(mastery.id),
+                "word_mastery_id": word_mastery_id,
                 "selected_answer": "correct",
                 "stage": 1,
                 "time_taken_seconds": 3.5,
@@ -275,7 +267,7 @@ class TestMasteryProgress:
         assert response.status_code == 200
         data = response.json()
         assert "total_words" in data
-        assert "stage_distribution" in data or "words_by_stage" in data
+        assert "stage_summary" in data
 
     async def test_get_progress_invalid_assignment(
         self, client, student_headers

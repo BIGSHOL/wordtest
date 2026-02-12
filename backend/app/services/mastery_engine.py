@@ -10,6 +10,30 @@ from app.schemas.mastery import (
 )
 
 
+def _word_difficulty_score(word: Word) -> float:
+    """Calculate intra-book difficulty score. Higher = harder."""
+    score = 0.0
+    # 단어 길이 (longer = harder): 0~30점
+    score += min(len(word.english), 15) / 15.0 * 30
+    # 구(phrase)는 단일 단어보다 어려움: +15점
+    if ' ' in word.english.strip():
+        score += 15
+    # 한국어 의미 개수 (다의어 = harder): 0~20점
+    if word.korean:
+        meaning_count = word.korean.count(',') + 1
+        score += min(meaning_count, 4) * 5
+    # 단원 번호 (같은 교재 내 후반 = harder): 0~20점
+    try:
+        lesson_num = int(word.lesson)
+        score += min(lesson_num, 25) / 25.0 * 20
+    except (ValueError, TypeError):
+        pass
+    # 예문 없으면 학습 어려움: +10점
+    if not word.example_en:
+        score += 10
+    return round(score, 1)
+
+
 # --- Level-based minimum difficulty ---
 # Higher-level words get harder question types even at low mastery stages.
 

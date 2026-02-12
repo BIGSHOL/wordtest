@@ -33,6 +33,7 @@ export interface StageWord {
   stage: number;
   failCount: number;
   status: WordStatus;
+  difficultyScore: number;
 }
 
 export interface StageTestStore {
@@ -114,6 +115,7 @@ function toStageWord(w: StageWordInfo, status: WordStatus): StageWord {
     stage: 1,
     failCount: 0,
     status,
+    difficultyScore: w.difficulty_score ?? 0,
   };
 }
 
@@ -325,8 +327,13 @@ export const useStageTestStore = create<StageTestStore>()((set, get) => ({
     if (remainingQuestions < QUESTION_FETCH_THRESHOLD && state.sessionId && !state.isFetchingQuestions) {
       const activeIds = getActiveWordMasteryIds(words);
       if (activeIds.length > 0) {
+        // Build error_counts for words with failures
+        const errorCounts: Record<string, number> = {};
+        words.filter((w) => w.status === 'active' && w.failCount > 0)
+          .forEach((w) => { errorCounts[w.wordMasteryId] = w.failCount; });
+        const ec = Object.keys(errorCounts).length > 0 ? errorCounts : undefined;
         set({ isFetchingQuestions: true });
-        stageTestService.fetchQuestions(state.sessionId, activeIds)
+        stageTestService.fetchQuestions(state.sessionId, activeIds, ec)
           .then(({ questions }) => {
             const latest = useStageTestStore.getState();
             useStageTestStore.setState({
@@ -364,7 +371,12 @@ export const useStageTestStore = create<StageTestStore>()((set, get) => ({
       // Fetch questions for active words
       const activeIds = getActiveWordMasteryIds(words);
       if (activeIds.length > 0 && state.sessionId) {
-        stageTestService.fetchQuestions(state.sessionId, activeIds)
+        // Build error_counts for words with failures
+        const errorCounts2: Record<string, number> = {};
+        words.filter((w) => w.status === 'active' && w.failCount > 0)
+          .forEach((w) => { errorCounts2[w.wordMasteryId] = w.failCount; });
+        const ec2 = Object.keys(errorCounts2).length > 0 ? errorCounts2 : undefined;
+        stageTestService.fetchQuestions(state.sessionId, activeIds, ec2)
           .then(({ questions }) => {
             const latest = useStageTestStore.getState();
             const newQueue = [...latest.questionQueue, ...questions];

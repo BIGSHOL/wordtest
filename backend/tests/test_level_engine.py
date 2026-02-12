@@ -103,12 +103,13 @@ class TestDetermineLevel:
         assert rank == 1
         assert sublevel == 2  # Lesson 25 correct → index 1 + 1
 
-    def test_word_level_11_to_15_maps_to_rank_10(self):
+    def test_word_level_11_to_15_maps_to_legend(self):
+        """Levels 11-15 map to ranks 11-15 (Legend tier)."""
         answers = []
         for level in range(11, 16):
             answers.append((level, "Lesson 01", True))
         rank, sublevel = determine_level(answers)
-        assert rank == 10
+        assert rank == 15
 
 
 class TestCalculateScore:

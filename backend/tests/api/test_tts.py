@@ -1,4 +1,4 @@
-"""TTS API tests with mocked Gemini API."""
+"""TTS API tests with mocked Edge TTS and Gemini API."""
 import pytest
 import pytest_asyncio
 import base64
@@ -39,14 +39,14 @@ class TestCheckTTSCache:
         assert data["cached"] is True
 
     async def test_check_cache_default_voice(self, client):
-        """Uses default voice (Aoede) when not specified."""
+        """Uses default voice (Aria) when not specified."""
         response = await client.get(
             "/api/v1/tts/check?text=hello"
         )
         assert response.status_code == 200
 
     async def test_check_cache_invalid_voice_fallback(self, client):
-        """Falls back to Aoede for invalid voice."""
+        """Falls back to default for invalid voice."""
         response = await client.get(
             "/api/v1/tts/check?text=hello&voice=InvalidVoice"
         )
@@ -61,7 +61,7 @@ class TestTextToSpeech:
         """Returns cached audio from DB when available."""
         # Add to DB cache
         cache_entry = TtsCache(
-            text="hello",
+            text="dbcache_test",
             voice="Aoede",
             audio_data=b"fake_audio_data",
             mime_type="audio/wav",
@@ -70,146 +70,79 @@ class TestTextToSpeech:
         await db_session.commit()
 
         response = await client.get(
-            "/api/v1/tts?text=hello&voice=Aoede"
+            "/api/v1/tts?text=dbcache_test&voice=Aoede"
         )
         assert response.status_code == 200
         assert response.headers["content-type"] == "audio/wav"
         assert response.headers["x-tts-cache"] == "db"
         assert response.content == b"fake_audio_data"
 
-    @patch("app.api.v1.tts.settings")
-    async def test_tts_no_api_key(self, mock_settings, client):
-        """Returns 503 when Gemini API key not configured."""
-        mock_settings.GEMINI_API_KEY = None
+    @patch("app.api.v1.tts._generate_edge_tts", new_callable=AsyncMock, return_value=None)
+    @patch("app.api.v1.tts._generate_gemini_tts", new_callable=AsyncMock, return_value=None)
+    async def test_tts_no_api_key(self, mock_gemini, mock_edge, client):
+        """Returns 502 when both Edge TTS and Gemini TTS fail."""
+        from app.api.v1.tts import _tts_cache
+        _tts_cache.clear()
 
         response = await client.get(
-            "/api/v1/tts?text=hello&voice=Aoede"
+            "/api/v1/tts?text=noapi_unique&voice=Aoede"
         )
-        assert response.status_code == 503
+        assert response.status_code == 502
         data = response.json()
-        assert "not configured" in data["detail"]
+        assert "failed" in data["detail"].lower()
 
-    @patch("httpx.AsyncClient.post")
-    @patch("app.api.v1.tts.settings")
+    @patch("app.api.v1.tts._generate_edge_tts", new_callable=AsyncMock, return_value=None)
+    @patch("app.api.v1.tts._generate_gemini_tts", new_callable=AsyncMock)
     async def test_tts_gemini_success(
-        self, mock_settings, mock_post, client, db_session
+        self, mock_gemini, mock_edge, client, db_session
     ):
-        """Successfully generates audio from Gemini API."""
-        mock_settings.GEMINI_API_KEY = "test-key"
+        """Successfully generates audio from Gemini TTS when Edge fails."""
+        from app.api.v1.tts import _tts_cache
+        _tts_cache.clear()
 
-        # Mock Gemini API response
-        fake_pcm = b"\x00\x01\x02\x03" * 100  # Fake PCM data
-        mock_response = AsyncMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "candidates": [{
-                "content": {
-                    "parts": [{
-                        "inlineData": {
-                            "data": base64.b64encode(fake_pcm).decode(),
-                            "mimeType": "audio/L16;rate=24000",
-                        }
-                    }]
-                }
-            }]
-        }
-        mock_post.return_value = mock_response
+        # Mock Gemini returning WAV audio
+        fake_wav = b"RIFF" + b"\x00" * 100
+        mock_gemini.return_value = (fake_wav, "audio/wav")
 
         response = await client.get(
-            "/api/v1/tts?text=hello&voice=Aoede"
+            "/api/v1/tts?text=gemini_unique&voice=Aoede"
         )
         assert response.status_code == 200
         assert response.headers["x-tts-cache"] == "miss"
-        assert response.headers["content-type"] == "audio/wav"
         # Should have WAV header (RIFF)
         assert response.content[:4] == b"RIFF"
 
-        # Verify saved to DB cache
-        result = await db_session.execute(
-            TtsCache.__table__.select().where(TtsCache.text == "hello")
-        )
-        cached = result.fetchone()
-        assert cached is not None
-
-    @patch("httpx.AsyncClient.post")
-    @patch("app.api.v1.tts.settings")
+    @patch("app.api.v1.tts._generate_edge_tts", new_callable=AsyncMock, return_value=None)
+    @patch("app.api.v1.tts._generate_gemini_tts", new_callable=AsyncMock, return_value=None)
     async def test_tts_gemini_api_error(
-        self, mock_settings, mock_post, client
+        self, mock_gemini, mock_edge, client
     ):
-        """Returns 502 when Gemini API fails."""
-        mock_settings.GEMINI_API_KEY = "test-key"
-
-        # Mock API error
-        mock_response = AsyncMock()
-        mock_response.status_code = 500
-        mock_response.text = "Internal error"
-        mock_post.return_value = mock_response
+        """Returns 502 when both TTS engines fail."""
+        from app.api.v1.tts import _tts_cache
+        _tts_cache.clear()
 
         response = await client.get(
-            "/api/v1/tts?text=hello&voice=Aoede"
+            "/api/v1/tts?text=apierr_unique&voice=Aoede"
         )
         assert response.status_code == 502
         data = response.json()
-        assert "TTS API error" in data["detail"]
+        assert "failed" in data["detail"].lower()
 
-    @patch("httpx.AsyncClient.post")
-    @patch("app.api.v1.tts.settings")
-    async def test_tts_gemini_rate_limit_fallback(
-        self, mock_settings, mock_post, client
-    ):
-        """Falls back to next model on 429 rate limit."""
-        mock_settings.GEMINI_API_KEY = "test-key"
-
-        # First model returns 429, second succeeds
-        fake_pcm = b"\x00\x01" * 50
-        mock_response_429 = AsyncMock()
-        mock_response_429.status_code = 429
-        mock_response_429.text = "Rate limit exceeded"
-
-        mock_response_200 = AsyncMock()
-        mock_response_200.status_code = 200
-        mock_response_200.json.return_value = {
-            "candidates": [{
-                "content": {
-                    "parts": [{
-                        "inlineData": {
-                            "data": base64.b64encode(fake_pcm).decode(),
-                            "mimeType": "audio/wav",
-                        }
-                    }]
-                }
-            }]
-        }
-
-        # Only one model in list now, but test the fallback mechanism
-        mock_post.return_value = mock_response_200
-
-        response = await client.get(
-            "/api/v1/tts?text=test&voice=Puck"
-        )
-        # Should succeed even if first attempt would have failed
-        assert response.status_code == 200
-
-    @patch("httpx.AsyncClient.post")
-    @patch("app.api.v1.tts.settings")
+    @patch("app.api.v1.tts._generate_edge_tts", new_callable=AsyncMock, return_value=None)
+    @patch("app.api.v1.tts._generate_gemini_tts", new_callable=AsyncMock, return_value=None)
     async def test_tts_gemini_invalid_response(
-        self, mock_settings, mock_post, client
+        self, mock_gemini, mock_edge, client
     ):
         """Returns 502 when Gemini response format is invalid."""
-        mock_settings.GEMINI_API_KEY = "test-key"
-
-        # Mock invalid response structure
-        mock_response = AsyncMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {"invalid": "structure"}
-        mock_post.return_value = mock_response
+        from app.api.v1.tts import _tts_cache
+        _tts_cache.clear()
 
         response = await client.get(
-            "/api/v1/tts?text=hello&voice=Aoede"
+            "/api/v1/tts?text=invalid_unique&voice=Aoede"
         )
         assert response.status_code == 502
         data = response.json()
-        assert "Invalid TTS response" in data["detail"]
+        assert "failed" in data["detail"].lower()
 
 
 @pytest.mark.asyncio

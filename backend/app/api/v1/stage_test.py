@@ -85,7 +85,7 @@ async def get_stage_test_questions(
     """Generate questions for specific words at their current stage."""
     try:
         questions = await generate_questions_for_words(
-            db, session_id, body.word_mastery_ids
+            db, session_id, body.word_mastery_ids, body.error_counts
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

@@ -20,7 +20,7 @@ from app.models.user import User
 from app.core.timezone import now_kst
 from app.services.mastery_engine import (
     generate_stage_questions, generate_word_questions, generate_listen_questions,
-    check_typing_answer,
+    check_typing_answer, _word_difficulty_score,
 )
 from app.services.mastery import (
     _get_assignment_and_config,
@@ -131,7 +131,7 @@ async def start_by_code(
             m.mastered_at = None
             m.review_due_at = None
 
-    # Build word info list
+    # Build word info list with difficulty scores
     words_map = {w.id: w for w in all_words}
     mastery_by_word = {m.word_id: m for m in masteries}
 
@@ -147,11 +147,18 @@ async def start_by_code(
                 "stage": m.stage,
                 "level": word.level,
                 "lesson": word.lesson,
+                "difficulty_score": _word_difficulty_score(word),
             })
 
-    # Generate initial batch of questions (first wave at stage 1)
-    random.shuffle(masteries)
-    initial_masteries = masteries[:INITIAL_BATCH]
+    # Sort by difficulty DESC with jitter for variety
+    word_infos.sort(
+        key=lambda w: w["difficulty_score"] + random.uniform(0, 15),
+        reverse=True,
+    )
+
+    # Generate initial batch of questions (first wave at stage 1, difficulty order)
+    initial_ids = {w["word_mastery_id"] for w in word_infos[:INITIAL_BATCH]}
+    initial_masteries = [m for m in masteries if m.id in initial_ids]
     if engine_type == "legacy_listen":
         initial_questions = generate_listen_questions(initial_masteries, words_map, all_words)
     elif engine_type == "legacy_word":
@@ -179,8 +186,12 @@ async def generate_questions_for_words(
     db: AsyncSession,
     session_id: str,
     word_mastery_ids: list[str],
+    error_counts: dict[str, int] | None = None,
 ) -> list[MasteryQuestion]:
-    """Generate questions for specific words at their current DB stage."""
+    """Generate questions for specific words at their current DB stage.
+
+    error_counts: {word_mastery_id: fail_count} — words with 2+ fails get extra questions.
+    """
     if not word_mastery_ids:
         return []
 
@@ -199,6 +210,13 @@ async def generate_questions_for_words(
     masteries = list(mastery_result.scalars().all())
     if not masteries:
         return []
+
+    # Expand masteries based on error_counts (2+ fails → 2 questions)
+    expanded_masteries: list[WordMastery] = []
+    for m in masteries:
+        fail_count = (error_counts or {}).get(m.id, 0)
+        repeat = 2 if fail_count >= 2 else 1
+        expanded_masteries.extend([m] * repeat)
 
     # Load words
     word_ids = [m.word_id for m in masteries]
@@ -228,9 +246,9 @@ async def generate_questions_for_words(
     # Dispatch by engine_type
     engine_type = assignment.engine_type
 
-    # Group masteries by stage and generate
+    # Group expanded masteries by stage and generate
     stage_groups: dict[int, list[WordMastery]] = {}
-    for m in masteries:
+    for m in expanded_masteries:
         stage = m.stage
         if stage not in stage_groups:
             stage_groups[stage] = []
