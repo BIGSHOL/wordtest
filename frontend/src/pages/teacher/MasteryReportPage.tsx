@@ -7,13 +7,21 @@ import { useState, useEffect } from 'react';
 import { TeacherLayout } from '../../components/layout/TeacherLayout';
 import { studentService } from '../../services/student';
 import { statsService } from '../../services/stats';
-import { ArrowLeft, Printer } from 'lucide-react';
+import {
+  ArrowLeft, Printer, Shield, Sword, Award, Crown, Gem, Diamond, Star, Flame, Trophy,
+} from 'lucide-react';
 import type { User } from '../../types/auth';
 import type { MasteryReport } from '../../types/report';
+import { getLevelRank } from '../../types/rank';
 import { RadarChart } from '../../components/report/RadarChart';
 import { LevelChartTable } from '../../components/report/LevelChartTable';
 import { MetricDetailSection } from '../../components/report/MetricDetailSection';
 import { logger } from '../../utils/logger';
+
+const RANK_ICON_MAP: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
+  shield: Shield, sword: Sword, award: Award, crown: Crown, gem: Gem,
+  diamond: Diamond, star: Star, flame: Flame, trophy: Trophy,
+};
 
 const LEVEL_NAMES: Record<number, string> = {
   1: 'Iron', 2: 'Bronze', 3: 'Silver', 4: 'Gold', 5: 'Platinum',
@@ -152,10 +160,49 @@ export function MasteryReportPage() {
                     <p className="text-[10px] text-[#7A7A7A]">추천 교재</p>
                     <p className="text-sm font-semibold text-[#CC0000]">{report.recommended_book}</p>
                   </div>
-                  <div className="w-[72px] h-[72px] rounded-full border-[3px] border-[#CC0000] flex flex-col items-center justify-center">
-                    <span className="text-[#CC0000] text-lg font-bold leading-none">Lv.{level}</span>
-                    <span className="text-[#CC0000] text-[9px] font-medium leading-tight mt-0.5">{levelName}</span>
-                  </div>
+                  {(() => {
+                    const rank = getLevelRank(level);
+                    const Icon = RANK_ICON_MAP[rank.icon] || Award;
+                    const [c0, c1] = rank.colors;
+                    return (
+                      <div className="relative flex flex-col items-center gap-1">
+                        {/* Outer ring with shimmer */}
+                        <div className="relative w-[76px] h-[76px] flex items-center justify-center">
+                          {/* Rotating conic ring */}
+                          <div
+                            className="absolute inset-0 rounded-full animate-[spin_8s_linear_infinite]"
+                            style={{
+                              background: `conic-gradient(from 0deg, ${c0}00, ${c0}99, ${c1}99, ${c0}00)`,
+                              mask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
+                              WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
+                            }}
+                          />
+                          {/* Pulse glow */}
+                          <div
+                            className="absolute rounded-full animate-[pulse_3s_ease-in-out_infinite]"
+                            style={{
+                              inset: 4,
+                              background: `radial-gradient(circle, ${c0}12 0%, ${c0}00 70%)`,
+                            }}
+                          />
+                          {/* Badge circle */}
+                          <div
+                            className="w-[68px] h-[68px] rounded-full flex flex-col items-center justify-center relative z-10"
+                            style={{
+                              background: `linear-gradient(160deg, ${c0}18, ${c1}10)`,
+                              border: `2.5px solid ${c0}60`,
+                            }}
+                          >
+                            <Icon style={{ color: c0, width: 20, height: 20, opacity: 0.85 }} />
+                            <span className="text-[11px] font-bold leading-none mt-0.5" style={{ color: c0 }}>
+                              Lv.{level}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-semibold" style={{ color: c0 }}>{levelName}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="flex gap-2">
                   <div className="flex-1 border border-[#CC0000] rounded p-2 text-center space-y-1">
