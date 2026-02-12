@@ -123,15 +123,15 @@ export function MasteryReportPage() {
                 <div className="border border-[#D0D0D0] text-xs">
                   <div className="flex">
                     <div className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] w-16">이름</div>
-                    <div className="px-3 py-1.5 text-[#0D0D0D] w-24 border-r border-[#D0D0D0]">{student?.name || '-'}</div>
+                    <div className="px-3 py-1.5 text-[#0D0D0D] flex-1 border-r border-[#D0D0D0]">{student?.name || '-'}</div>
                     <div className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] w-16">학년</div>
-                    <div className="px-3 py-1.5 text-[#0D0D0D] w-24">{student?.grade || '-'}</div>
+                    <div className="px-3 py-1.5 text-[#0D0D0D] flex-1">{student?.grade || '-'}</div>
                   </div>
                   <div className="flex border-t border-[#D0D0D0]">
                     <div className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] w-16 whitespace-nowrap">소속학원</div>
-                    <div className="px-3 py-1.5 text-[#0D0D0D] w-24 border-r border-[#D0D0D0]">{student?.school_name || '조슈아 영어 학원'}</div>
+                    <div className="px-3 py-1.5 text-[#0D0D0D] flex-1 border-r border-[#D0D0D0] whitespace-nowrap">{student?.school_name || '조슈아 영어 학원'}</div>
                     <div className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] w-16">응시일</div>
-                    <div className="px-3 py-1.5 text-[#0D0D0D] w-24">
+                    <div className="px-3 py-1.5 text-[#0D0D0D] flex-1">
                       {report.session.started_at
                         ? new Date(report.session.started_at).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
                         : '-'}
