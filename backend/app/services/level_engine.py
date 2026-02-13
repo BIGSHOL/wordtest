@@ -12,11 +12,13 @@ Book → Rank mapping:
   - Power Voca 5000-01~10  (word level 1-10)  → Rank 1-10
   - 수능기출 5000-01~05    (word level 11-15) → Rank 11-15 (Legend tier)
 """
+import re
 import random
 from collections import defaultdict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.models.word import Word
+from app.services.mastery_engine import is_likely_loanword
 
 MAX_RANK = 15
 
@@ -122,9 +124,12 @@ async def generate_questions(
     if len(all_words) < 4:
         return []
 
+    # Filter loanwords before grouping
+    filtered_words = [w for w in all_words if not is_likely_loanword(w.english, w.korean)]
+
     # Group words by DB level
     words_by_level: dict[int, list[Word]] = defaultdict(list)
-    for word in all_words:
+    for word in filtered_words:
         words_by_level[word.level].append(word)
 
     levels = sorted(words_by_level.keys())
@@ -167,10 +172,35 @@ async def generate_questions(
             questions_per_level[level] = current - reduce
             remaining += reduce
 
+    # Helper: extract first Korean meaning for dedup
+    def _first_ko(korean: str | None) -> str:
+        if not korean:
+            return ""
+        first = re.split(r"[,;]", korean)[0].strip()
+        first = re.sub(r"\(.*?\)", "", first).strip()
+        first = re.sub(r"~", "", first).strip()
+        return first
+
     # Select words: pick from EVENLY SPACED lessons within each level
     # This enables adaptive testing at lesson granularity
     question_words: list[Word] = []
     used_english: set[str] = set()  # Prevent duplicate english words across levels
+    seen_korean: set[str] = set()   # Prevent duplicate korean meanings across levels
+
+    def _is_dup(w: Word) -> bool:
+        en = w.english.lower().strip()
+        ko = _first_ko(w.korean)
+        if en in used_english:
+            return True
+        if ko and ko in seen_korean:
+            return True
+        return False
+
+    def _mark_used(w: Word) -> None:
+        used_english.add(w.english.lower().strip())
+        ko = _first_ko(w.korean)
+        if ko:
+            seen_korean.add(ko)
 
     for level in levels:
         count = questions_per_level.get(level, 0)
@@ -188,32 +218,32 @@ async def generate_questions(
         if len(lessons_sorted) <= count:
             # Fewer lessons than needed: pick one from each lesson
             for lesson in lessons_sorted:
-                candidates = [w for w in by_lesson[lesson] if w.english not in used_english]
+                candidates = [w for w in by_lesson[lesson] if not _is_dup(w)]
                 if candidates:
                     pick = random.choice(candidates)
                     selected.append(pick)
-                    used_english.add(pick.english)
+                    _mark_used(pick)
         else:
             # Pick from evenly spaced lessons across the range
             step = len(lessons_sorted) / count
             for i in range(count):
                 idx = int(i * step)
                 lesson = lessons_sorted[min(idx, len(lessons_sorted) - 1)]
-                candidates = [w for w in by_lesson[lesson] if w.english not in used_english]
+                candidates = [w for w in by_lesson[lesson] if not _is_dup(w)]
                 if candidates:
                     pick = random.choice(candidates)
                     selected.append(pick)
-                    used_english.add(pick.english)
+                    _mark_used(pick)
 
         # Fill remaining if needed
         if len(selected) < count:
             selected_ids = {w.id for w in selected}
             extras = [w for w in level_words
-                      if w.id not in selected_ids and w.english not in used_english]
+                      if w.id not in selected_ids and not _is_dup(w)]
             if extras:
                 fills = random.sample(extras, min(count - len(selected), len(extras)))
                 for f in fills:
-                    used_english.add(f.english)
+                    _mark_used(f)
                 selected.extend(fills)
 
         question_words.extend(selected)
