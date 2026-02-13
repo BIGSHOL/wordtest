@@ -101,11 +101,11 @@ async def generate_questions(
     is_cross_book = effective_end and book_name and effective_end != book_name
 
     if is_cross_book and lesson_start and lesson_end:
-        # Cross-book range: apply lesson constraints at boundaries only
+        # Cross-book range: include start book (from lesson), middle books, end book (to lesson)
         query = query.where(
             or_(
                 sa_and(Word.book_name == book_name, Word.lesson >= lesson_start),
-                sa_and(Word.book_name != book_name, Word.book_name != effective_end),
+                sa_and(Word.book_name > book_name, Word.book_name < effective_end),
                 sa_and(Word.book_name == effective_end, Word.lesson <= lesson_end),
             )
         )

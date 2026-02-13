@@ -42,8 +42,33 @@ export function TestSettingsPage() {
     lessonEnd: '',
   });
 
+  // Word count from API
+  const [wordCount, setWordCount] = useState(0);
+
   // UI
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch word count when range changes
+  useEffect(() => {
+    if (!config.bookStart || !config.bookEnd || !config.lessonStart || !config.lessonEnd) {
+      setWordCount(0);
+      return;
+    }
+    const fetchCount = async () => {
+      try {
+        const count = await wordService.countWordsInRange({
+          book_start: config.bookStart,
+          book_end: config.bookEnd,
+          lesson_start: config.lessonStart,
+          lesson_end: config.lessonEnd,
+        });
+        setWordCount(count);
+      } catch {
+        setWordCount(0);
+      }
+    };
+    fetchCount();
+  }, [config.bookStart, config.bookEnd, config.lessonStart, config.lessonEnd]);
 
   // Load initial data
   useEffect(() => {
@@ -246,6 +271,7 @@ export function TestSettingsPage() {
                 books={books}
                 lessonsStart={lessonsStart}
                 lessonsEnd={lessonsEnd}
+                wordCount={wordCount}
               />
             </div>
           </div>

@@ -133,7 +133,7 @@ async def _get_words_for_config(db: AsyncSession, config: TestConfig) -> list[Wo
         query = query.where(
             or_(
                 and_(Word.book_name == config.book_name, Word.lesson >= config.lesson_range_start),
-                and_(Word.book_name != config.book_name, Word.book_name != effective_end),
+                and_(Word.book_name > config.book_name, Word.book_name < effective_end),
                 and_(Word.book_name == effective_end, Word.lesson <= config.lesson_range_end),
             )
         )

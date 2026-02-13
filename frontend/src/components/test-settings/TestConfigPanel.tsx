@@ -24,6 +24,7 @@ interface Props {
   books: string[];
   lessonsStart: LessonInfo[];
   lessonsEnd: LessonInfo[];
+  wordCount?: number;
 }
 
 const QUESTION_COUNT_OPTIONS = [10, 20, 30, 50];
@@ -61,35 +62,6 @@ function formatTotalTime(count: number, perQuestion: number): string {
   return `${minutes}분 ${seconds}초`;
 }
 
-function getWordCount(lessons: LessonInfo[], start: string, end: string): number {
-  if (!start || !end) return 0;
-  let counting = false;
-  let total = 0;
-  for (const l of lessons) {
-    if (l.lesson === start) counting = true;
-    if (counting) total += l.word_count;
-    if (l.lesson === end) break;
-  }
-  return total;
-}
-
-function getTotalLessonWords(lessons: LessonInfo[], fromLesson: string, direction: 'from' | 'to'): number {
-  let total = 0;
-  if (direction === 'from') {
-    let counting = false;
-    for (const l of lessons) {
-      if (l.lesson === fromLesson) counting = true;
-      if (counting) total += l.word_count;
-    }
-  } else {
-    for (const l of lessons) {
-      total += l.word_count;
-      if (l.lesson === fromLesson) break;
-    }
-  }
-  return total;
-}
-
 /** Styled option pill */
 function OptionPill({
   selected,
@@ -124,7 +96,7 @@ function Divider() {
 
 const selectStyle = { border: '1px solid #E8E8E6' };
 
-export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, lessonsEnd }: Props) {
+export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, lessonsEnd, wordCount = 0 }: Props) {
   const update = (partial: Partial<TestConfigState>) => {
     onConfigChange({ ...config, ...partial });
   };
@@ -139,18 +111,6 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
   };
 
   const isSameBook = config.bookStart === config.bookEnd;
-
-  // Word count calculation
-  let wordCount = 0;
-  if (config.bookStart && config.bookEnd && config.lessonStart && config.lessonEnd) {
-    if (isSameBook) {
-      wordCount = getWordCount(lessonsStart, config.lessonStart, config.lessonEnd);
-    } else {
-      const startWords = getTotalLessonWords(lessonsStart, config.lessonStart, 'from');
-      const endWords = getTotalLessonWords(lessonsEnd, config.lessonEnd, 'to');
-      wordCount = startWords + endWords;
-    }
-  }
 
   return (
     <div className="bg-white rounded-2xl overflow-hidden" style={{ border: '1px solid #E8E8E6' }}>
@@ -357,7 +317,7 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
               <span className="text-[11px] font-medium" style={{ color: '#B8860B' }}>
                 {isSameBook
                   ? `${config.bookStart} ${config.lessonStart}~${config.lessonEnd} 범위에서 총 ${wordCount}개 단어`
-                  : `${config.bookStart} ${config.lessonStart} ~ ${config.bookEnd} ${config.lessonEnd} 범위에서 약 ${wordCount}개 단어`}
+                  : `${config.bookStart} ${config.lessonStart} ~ ${config.bookEnd} ${config.lessonEnd} 범위에서 총 ${wordCount}개 단어`}
               </span>
             </div>
           )}

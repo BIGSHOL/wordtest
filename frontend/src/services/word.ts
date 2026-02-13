@@ -75,6 +75,16 @@ export const wordService = {
     return response.data;
   },
 
+  async countWordsInRange(params: {
+    book_start: string;
+    book_end: string;
+    lesson_start: string;
+    lesson_end: string;
+  }): Promise<number> {
+    const response = await api.get<{ count: number }>('/api/v1/words/count-range', { params });
+    return response.data.count;
+  },
+
   async createWord(data: CreateWordRequest): Promise<Word> {
     const response = await api.post<Word>('/api/v1/words', data);
     return response.data;

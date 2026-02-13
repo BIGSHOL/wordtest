@@ -97,6 +97,42 @@ async def list_lessons(
     return [{"lesson": row[0], "word_count": row[1]} for row in result.all()]
 
 
+@router.get("/count-range")
+async def count_words_in_range(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: CurrentUser,
+    book_start: str = Query(...),
+    book_end: str = Query(...),
+    lesson_start: str = Query(""),
+    lesson_end: str = Query(""),
+):
+    """Count words in a book/lesson range (supports cross-book)."""
+    from sqlalchemy import and_ as sa_and
+
+    is_cross_book = book_start != book_end
+
+    if is_cross_book:
+        query = select(func.count()).select_from(Word).where(
+            Word.is_excluded == False,
+            or_(
+                sa_and(Word.book_name == book_start, Word.lesson >= lesson_start) if lesson_start else (Word.book_name == book_start),
+                sa_and(Word.book_name > book_start, Word.book_name < book_end),
+                sa_and(Word.book_name == book_end, Word.lesson <= lesson_end) if lesson_end else (Word.book_name == book_end),
+            ),
+        )
+    else:
+        conditions = [Word.book_name == book_start, Word.is_excluded == False]
+        if lesson_start:
+            conditions.append(Word.lesson >= lesson_start)
+        if lesson_end:
+            conditions.append(Word.lesson <= lesson_end)
+        query = select(func.count()).select_from(Word).where(*conditions)
+
+    result = await db.execute(query)
+    count = result.scalar() or 0
+    return {"count": count}
+
+
 @router.post("", response_model=WordResponse, status_code=status.HTTP_201_CREATED)
 async def create_word(
     word_in: CreateWordRequest,
