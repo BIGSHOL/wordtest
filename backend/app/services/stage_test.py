@@ -3,6 +3,7 @@
 Completely separate from the mastery/level-up system.
 Words progress through 5 stages; wrong answers do NOT demote stage.
 """
+import re
 import uuid
 import random
 from datetime import timedelta
@@ -20,7 +21,7 @@ from app.models.user import User
 from app.core.timezone import now_kst
 from app.services.mastery_engine import (
     generate_stage_questions, generate_word_questions, generate_listen_questions,
-    check_typing_answer, _word_difficulty_score,
+    check_typing_answer, _word_difficulty_score, is_likely_loanword,
 )
 from app.services.mastery import (
     _get_assignment_and_config,
@@ -135,10 +136,25 @@ async def start_by_code(
     words_map = {w.id: w for w in all_words}
     mastery_by_word = {m.word_id: m for m in masteries}
 
+    seen_korean: set[str] = set()
+    seen_english: set[str] = set()
     word_infos = []
     for word in all_words:
         m = mastery_by_word.get(word.id)
         if m:
+            if is_likely_loanword(word.english, word.korean):
+                continue
+            # Dedup by first Korean meaning and English word
+            first_ko = re.split(r"[,;]", word.korean or "")[0].strip()
+            first_ko = re.sub(r"\(.*?\)", "", first_ko).strip()
+            en_lower = word.english.lower().strip()
+            if first_ko and first_ko in seen_korean:
+                continue
+            if en_lower in seen_english:
+                continue
+            if first_ko:
+                seen_korean.add(first_ko)
+            seen_english.add(en_lower)
             word_infos.append({
                 "word_mastery_id": m.id,
                 "word_id": word.id,

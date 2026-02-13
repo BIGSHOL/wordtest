@@ -1,4 +1,5 @@
 """Mastery learning service - session management, answer processing, adaptive level."""
+import re
 import uuid
 import random
 from datetime import timedelta
@@ -17,7 +18,7 @@ from app.core.timezone import now_kst
 from app.services.mastery_engine import (
     generate_stage_questions, generate_mixed_questions,
     generate_word_questions, generate_listen_questions,
-    check_typing_answer,
+    check_typing_answer, is_likely_loanword,
 )
 from app.schemas.mastery import StageSummary, MasteryQuestion, STAGE_TIMERS
 
@@ -29,6 +30,44 @@ REVIEW_INTERVALS = [3, 7, 30]
 
 # XP engine types that route through this service
 XP_ENGINE_TYPES = {"xp_word", "xp_stage", "xp_listen"}
+
+
+def _first_korean_meaning(korean: str | None) -> str:
+    """Extract normalised first Korean meaning for deduplication."""
+    if not korean:
+        return ""
+    first = re.split(r"[,;]", korean)[0].strip()
+    first = re.sub(r"\(.*?\)", "", first).strip()
+    first = re.sub(r"~", "", first).strip()
+    return first
+
+
+def _dedup_by_meaning(
+    masteries: list[WordMastery],
+    words_map: dict[str, Word],
+) -> list[WordMastery]:
+    """Remove masteries whose word shares the same first Korean meaning.
+
+    Keeps the first occurrence (by input order) for each unique meaning.
+    """
+    seen_korean: set[str] = set()
+    seen_english: set[str] = set()
+    result: list[WordMastery] = []
+    for m in masteries:
+        word = words_map.get(m.word_id)
+        if not word:
+            continue
+        meaning = _first_korean_meaning(word.korean)
+        en_lower = word.english.lower().strip()
+        if meaning and meaning in seen_korean:
+            continue
+        if en_lower in seen_english:
+            continue
+        if meaning:
+            seen_korean.add(meaning)
+        seen_english.add(en_lower)
+        result.append(m)
+    return result
 
 
 def _generate_by_engine(
@@ -313,6 +352,7 @@ async def get_question_pool(
             and m.id not in answered_ids
             and words_map.get(m.word_id)
             and words_map[m.word_id].level == level
+            and not is_likely_loanword(words_map[m.word_id].english, words_map[m.word_id].korean)
         ]
 
         # Sort by lesson (ascending) so easier words come first within a level
@@ -324,6 +364,7 @@ async def get_question_pool(
                 return 0
 
         level_masteries.sort(key=_lesson_key)
+        level_masteries = _dedup_by_meaning(level_masteries, words_map)
         batch = level_masteries[:per_level]
         if not batch:
             continue
@@ -368,6 +409,8 @@ async def get_level_questions(
         word = words_map.get(m.word_id)
         if not word:
             continue
+        if is_likely_loanword(word.english, word.korean):
+            continue
         if word.level == target_level:
             target_masteries.append(m)
         else:
@@ -382,11 +425,13 @@ async def get_level_questions(
             return 0
 
     target_masteries.sort(key=_lesson_key)
+    target_masteries = _dedup_by_meaning(target_masteries, words_map)
     batch = target_masteries[:batch_size]
 
     # Fill from adjacent levels if needed
     if len(batch) < batch_size:
         other_masteries.sort(key=_lesson_key)
+        other_masteries = _dedup_by_meaning(other_masteries, words_map)
         batch.extend(other_masteries[:batch_size - len(batch)])
 
     if not batch:

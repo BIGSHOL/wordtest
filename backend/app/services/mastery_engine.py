@@ -1,13 +1,171 @@
 """Mastery engine - generates stage-specific questions for the 5-stage system."""
 import re
 import random
+import unicodedata
 from collections import defaultdict
+from difflib import SequenceMatcher
 
 from app.models.word import Word
 from app.models.word_mastery import WordMastery
 from app.schemas.mastery import (
     MasteryQuestion, MasteryQuestionWord, STAGE_TIMERS, STAGE_QUESTION_TYPES,
 )
+
+
+# ── Loanword (외래어) Detection ─────────────────────────────────────────────
+
+# Korean jamo ranges
+_HANGUL_BASE = 0xAC00
+_INITIALS = list("ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ")  # 19
+_FINALS = [""] + list("ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ")  # 28
+
+# Korean consonant → romanised normalised form
+_KO_CONSONANT_MAP: dict[str, str] = {
+    "ㄱ": "K", "ㄲ": "K", "ㅋ": "K",
+    "ㄴ": "N",
+    "ㄷ": "T", "ㄸ": "T", "ㅌ": "T",
+    "ㄹ": "R",
+    "ㅁ": "M",
+    "ㅂ": "P", "ㅃ": "P", "ㅍ": "P",
+    "ㅅ": "S", "ㅆ": "S",
+    "ㅇ": "",  # silent initial / NG final handled below
+    "ㅈ": "C", "ㅉ": "C", "ㅊ": "C",
+    "ㅎ": "H",
+}
+
+# Double-final consonants decomposition
+_KO_DOUBLE_FINAL: dict[str, list[str]] = {
+    "ㄳ": ["K", "S"], "ㄵ": ["N", "C"], "ㄶ": ["N", "H"],
+    "ㄺ": ["R", "K"], "ㄻ": ["R", "M"], "ㄼ": ["R", "P"],
+    "ㄽ": ["R", "S"], "ㄾ": ["R", "T"], "ㄿ": ["R", "P"],
+    "ㅀ": ["R", "H"], "ㅄ": ["P", "S"],
+}
+
+
+def _korean_consonant_skeleton(text: str) -> str:
+    """Extract consonant skeleton from Korean text (초성 + 종성)."""
+    result: list[str] = []
+    for ch in text:
+        cp = ord(ch)
+        if _HANGUL_BASE <= cp <= 0xD7A3:
+            idx = cp - _HANGUL_BASE
+            initial_idx = idx // (21 * 28)
+            final_idx = idx % 28
+            # initial consonant
+            init = _INITIALS[initial_idx]
+            mapped = _KO_CONSONANT_MAP.get(init, "")
+            if mapped:
+                result.append(mapped)
+            # final consonant
+            if final_idx > 0:
+                final = _FINALS[final_idx]
+                if final in _KO_DOUBLE_FINAL:
+                    result.extend(_KO_DOUBLE_FINAL[final])
+                elif final == "ㅇ":
+                    result.append("NK")  # 종성 ㅇ = ng sound
+                else:
+                    mapped_f = _KO_CONSONANT_MAP.get(final, "")
+                    if mapped_f:
+                        result.append(mapped_f)
+    return "".join(result)
+
+
+# English digraphs → normalised consonant
+_EN_DIGRAPHS: list[tuple[str, str]] = [
+    ("tion", "SN"), ("sion", "SN"), ("ght", "T"),
+    ("ph", "P"), ("sh", "S"), ("ch", "C"), ("th", "S"),
+    ("ck", "K"), ("ng", "NK"), ("wh", "H"), ("wr", "R"),
+    ("kn", "N"), ("qu", "K"),
+]
+
+_EN_CONSONANT_MAP: dict[str, str] = {
+    "b": "P", "c": "K", "d": "T", "f": "P", "g": "K",
+    "h": "H", "j": "C", "k": "K", "l": "R", "m": "M",
+    "n": "N", "p": "P", "q": "K", "r": "R", "s": "S",
+    "t": "T", "v": "P", "w": "", "x": "KS", "y": "",
+    "z": "S",
+}
+
+_EN_VOWELS = set("aeiou")
+
+
+def _english_consonant_skeleton(word: str) -> str:
+    """Extract consonant skeleton from English word with digraph handling."""
+    w = word.lower().strip()
+    result: list[str] = []
+    i = 0
+    while i < len(w):
+        matched = False
+        # Try digraphs (longest first)
+        for digraph, mapped in _EN_DIGRAPHS:
+            if w[i:i + len(digraph)] == digraph:
+                if mapped:
+                    result.append(mapped)
+                i += len(digraph)
+                matched = True
+                break
+        if matched:
+            continue
+        ch = w[i]
+        if ch in _EN_VOWELS or not ch.isalpha():
+            i += 1
+            continue
+        mapped = _EN_CONSONANT_MAP.get(ch, "")
+        if mapped:
+            result.append(mapped)
+        i += 1
+    return "".join(result)
+
+
+def is_likely_loanword(english: str, korean: str) -> bool:
+    """Detect if a word pair is likely a loanword (외래어) via consonant skeleton matching.
+
+    Returns True if the Korean pronunciation is a transliteration of the English word.
+    """
+    if not english or not korean:
+        return False
+
+    # Use only the first meaning (before comma/semicolon)
+    first_meaning = re.split(r"[,;]", korean)[0].strip()
+
+    # Remove parenthetical notes like (하다), (~의)
+    first_meaning = re.sub(r"\(.*?\)", "", first_meaning).strip()
+    first_meaning = re.sub(r"~", "", first_meaning).strip()
+
+    # Skip if it's a pure Korean phrase (contains spaces → likely definition, not transliteration)
+    if " " in first_meaning:
+        return False
+
+    # Korean grammatical suffixes → not a transliteration (loanwords are bare nouns)
+    _KO_NATIVE_SUFFIXES = ("하다", "되다", "시키다", "적인", "적", "스런", "롭다")
+    for suffix in _KO_NATIVE_SUFFIXES:
+        if first_meaning.endswith(suffix):
+            return False
+
+    # Adjective/possessive endings: 의, 은, 는, 인, 한 (only if 3+ syllables, to avoid short loanwords)
+    ko_syllables = sum(1 for ch in first_meaning if _HANGUL_BASE <= ord(ch) <= 0xD7A3)
+    _KO_SHORT_SUFFIXES = ("의", "은", "는", "인", "한", "던", "런")
+    if ko_syllables >= 3:
+        for suffix in _KO_SHORT_SUFFIXES:
+            if first_meaning.endswith(suffix):
+                return False
+
+    # Verb infinitive ending 다 (빌리다, 쓰다, etc.)
+    if first_meaning.endswith("다") and ko_syllables >= 2:
+        return False
+
+    # Must have at least 2 Korean syllables
+    if ko_syllables < 2:
+        return False
+
+    ko_skel = _korean_consonant_skeleton(first_meaning)
+    en_skel = _english_consonant_skeleton(english)
+
+    if not ko_skel or not en_skel:
+        return False
+
+    ratio = SequenceMatcher(None, en_skel, ko_skel).ratio()
+    return ratio >= 0.5
 
 
 def _word_difficulty_score(word: Word) -> float:
