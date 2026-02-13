@@ -46,7 +46,7 @@ export function StudentSelectionCard({ students, selectedIds, onToggle, onToggle
   const allSelected = filtered.length > 0 && filtered.every((s) => selectedIds.has(s.id));
 
   return (
-    <div className="bg-white border border-border-subtle rounded-2xl overflow-hidden" style={{ padding: '24px 28px' }}>
+    <div className="bg-white border border-border-subtle rounded-2xl overflow-hidden flex flex-col h-full" style={{ padding: '24px 28px' }}>
       {/* Header row: title + select all */}
       <div className="flex items-start justify-between mb-4">
         <div className="space-y-1">
@@ -86,7 +86,7 @@ export function StudentSelectionCard({ students, selectedIds, onToggle, onToggle
       </div>
 
       {/* Student list */}
-      <div className="space-y-2 max-h-[420px] overflow-y-auto">
+      <div className="space-y-2 flex-1 min-h-0 overflow-y-auto">
         {filtered.length === 0 ? (
           <div className="py-8 text-center text-sm text-text-tertiary">
             {search ? '검색 결과가 없습니다.' : '등록된 학생이 없습니다.'}
@@ -154,7 +154,7 @@ export function StudentSelectionCard({ students, selectedIds, onToggle, onToggle
 
       {/* Selected count footer */}
       <div
-        className="flex items-center gap-2 rounded-lg mt-4"
+        className="flex items-center gap-2 rounded-lg mt-4 shrink-0"
         style={{ backgroundColor: '#EBF8FA', padding: '10px 16px' }}
       >
         <Users className="w-4 h-4" style={{ color: '#2D9CAE' }} />

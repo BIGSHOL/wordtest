@@ -226,7 +226,7 @@ export function TestSettingsPage() {
         </div>
 
         {/* Two-column layout: Student selection + Config */}
-        <div className="flex gap-6">
+        <div className="flex gap-6 items-stretch">
           {/* Left Column: Student Selection */}
           <div className="flex-1 min-w-0">
             <StudentSelectionCard

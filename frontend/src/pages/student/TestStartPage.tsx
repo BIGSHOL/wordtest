@@ -270,20 +270,8 @@ export function TestStartPage() {
   return (
     <div className="min-h-screen bg-bg-cream flex flex-col items-center md:justify-center lg:justify-center">
       <div className="flex flex-col w-full md:w-[480px] lg:w-[480px]">
-      {/* Login link - top right */}
-      <div className="flex justify-end px-4 pt-4 md:pt-0">
-        <button
-          onClick={() => navigate('/login')}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-black/5 transition-colors"
-        >
-          <LogIn className="w-3.5 h-3.5 text-text-tertiary" />
-          <span className="font-display text-sm font-medium text-text-tertiary">
-            로그인
-          </span>
-        </button>
-      </div>
       {/* Top Section */}
-      <div className="flex flex-col items-center gap-4 pt-6 md:pt-0 lg:pt-0 pb-8 px-6 md:px-8">
+      <div className="flex flex-col items-center gap-4 pt-[60px] md:pt-0 lg:pt-0 pb-8 px-6 md:px-8">
         <div
           className="w-[72px] h-[72px] rounded-full flex items-center justify-center"
           style={{

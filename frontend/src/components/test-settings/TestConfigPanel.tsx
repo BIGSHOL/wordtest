@@ -301,7 +301,7 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
                   value={config.lessonStart}
                   onChange={(e) => update({ lessonStart: e.target.value })}
                   className="px-3 py-2 rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-teal bg-white"
-                  style={{ ...selectStyle, width: 80 }}
+                  style={{ ...selectStyle, width: 160 }}
                 >
                   <option value="">레슨</option>
                   {lessonsStart.map((l) => (
@@ -337,7 +337,7 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
                   value={config.lessonEnd}
                   onChange={(e) => update({ lessonEnd: e.target.value })}
                   className="px-3 py-2 rounded-lg text-[13px] focus:outline-none focus:ring-2 focus:ring-teal bg-white"
-                  style={{ ...selectStyle, width: 80 }}
+                  style={{ ...selectStyle, width: 160 }}
                 >
                   <option value="">레슨</option>
                   {lessonsEnd.map((l) => (
