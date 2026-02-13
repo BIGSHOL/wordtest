@@ -1,5 +1,5 @@
 """Test assignment service."""
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, update, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.test_assignment import TestAssignment
@@ -249,6 +249,17 @@ async def reset_assignment(
     assignment.test_session_id = None
     assignment.completed_at = None
     # Keep original test_code (no re-generation)
+
+    # Detach completed learning sessions so ALREADY_COMPLETED check won't block
+    await db.execute(
+        update(LearningSession)
+        .where(
+            LearningSession.assignment_id == assignment.id,
+            LearningSession.completed_at != None,
+        )
+        .values(assignment_id=None)
+    )
+
     await db.commit()
     return True
 
