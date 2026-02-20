@@ -5,6 +5,7 @@
  * Legacy: Fixed difficulty, all questions served in easy→hard order.
  */
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { useAuthStore } from './auth';
 import { getErrorMessage } from '../utils/error';
 import type { User } from '../types/auth';
@@ -511,7 +512,7 @@ async function _prefetchLevel(sessionId: string, level: number) {
 // ── Derived Selectors ───────────────────────────────────────────────────────
 
 export function useLevelupProgress() {
-  return useUnifiedTestStore(state => ({
+  return useUnifiedTestStore(useShallow(state => ({
     currentBook: state.currentBook,
     xp: state.xp,
     lessonXp: getLessonXp(state.currentBook),
@@ -523,15 +524,15 @@ export function useLevelupProgress() {
     correctCount: state.correctCount,
     lastXpChange: state.lastXpChange,
     levelChanged: state.levelChanged,
-  }));
+  })));
 }
 
 export function useLegacyProgress() {
-  return useUnifiedTestStore(state => ({
+  return useUnifiedTestStore(useShallow(state => ({
     currentIndex: state.currentIndex,
     totalQuestions: state.questions.length,
     totalAnswered: state.totalAnswered,
     correctCount: state.correctCount,
     combo: state.combo,
-  }));
+  })));
 }
