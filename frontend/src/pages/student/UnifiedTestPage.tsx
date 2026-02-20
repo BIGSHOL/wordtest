@@ -43,8 +43,7 @@ export function UnifiedTestPage() {
     engineType, sessionId, questionCount,
     selectedAnswer, typedAnswer, answerResult, feedbackQuestion,
     isLoading, isComplete, finalResult,
-    xp, lastXpChange, levelChanged,
-    correctCount, totalAnswered, consecutiveWrong,
+    totalAnswered,
     error,
   } = store;
 
