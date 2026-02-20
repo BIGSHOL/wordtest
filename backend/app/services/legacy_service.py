@@ -29,6 +29,7 @@ from app.services.test_common import (
     is_typing_question,
     determine_correct_answer,
     filter_loanwords,
+    filter_compatible_words,
     dedup_words,
     generate_questions_for_words,
 )
@@ -76,9 +77,14 @@ async def start_session(
     timer_seconds = config.per_question_time_seconds or 10
     question_count = config.question_count or 20
 
+    # Filter to words compatible with selected question types (e.g. emoji-only)
+    compatible = filter_compatible_words(filtered, question_types)
+    if len(compatible) < 4:
+        raise ValueError("Not enough compatible words for the selected question types (minimum 4)")
+
     # Sort words: easy → hard (level ASC, lesson ASC) - already sorted from DB
     # Select question_count words evenly distributed across the range
-    selected_words = _select_distributed_words(filtered, question_count)
+    selected_words = _select_distributed_words(compatible, question_count)
 
     # Generate ALL questions at once
     questions = generate_questions_for_words(

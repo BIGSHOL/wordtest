@@ -85,6 +85,16 @@ export const wordService = {
     return response.data.count;
   },
 
+  async getCompatibleCounts(params: {
+    book_start: string;
+    book_end: string;
+    lesson_start: string;
+    lesson_end: string;
+  }): Promise<Record<string, number>> {
+    const response = await api.get<Record<string, number>>('/api/v1/words/compatible-counts', { params });
+    return response.data;
+  },
+
   async createWord(data: CreateWordRequest): Promise<Word> {
     const response = await api.post<Word>('/api/v1/words', data);
     return response.data;

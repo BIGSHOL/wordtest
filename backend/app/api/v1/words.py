@@ -138,6 +138,58 @@ async def count_words_in_range(
     return {"count": count}
 
 
+@router.get("/compatible-counts")
+async def compatible_counts_in_range(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: CurrentUser,
+    book_start: str = Query(...),
+    book_end: str = Query(...),
+    lesson_start: str = Query(""),
+    lesson_end: str = Query(""),
+):
+    """Count words compatible with each question engine in a range.
+
+    Uses the pre-computed compatible_engines field on Word.
+    Returns e.g. {"en_to_ko": 500, "emoji": 120, "sentence": 300, ...}
+    """
+    from sqlalchemy import and_ as sa_and
+
+    is_cross_book = book_start != book_end
+
+    if is_cross_book:
+        range_filter = or_(
+            sa_and(Word.book_name == book_start, Word.lesson >= lesson_start) if lesson_start else (Word.book_name == book_start),
+            sa_and(Word.book_name > book_start, Word.book_name < book_end),
+            sa_and(Word.book_name == book_end, Word.lesson <= lesson_end) if lesson_end else (Word.book_name == book_end),
+        )
+    else:
+        conditions = [Word.book_name == book_start]
+        if lesson_start:
+            conditions.append(Word.lesson >= lesson_start)
+        if lesson_end:
+            conditions.append(Word.lesson <= lesson_end)
+        range_filter = sa_and(*conditions) if len(conditions) > 1 else conditions[0]
+
+    result = await db.execute(
+        select(Word.compatible_engines).where(
+            Word.is_excluded == False,
+            range_filter,
+        )
+    )
+    rows = result.scalars().all()
+
+    counts: dict[str, int] = {name: 0 for name in ENGINES}
+    for csv in rows:
+        if not csv:
+            continue
+        for engine_name in csv.split(","):
+            engine_name = engine_name.strip()
+            if engine_name in counts:
+                counts[engine_name] += 1
+
+    return counts
+
+
 @router.get("/engine-audit", response_model=EngineAuditResponse)
 async def engine_audit(
     db: Annotated[AsyncSession, Depends(get_db)],

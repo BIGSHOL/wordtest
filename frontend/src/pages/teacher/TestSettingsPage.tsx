@@ -44,31 +44,51 @@ export function TestSettingsPage() {
 
   // Word count from API
   const [wordCount, setWordCount] = useState(0);
+  // Compatible word counts per engine type (e.g. { emoji: 120, sentence: 300, ... })
+  const [compatibleCounts, setCompatibleCounts] = useState<Record<string, number>>({});
 
   // UI
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch word count when range changes
+  // Fetch word count + compatible counts when range changes
   useEffect(() => {
     if (!config.bookStart || !config.bookEnd || !config.lessonStart || !config.lessonEnd) {
       setWordCount(0);
+      setCompatibleCounts({});
       return;
     }
-    const fetchCount = async () => {
+    const rangeParams = {
+      book_start: config.bookStart,
+      book_end: config.bookEnd,
+      lesson_start: config.lessonStart,
+      lesson_end: config.lessonEnd,
+    };
+    const fetchCounts = async () => {
       try {
-        const count = await wordService.countWordsInRange({
-          book_start: config.bookStart,
-          book_end: config.bookEnd,
-          lesson_start: config.lessonStart,
-          lesson_end: config.lessonEnd,
-        });
+        const [count, compat] = await Promise.all([
+          wordService.countWordsInRange(rangeParams),
+          wordService.getCompatibleCounts(rangeParams),
+        ]);
         setWordCount(count);
+        setCompatibleCounts(compat);
       } catch {
         setWordCount(0);
+        setCompatibleCounts({});
       }
     };
-    fetchCount();
+    fetchCounts();
   }, [config.bookStart, config.bookEnd, config.lessonStart, config.lessonEnd]);
+
+  // Auto-deselect question types that become disabled when range changes
+  useEffect(() => {
+    if (Object.keys(compatibleCounts).length === 0) return;
+    const stillValid = config.questionTypes.filter(
+      t => (compatibleCounts[t] ?? 0) >= 4
+    );
+    if (stillValid.length < config.questionTypes.length) {
+      setConfig(prev => ({ ...prev, questionTypes: stillValid.length > 0 ? stillValid : ['en_to_ko', 'ko_to_en'] }));
+    }
+  }, [compatibleCounts]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load initial data
   useEffect(() => {
@@ -272,6 +292,7 @@ export function TestSettingsPage() {
                 lessonsStart={lessonsStart}
                 lessonsEnd={lessonsEnd}
                 wordCount={wordCount}
+                compatibleCounts={compatibleCounts}
               />
             </div>
           </div>

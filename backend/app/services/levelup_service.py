@@ -35,6 +35,7 @@ from app.services.test_common import (
     is_typing_question,
     determine_correct_answer,
     filter_loanwords,
+    filter_compatible_words,
     dedup_words,
     generate_questions_for_words,
 )
@@ -83,9 +84,14 @@ async def start_session(
     question_types = _parse_question_types(config.question_types)
     timer_seconds = config.per_question_time_seconds or 10
 
+    # Filter to words compatible with selected question types (e.g. emoji-only)
+    compatible = filter_compatible_words(filtered, question_types)
+    if len(compatible) < 4:
+        raise ValueError("Not enough compatible words for the selected question types (minimum 4)")
+
     # Group words by level for adaptive serving
     words_by_level: dict[int, list[Word]] = defaultdict(list)
-    for w in filtered:
+    for w in compatible:
         words_by_level[w.level].append(w)
 
     available_levels = sorted(words_by_level.keys())
@@ -121,7 +127,7 @@ async def start_session(
         "session_id": session.id,
         "assignment_id": assignment.id,
         "questions": initial_questions,
-        "total_words": len(filtered),
+        "total_words": len(compatible),
         "question_count": config.question_count or 50,
         "student_name": student.name or "학생",
         "student_id": assignment.student_id,
@@ -167,9 +173,11 @@ async def fetch_level_questions(
     question_types = _parse_question_types(config.question_types)
     timer_seconds = config.per_question_time_seconds or 10
 
-    # Get all words in range
+    # Get all words in range, filter for compatibility
     all_words = await get_words_for_config(db, config)
-    filtered = dedup_words(filter_loanwords(all_words))
+    filtered = filter_compatible_words(
+        dedup_words(filter_loanwords(all_words)), question_types
+    )
 
     # Find already-answered word IDs in this session
     answered_result = await db.execute(

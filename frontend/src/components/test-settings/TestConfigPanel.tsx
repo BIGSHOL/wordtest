@@ -26,7 +26,12 @@ interface Props {
   lessonsStart: LessonInfo[];
   lessonsEnd: LessonInfo[];
   wordCount?: number;
+  /** Per-engine compatible word counts for the selected range */
+  compatibleCounts?: Record<string, number>;
 }
+
+/** Minimum compatible words required to enable a question type */
+const MIN_COMPATIBLE_WORDS = 4;
 
 const QUESTION_COUNT_OPTIONS = [10, 20, 30, 50];
 const TIME_OPTIONS = [
@@ -99,9 +104,17 @@ function Divider() {
 
 const selectStyle = { border: '1px solid #E8E8E6' };
 
-export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, lessonsEnd, wordCount = 0 }: Props) {
+export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, lessonsEnd, wordCount = 0, compatibleCounts = {} }: Props) {
   const update = (partial: Partial<TestConfigState>) => {
     onConfigChange({ ...config, ...partial });
+  };
+
+  const hasRange = !!(config.bookStart && config.bookEnd && config.lessonStart && config.lessonEnd);
+
+  /** Check if a question type has enough compatible words */
+  const isTypeDisabled = (type: string) => {
+    if (!hasRange || Object.keys(compatibleCounts).length === 0) return false;
+    return (compatibleCounts[type] ?? 0) < MIN_COMPATIBLE_WORDS;
   };
 
   const effectiveCount =
@@ -110,6 +123,7 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
       : config.questionCount;
 
   const toggleQuestionType = (type: string) => {
+    if (isTypeDisabled(type)) return;
     const current = config.questionTypes;
     if (current.includes(type)) {
       update({ questionTypes: current.filter(t => t !== type) });
@@ -119,7 +133,9 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
   };
 
   const applyPreset = (types: string[]) => {
-    update({ questionTypes: types });
+    // Filter out disabled types from preset
+    const enabled = types.filter(t => !isTypeDisabled(t));
+    update({ questionTypes: enabled });
   };
 
   const isSameBook = config.bookStart === config.bookEnd;
@@ -266,6 +282,9 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
         <div className="grid grid-cols-2 gap-2">
           {QUESTION_TYPE_OPTIONS.map((option) => {
             const isSelected = config.questionTypes.includes(option.value);
+            const disabled = isTypeDisabled(option.value);
+            const count = compatibleCounts[option.value];
+            const showCount = hasRange && count !== undefined;
             return (
               <button
                 key={option.value}
@@ -273,8 +292,10 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
                 className="flex items-center gap-2.5 rounded-lg transition-all text-left"
                 style={{
                   padding: '10px 12px',
-                  backgroundColor: isSelected ? '#EBF8FA' : '#F8F8F6',
-                  border: isSelected ? '2px solid #2D9CAE' : '1px solid #E8E8E6',
+                  backgroundColor: disabled ? '#F3F3F1' : isSelected ? '#EBF8FA' : '#F8F8F6',
+                  border: disabled ? '1px solid #E8E8E6' : isSelected ? '2px solid #2D9CAE' : '1px solid #E8E8E6',
+                  opacity: disabled ? 0.55 : 1,
+                  cursor: disabled ? 'not-allowed' : 'pointer',
                 }}
               >
                 <span
@@ -282,21 +303,36 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
                   style={{
                     width: 16,
                     height: 16,
-                    backgroundColor: isSelected ? '#2D9CAE' : 'transparent',
-                    border: isSelected ? 'none' : '2px solid #D1D5DB',
+                    backgroundColor: disabled ? '#D1D5DB' : isSelected ? '#2D9CAE' : 'transparent',
+                    border: disabled ? 'none' : isSelected ? 'none' : '2px solid #D1D5DB',
                     borderRadius: 4,
                   }}
                 >
-                  {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
+                  {isSelected && !disabled && <Check className="w-2.5 h-2.5 text-white" />}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <div
-                    className="text-[12px] font-bold"
-                    style={{ color: isSelected ? '#2D9CAE' : '#3D3D3C' }}
-                  >
-                    {option.label}
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className="text-[12px] font-bold"
+                      style={{ color: disabled ? '#9CA3AF' : isSelected ? '#2D9CAE' : '#3D3D3C' }}
+                    >
+                      {option.label}
+                    </span>
+                    {showCount && (
+                      <span
+                        className="text-[9px] font-medium px-1 rounded"
+                        style={{
+                          backgroundColor: disabled ? '#FEE2E2' : '#E5E7EB',
+                          color: disabled ? '#DC2626' : '#6B7280',
+                        }}
+                      >
+                        {count}단어
+                      </span>
+                    )}
                   </div>
-                  <div className="text-[10px] text-text-secondary truncate">{option.desc}</div>
+                  <div className="text-[10px] truncate" style={{ color: disabled ? '#9CA3AF' : '#6D6C6A' }}>
+                    {disabled ? `호환 단어 부족 (${MIN_COMPATIBLE_WORDS}개 미만)` : option.desc}
+                  </div>
                 </div>
               </button>
             );

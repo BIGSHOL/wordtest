@@ -507,6 +507,21 @@ def filter_loanwords(words: list[Word]) -> list[Word]:
     return [w for w in words if not is_likely_loanword(w.english, w.korean)]
 
 
+def filter_compatible_words(
+    words: list[Word],
+    question_types: list[str],
+) -> list[Word]:
+    """Keep only words that at least one of the selected engines can handle.
+
+    This prevents silent fallback to en_to_ko when e.g. only emoji is selected
+    but a word has no emoji mapping.
+    """
+    if not question_types:
+        return words
+    engines = [get_engine(qt) for qt in question_types]
+    return [w for w in words if any(e.can_generate(w) for e in engines)]
+
+
 # ── Question Generation ──────────────────────────────────────────────────────
 
 def generate_questions_for_words(
@@ -540,12 +555,23 @@ def generate_questions_for_words(
         qtype = question_types[i % len(question_types)]
         engine = get_engine(qtype)
 
-        # Fallback if engine can't generate for this word
+        # Fallback: try other selected types first, then en_to_ko as last resort
         if not engine.can_generate(word):
-            qtype = "en_to_ko"
-            engine = get_engine(qtype)
-            if not engine.can_generate(word):
-                continue
+            found = False
+            for alt in question_types:
+                if alt == qtype:
+                    continue
+                alt_engine = get_engine(alt)
+                if alt_engine.can_generate(word):
+                    qtype, engine = alt, alt_engine
+                    found = True
+                    break
+            if not found:
+                # Last resort: en_to_ko (should rarely happen with filter_compatible_words)
+                qtype = "en_to_ko"
+                engine = get_engine(qtype)
+                if not engine.can_generate(word):
+                    continue
 
         spec = engine.generate(word, pool)
         mastery = mastery_map.get(word.id)
