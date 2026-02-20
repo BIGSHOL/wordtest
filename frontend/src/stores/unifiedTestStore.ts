@@ -125,7 +125,7 @@ export interface UnifiedTestStore {
   startLegacy: (code: string, allowRestart?: boolean) => Promise<StartLegacyResponse>;
   selectAnswer: (answer: string) => void;
   setTypedAnswer: (text: string) => void;
-  submitAnswer: (timeTaken: number) => Promise<AnswerResult | null>;
+  submitAnswer: (timeTaken: number, isTimeout?: boolean) => Promise<AnswerResult | null>;
   nextQuestion: () => void;
   complete: () => Promise<void>;
   reset: () => void;
@@ -289,7 +289,7 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
 
   // ── Submit Answer ───────────────────────────────────────────────────
 
-  submitAnswer: async (timeTaken) => {
+  submitAnswer: async (timeTaken, isTimeout = false) => {
     const state = get();
     if (state.isSubmitting || !state.sessionId) return null;
 
@@ -305,7 +305,8 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
       ? state.selectedAnswer
       : state.typedAnswer;
 
-    if (!selectedAnswer) return null;
+    // Allow timeout submits even without an answer selected
+    if (!selectedAnswer && !isTimeout) return null;
 
     set({ isSubmitting: true });
 
@@ -316,7 +317,7 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
 
       const result = await submitFn(state.sessionId!, {
         word_mastery_id: question.word_mastery_id,
-        selected_answer: selectedAnswer,
+        selected_answer: selectedAnswer || '',
         time_taken_seconds: timeTaken,
         question_type: question.question_type,
       });

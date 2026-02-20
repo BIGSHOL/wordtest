@@ -68,7 +68,7 @@ export function UnifiedTestPage() {
   const handleTimeout = useCallback(() => {
     if (!answerResult && currentQuestion && !submittingRef.current) {
       submittingRef.current = true;
-      store.submitAnswer(timerSeconds).catch(() => {
+      store.submitAnswer(timerSeconds, true).catch(() => {
         submittingRef.current = false;
       });
     }
