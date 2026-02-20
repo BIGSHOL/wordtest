@@ -131,7 +131,7 @@ export function StudentResultPage() {
                 <ArrowLeft className="w-[18px] h-[18px] text-text-primary" />
               </Link>
               <h1 className="font-display text-lg font-bold text-text-primary">
-                학생 리포트
+                레벨테스트 리포트
               </h1>
             </div>
 

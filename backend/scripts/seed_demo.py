@@ -67,7 +67,7 @@ PENDING_CONFIGS = [
 ]
 
 # Cleanup prefixes - identify all demo data
-CLEANUP_PREFIXES = ["DM", "LU", "LG", "TEST", "ENG_", "DX", "DLS", "DLW", "RPT", "RLG", "RLW"]
+CLEANUP_PREFIXES = ["DM", "LU", "LG", "LVUP", "LGCY", "TEST", "ENG_", "DX", "DLS", "DLW", "RPT", "RLG", "RLW"]
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -196,7 +196,7 @@ async def ensure_accounts(db: AsyncSession) -> tuple[str, list[dict]]:
 async def create_pending_codes(db: AsyncSession, teacher_id: str, students: list[dict]) -> list[dict]:
     """Create pending test assignments. Returns list of {code, engine, student_name}."""
     codes = []
-    prefixes = {0: "LU", 1: "LU", 2: "LG", 3: "LG"}
+    prefixes = {0: "LVUP", 1: "LVUP", 2: "LGCY", 3: "LGCY"}
     suffixes = {0: "01", 1: "02", 2: "01", 3: "02"}
 
     for ci, cfg in enumerate(PENDING_CONFIGS):
@@ -279,7 +279,7 @@ async def create_completed_report(
 
     # Test code for completed report
     prefix = "DMLU" if engine_type == "levelup" else "DMLG"
-    code = f"{prefix}{report_idx:02d}"
+    code = f"{prefix}{report_idx:04d}"
 
     started = rnd_kst(1, 14)
     completed = started + timedelta(minutes=random.randint(3, 12))

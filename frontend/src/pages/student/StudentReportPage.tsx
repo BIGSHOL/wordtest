@@ -130,7 +130,7 @@ export function StudentReportPage() {
         {/* Top bar */}
         <div className="flex items-center justify-between">
           <h1 className="font-display text-lg font-bold text-[#0D0D0D]">
-            {isListening ? '리스닝 테스트 리포트' : '레벨테스트 리포트'}
+            레벨테스트 리포트
           </h1>
           <button
             onClick={() => window.print()}
