@@ -20,27 +20,11 @@ async def _get_book_level(db: AsyncSession, book_name: str) -> int:
     return result.scalar() or 1
 
 
-def _resolve_engine(test_type: str, mode: str) -> tuple[str, str]:
-    """Resolve engine_type and assignment_type from test_type + question mode."""
-    is_xp = test_type == "placement"
-    engine_type = f"xp_{mode}" if is_xp else f"legacy_{mode}"
-    if is_xp:
-        assignment_type = "mastery"
-    elif mode == "word":
-        assignment_type = "legacy"
-    else:
-        assignment_type = "stage_test"
-    return engine_type, assignment_type
-
-
-def _mode_to_question_types(mode: str) -> str:
-    """Map engine mode to legacy question_types string for TestConfig."""
-    mapping = {
-        "word": "word_meaning,meaning_word",
-        "stage": "word_meaning,meaning_word,sentence_blank",
-        "listen": "word_meaning",
-    }
-    return mapping.get(mode, "word_meaning")
+def _resolve_engine(engine: str) -> tuple[str, str]:
+    """Resolve engine_type and assignment_type from engine selection."""
+    if engine == "levelup":
+        return "levelup", "mastery"
+    return "legacy", "mastery"
 
 
 def _build_lesson_range(
@@ -64,17 +48,12 @@ async def assign_test(
     db: AsyncSession, teacher_id: str, data: AssignTestRequest
 ) -> list[TestAssignmentResponse]:
     """Create a TestConfig and assign it to multiple students with individual codes."""
-    # Determine engine mode from question_types[0]
-    mode = data.question_types[0] if data.question_types else "word"
-    # Support legacy values: map old question type names to mode
-    if mode in ("word_meaning", "meaning_word", "sentence_blank"):
-        mode = "word"
-
-    engine_type, assignment_type = _resolve_engine(data.test_type, mode)
-    question_types_str = _mode_to_question_types(mode)
+    engine_type, assignment_type = _resolve_engine(data.engine)
+    # Store question types as comma-separated canonical names
+    question_types_str = ",".join(data.question_types) if data.question_types else "en_to_ko,ko_to_en"
 
     time_limit = data.per_question_time_seconds * data.question_count
-    is_placement = data.test_type == "placement"
+    is_levelup = data.engine == "levelup"
 
     book_end = data.book_name_end or data.book_name
     is_cross_book = book_end != data.book_name
@@ -83,7 +62,7 @@ async def assign_test(
     level_min = await _get_book_level(db, data.book_name) if data.book_name else 1
     level_max = await _get_book_level(db, book_end) if book_end else 15
 
-    type_label = "적응형" if is_placement else "정기형"
+    type_label = "레벨업" if is_levelup else "레거시"
     if is_cross_book:
         config_name = f"{data.book_name} {data.lesson_range_start} ~ {book_end} {data.lesson_range_end} ({type_label})"
     else:
@@ -93,7 +72,7 @@ async def assign_test(
         teacher_id=teacher_id,
         name=config_name,
         test_code=None,
-        test_type=data.test_type,
+        test_type=data.engine,
         question_count=data.question_count,
         time_limit_seconds=time_limit,
         is_active=True,
@@ -112,19 +91,12 @@ async def assign_test(
     assignments = []
     for student_id in data.student_ids:
         individual_code = await generate_test_code(db)
-        # Map test_type to assignment_type
-        if data.test_type == "listening":
-            a_type = "listening"
-        elif data.test_type == "periodic":
-            a_type = "mastery"
-        else:
-            a_type = "mastery"
         assignment = TestAssignment(
             test_config_id=config.id,
             student_id=student_id,
             teacher_id=teacher_id,
             test_code=individual_code,
-            assignment_type=a_type,
+            assignment_type=assignment_type,
             engine_type=engine_type,
         )
         db.add(assignment)
@@ -158,7 +130,7 @@ async def assign_test(
                 student_school=student.school_name if student else None,
                 student_grade=student.grade if student else None,
                 test_code=a.test_code,
-                test_type=data.test_type,
+                test_type=data.engine,
                 question_count=data.question_count,
                 per_question_time_seconds=data.per_question_time_seconds,
                 question_types=question_types_str,

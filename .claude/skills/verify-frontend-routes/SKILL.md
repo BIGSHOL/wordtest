@@ -35,27 +35,22 @@ description: 프론트엔드 Route-Page-Nav-Store-Service 간 참조 일관성�
 | `frontend/src/pages/teacher/MasteryReportPage.tsx` | 마스터리 리포트 페이지 |
 | `frontend/src/pages/teacher/ProfilePage.tsx` | 프로필 페이지 |
 | `frontend/src/pages/student/MainPage.tsx` | 학생 메인 페이지 |
-| `frontend/src/pages/student/MasteryPage.tsx` | 마스터리 테스트 페이지 |
-| `frontend/src/pages/student/StageTestPage.tsx` | 스테이지 테스트 페이지 |
-| `frontend/src/pages/student/TestPage.tsx` | 레벨 테스트 페이지 |
 | `frontend/src/pages/student/TestStartPage.tsx` | 테스트 시작 페이지 |
-| `frontend/src/pages/student/ResultPage.tsx` | 결과 페이지 |
-| `frontend/src/pages/student/WrongWordsPage.tsx` | 오답 단어 페이지 |
+| `frontend/src/pages/student/UnifiedTestPage.tsx` | 통합 테스트 페이지 (레벨업/레거시 공용) |
 | `frontend/src/pages/student/StudentReportPage.tsx` | 학생 리포트 페이지 |
+| `frontend/src/pages/auth/LoginPage.tsx` | 로그인 페이지 |
+| `frontend/src/pages/auth/RegisterPage.tsx` | 회원가입 페이지 |
 | `frontend/src/stores/auth.ts` | 인증 스토어 |
-| `frontend/src/stores/masteryStore.ts` | 마스터리 스토어 |
-| `frontend/src/stores/stageTestStore.ts` | 스테이지 테스트 스토어 |
-| `frontend/src/stores/testStore.ts` | 레벨 테스트 스토어 |
+| `frontend/src/stores/unifiedTestStore.ts` | 통합 테스트 스토어 (레벨업/레거시 공용) |
 | `frontend/src/services/api.ts` | Axios 인스턴스 |
 | `frontend/src/services/auth.ts` | 인증 API 서비스 |
-| `frontend/src/services/mastery.ts` | 마스터리 API 서비스 |
-| `frontend/src/services/stageTest.ts` | 스테이지 테스트 API 서비스 |
-| `frontend/src/services/test.ts` | 레벨 테스트 API 서비스 |
+| `frontend/src/services/unifiedTest.ts` | 통합 테스트 API 서비스 |
 | `frontend/src/services/stats.ts` | 통계 API 서비스 |
 | `frontend/src/services/student.ts` | 학생 API 서비스 |
 | `frontend/src/services/word.ts` | 단어 API 서비스 |
 | `frontend/src/services/testConfig.ts` | 테스트 설정 API 서비스 |
 | `frontend/src/services/testAssignment.ts` | 테스트 배정 API 서비스 |
+| `frontend/src/types/test.ts` | 레거시 테스트 결과 조회용 타입 (TestSessionData, AnswerDetail) |
 
 ## Workflow
 
@@ -158,7 +153,7 @@ cd frontend && npx tsc --noEmit 2>&1 | head -30
 
 ## Exceptions
 
-1. **dev 라우트** — `/dev/stage-preview`는 개발용으로 TeacherLayout 네비게이션에 없는 것이 정상.
-2. **public 라우트** — `/login`, `/register`, `/test/start`는 인증 guard가 없는 것이 정상. 누구나 접근 가능한 페이지.
-3. **직접 import 페이지** — `LoginPage`, `RegisterPage`는 lazyRetry 없이 직접 import하는 것이 정상 (인증 전 즉시 로드 필요).
-4. **학생 라우트 네비게이션** — 학생 페이지는 TeacherLayout이 아닌 별도 레이아웃을 사용하므로 TeacherLayout navItems에 없는 것이 정상.
+1. **public 라우트** — `/login`, `/register`, `/test/start`, `/unified-test`, `/mastery-report/:sessionId`는 인증 guard가 없는 것이 정상. 누구나 접근 가능한 페이지.
+2. **직접 import 페이지** — `LoginPage`, `RegisterPage`는 lazyRetry 없이 직접 import하는 것이 정상 (인증 전 즉시 로드 필요).
+3. **학생 라우트 네비게이션** — 학생 페이지는 TeacherLayout이 아닌 별도 레이아웃을 사용하므로 TeacherLayout navItems에 없는 것이 정상.
+4. **types/ 디렉토리** — `frontend/src/types/test.ts`는 서비스가 아닌 타입 정의 파일로, 스토어에서 직접 import하지 않는 것이 정상. 컴포넌트에서 직접 import하여 사용.

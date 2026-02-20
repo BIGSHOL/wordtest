@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import text
 
-from app.api.v1 import auth, users, students, tests, words, stats, test_configs, test_assignments, tts, mastery, stage_test, listening_test
+from app.api.v1 import auth, users, students, words, stats, test_configs, test_assignments, tts, levelup, legacy_test
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 from app.utils.load_words import classify_expression
@@ -66,15 +66,13 @@ app.add_middleware(GZipMiddleware, minimum_size=500)
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
 app.include_router(students.router, prefix="/api/v1")
-app.include_router(tests.router, prefix="/api/v1")
 app.include_router(words.router, prefix="/api/v1")
 app.include_router(stats.router, prefix="/api/v1")
 app.include_router(test_configs.router, prefix="/api/v1")
 app.include_router(test_assignments.router, prefix="/api/v1")
 app.include_router(tts.router, prefix="/api/v1")
-app.include_router(mastery.router, prefix="/api/v1")
-app.include_router(stage_test.router, prefix="/api/v1")
-app.include_router(listening_test.router, prefix="/api/v1")
+app.include_router(levelup.router, prefix="/api/v1")
+app.include_router(legacy_test.router, prefix="/api/v1")
 
 
 @app.get("/health")

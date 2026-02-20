@@ -1,10 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BookOpen, Hash, AlertCircle, Loader2, Play, RotateCcw, BarChart3, AlertTriangle, LogIn } from 'lucide-react';
-import { useTestStore } from '../../stores/testStore';
-import { useMasteryStore } from '../../stores/masteryStore';
-import { useStageTestStore } from '../../stores/stageTestStore';
-import { useListeningTestStore } from '../../stores/listeningTestStore';
+import { useUnifiedTestStore } from '../../stores/unifiedTestStore';
+import { unifiedTestService } from '../../services/unifiedTest';
 
 const CODE_LENGTH = 8;
 const CODE_CHARS = /[^A-Z0-9]/g;
@@ -13,15 +11,13 @@ interface CompletedInfo {
   sessionId: string;
   assignmentId: string;
   code: string;
+  engine: 'levelup' | 'legacy';
 }
 
 export function TestStartPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { startTestByCode } = useTestStore();
-  const { startByCode: startMasteryByCode } = useMasteryStore();
-  const { startByCode: startStageTestByCode } = useStageTestStore();
-  const { startByCode: startListeningTestByCode } = useListeningTestStore();
+  const store = useUnifiedTestStore();
   const [testCode, setTestCode] = useState('');
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,70 +44,34 @@ export function TestStartPage() {
     setIsStarting(true);
     setError(null);
     try {
-      // Try mastery first (new system) — also detects stage tests and legacy engines
-      const response = await startMasteryByCode(code);
-      const engine = response.engine_type;
+      // 1. Check engine type for the code
+      const check = await unifiedTestService.checkCode(code);
+      const engine = check.engine_type;
 
-      // Route by engine_type if available, else by assignment_type
-      if (engine) {
-        if (engine.startsWith('xp_')) {
-          // XP engines → mastery page (questions already loaded)
-          navigate('/mastery', { replace: true });
-          return;
-        }
-        if (engine === 'legacy_stage' || engine === 'legacy_listen') {
-          // Legacy stage/listen → stage test page
-          await startStageTestByCode(code);
-          navigate('/stage-test', { replace: true });
-          return;
-        }
-        if (engine === 'legacy_word') {
-          // Legacy word → legacy test page
-          await startTestByCode(code);
-          navigate('/test', { replace: true });
-          return;
-        }
+      // 2. Start the appropriate engine
+      if (engine === 'levelup') {
+        await store.startLevelup(code);
+      } else {
+        await store.startLegacy(code);
       }
 
-      // Fallback: route by assignment_type (backward compat for NULL engine_type)
-      if (response.assignment_type === 'stage_test') {
-        await startStageTestByCode(code);
-        navigate('/stage-test', { replace: true });
-        return;
-      }
-      if (response.assignment_type === 'listening') {
-        // Listening test: call separate start endpoint
-        await startListeningTestByCode(code);
-        navigate('/listening-test', { replace: true });
-        return;
-      }
-      if (response.assignment_type === 'mastery') {
-        navigate('/mastery', { replace: true });
-        return;
-      }
-      // Fallback: legacy test system
-      await startTestByCode(code);
-      navigate('/test', { replace: true });
+      // 3. Navigate to unified test page
+      navigate('/unified-test', { replace: true });
     } catch (err: any) {
       const detail = err?.response?.data?.detail;
       const status = err?.response?.status;
-      if (status === 409 && detail?.code === 'ALREADY_COMPLETED') {
+
+      if (status === 409 || (typeof detail === 'string' && detail.includes('ALREADY_COMPLETED'))) {
+        // Parse session_id and assignment_id from detail if available
+        const parsed = typeof detail === 'object' ? detail : {};
         setCompletedInfo({
-          sessionId: detail.session_id,
-          assignmentId: detail.assignment_id,
+          sessionId: parsed.session_id || '',
+          assignmentId: parsed.assignment_id || '',
           code,
+          engine: 'levelup', // default, will be resolved on restart
         });
-      } else if (detail === 'This test code has already been used') {
-        setError('이미 사용된 테스트 코드입니다');
       } else if (detail === 'Invalid or inactive test code') {
-        // Try legacy test start-by-code as fallback
-        try {
-          await startTestByCode(code);
-          navigate('/test', { replace: true });
-          return;
-        } catch {
-          setError('유효하지 않은 테스트 코드입니다');
-        }
+        setError('유효하지 않은 테스트 코드입니다');
       } else {
         setError('학습을 시작할 수 없습니다');
       }
@@ -125,17 +85,14 @@ export function TestStartPage() {
     setIsStarting(true);
     setError(null);
     try {
-      const response = await startMasteryByCode(completedInfo.code, true);
-      const engine = response.engine_type;
-      if (engine?.startsWith('xp_') || response.assignment_type === 'mastery') {
-        navigate('/mastery', { replace: true });
-      } else if (response.assignment_type === 'listening') {
-        await startListeningTestByCode(completedInfo.code, true);
-        navigate('/listening-test', { replace: true });
-      } else if (engine === 'legacy_stage' || engine === 'legacy_listen' || response.assignment_type === 'stage_test') {
-        await startStageTestByCode(completedInfo.code, true);
-        navigate('/stage-test', { replace: true });
+      // Check engine type again and start with allowRestart
+      const check = await unifiedTestService.checkCode(completedInfo.code);
+      if (check.engine_type === 'levelup') {
+        await store.startLevelup(completedInfo.code, true);
+      } else {
+        await store.startLegacy(completedInfo.code, true);
       }
+      navigate('/unified-test', { replace: true });
     } catch {
       setError('재응시를 시작할 수 없습니다');
     } finally {
@@ -144,8 +101,7 @@ export function TestStartPage() {
   };
 
   const handleViewReport = () => {
-    if (!completedInfo) return;
-    // Open full report in a popup window
+    if (!completedInfo?.sessionId) return;
     const url = `/mastery-report/${completedInfo.sessionId}`;
     const w = 960;
     const h = 800;
@@ -222,19 +178,21 @@ export function TestStartPage() {
               </span>
             </button>
 
-            <button
-              onClick={handleViewReport}
-              className="flex items-center justify-center gap-2.5 w-full h-14 rounded-2xl transition-opacity"
-              style={{
-                background: '#F5F4F1',
-                border: '1.5px solid #E5E4E1',
-              }}
-            >
-              <BarChart3 className="w-5 h-5 text-text-primary" />
-              <span className="font-display text-[17px] font-bold text-text-primary">
-                결과 보기
-              </span>
-            </button>
+            {completedInfo.sessionId && (
+              <button
+                onClick={handleViewReport}
+                className="flex items-center justify-center gap-2.5 w-full h-14 rounded-2xl transition-opacity"
+                style={{
+                  background: '#F5F4F1',
+                  border: '1.5px solid #E5E4E1',
+                }}
+              >
+                <BarChart3 className="w-5 h-5 text-text-primary" />
+                <span className="font-display text-[17px] font-bold text-text-primary">
+                  결과 보기
+                </span>
+              </button>
+            )}
 
             <button
               onClick={() => { setCompletedInfo(null); setTestCode(''); }}

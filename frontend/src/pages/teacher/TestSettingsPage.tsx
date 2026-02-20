@@ -31,11 +31,11 @@ export function TestSettingsPage() {
 
   // Config
   const [config, setConfig] = useState<TestConfigState>({
-    testType: 'placement',
+    engine: 'levelup',
     questionCount: 20,
     customQuestionCount: '',
     perQuestionTime: 10,
-    questionTypes: ['word'],
+    questionTypes: ['en_to_ko', 'ko_to_en'],
     bookStart: '',
     bookEnd: '',
     lessonStart: '',
@@ -160,7 +160,7 @@ export function TestSettingsPage() {
   const handleAssign = async () => {
     if (selectedIds.size === 0) return;
     if (!config.bookStart || !config.bookEnd || !config.lessonStart || !config.lessonEnd) return;
-    if (config.testType !== 'listening' && config.questionTypes.length === 0) return;
+    if (config.questionTypes.length === 0) return;
 
     const questionCount = config.questionCount === -1
       ? parseInt(config.customQuestionCount) || 0
@@ -171,7 +171,7 @@ export function TestSettingsPage() {
     try {
       await testAssignmentService.assignTest({
         student_ids: Array.from(selectedIds),
-        test_type: config.testType,
+        engine: config.engine,
         question_count: questionCount,
         per_question_time_seconds: config.perQuestionTime,
         question_types: config.questionTypes,
@@ -223,7 +223,7 @@ export function TestSettingsPage() {
     !!config.bookEnd &&
     !!config.lessonStart &&
     !!config.lessonEnd &&
-    (config.testType === 'listening' || config.questionTypes.length > 0) &&
+    config.questionTypes.length > 0 &&
     (config.questionCount > 0 || (config.questionCount === -1 && parseInt(config.customQuestionCount) > 0));
 
   return (

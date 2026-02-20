@@ -9,7 +9,7 @@ from app.schemas.user import UserResponse
 from app.core.deps import CurrentTeacher
 from app.models.user import User
 from app.models.test_session import TestSession
-from app.services.level_engine import format_rank_label
+from app.services.test_common import format_rank_label
 from app.services.student import (
     get_student_by_username,
     create_student,

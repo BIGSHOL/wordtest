@@ -30,9 +30,9 @@ argument-hint: "[선택사항: 특정 스킬 이름 또는 집중할 영역]"
 
 | 스킬 | 설명 | 커버 파일 패턴 |
 |------|------|---------------|
-| `verify-question-pipeline` | 문제 생성 파이프라인 외래어 필터링/중복 제거 일관성 검증 | `backend/app/services/mastery*.py`, `backend/app/services/stage_test.py`, `backend/app/services/level_engine.py`, `backend/app/services/test.py` |
+| `verify-question-pipeline` | 문제 생성 파이프라인 외래어 필터링/중복 제거 일관성 검증 | `backend/app/services/test_common.py`, `backend/app/services/levelup_service.py`, `backend/app/services/legacy_service.py`, `backend/app/services/question_engines/*.py` |
 | `verify-api-consistency` | 백엔드 Router-Service-Schema-Model 계층 간 참조 일관성 검증 | `backend/app/api/v1/*.py`, `backend/app/services/*.py`, `backend/app/schemas/*.py`, `backend/app/models/*.py` |
-| `verify-frontend-routes` | 프론트엔드 Route-Page-Nav-Store-Service 간 참조 일관성 검증 | `frontend/src/App.tsx`, `frontend/src/components/layout/*.tsx`, `frontend/src/pages/**/*.tsx`, `frontend/src/stores/*.ts`, `frontend/src/services/*.ts` |
+| `verify-frontend-routes` | 프론트엔드 Route-Page-Nav-Store-Service 간 참조 일관성 검증 | `frontend/src/App.tsx`, `frontend/src/components/layout/*.tsx`, `frontend/src/pages/**/*.tsx`, `frontend/src/stores/*.ts`, `frontend/src/services/*.ts`, `frontend/src/types/*.ts` |
 
 ## 워크플로우
 

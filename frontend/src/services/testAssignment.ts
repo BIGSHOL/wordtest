@@ -5,7 +5,7 @@ import api from './api';
 
 export interface AssignTestRequest {
   student_ids: string[];
-  test_type?: 'placement' | 'periodic' | 'listening';
+  engine: 'levelup' | 'legacy';
   question_count: number;
   per_question_time_seconds: number;
   question_types: string[];

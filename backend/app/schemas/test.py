@@ -69,6 +69,7 @@ class AnswerDetail(BaseModel):
     is_correct: bool
     word_level: int = 1
     time_taken_seconds: Optional[float] = None
+    question_type: Optional[str] = None
 
 
 class TestResultResponse(BaseModel):

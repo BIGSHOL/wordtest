@@ -5,12 +5,8 @@
 import { useParams, Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { TeacherLayout } from '../../components/layout/TeacherLayout';
-import {
-  testService,
-  type TestSessionData,
-} from '../../services/test';
 import { studentService } from '../../services/student';
-import { statsService } from '../../services/stats';
+import { statsService, type TestHistoryItem } from '../../services/stats';
 import {
   ArrowLeft, Printer, Shield, Sword, Award, Crown, Gem, Diamond, Star, Flame, Trophy,
   ChevronDown,
@@ -71,7 +67,7 @@ function CollapsibleSection({
 export function StudentResultPage() {
   const { studentId } = useParams<{ studentId: string }>();
   const [student, setStudent] = useState<User | null>(null);
-  const [tests, setTests] = useState<TestSessionData[]>([]);
+  const [tests, setTests] = useState<TestHistoryItem[]>([]);
   const [selectedTestId, setSelectedTestId] = useState<string | null>(null);
   const [report, setReport] = useState<EnhancedTestReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,16 +78,17 @@ export function StudentResultPage() {
 
     const loadData = async () => {
       try {
-        const [studentsData, testsData] = await Promise.all([
+        const [studentsData, historyData] = await Promise.all([
           studentService.listStudents(),
-          testService.listTests(studentId),
+          statsService.getStudentHistory(studentId),
         ]);
         const foundStudent = studentsData.find((s) => s.id === studentId);
         setStudent(foundStudent || null);
-        setTests(testsData.tests);
+        const validTests = historyData.history.filter((t) => t.id);
+        setTests(validTests);
 
-        if (testsData.tests.length > 0) {
-          loadReport(studentId, testsData.tests[0].id);
+        if (validTests.length > 0 && validTests[0].id) {
+          loadReport(studentId, validTests[0].id);
         }
       } catch (error) {
         logger.error('Failed to load data:', error);
@@ -341,7 +338,7 @@ export function StudentResultPage() {
                   <button
                     key={test.id}
                     onClick={() =>
-                      studentId && loadReport(studentId, test.id)
+                      studentId && test.id && loadReport(studentId, test.id)
                     }
                     className={`w-full text-left px-5 py-3 flex items-center justify-between transition-colors ${
                       selectedTestId === test.id
@@ -350,26 +347,20 @@ export function StudentResultPage() {
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <span
-                        className={`px-2 py-0.5 text-[10px] rounded-full font-semibold ${
-                          test.test_type === 'placement'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-purple-100 text-purple-800'
-                        }`}
-                      >
-                        {test.test_type === 'placement' ? '배치' : '정기'}
-                      </span>
+                      {test.rank_label && (
+                        <span className="px-2 py-0.5 text-[10px] rounded-full font-semibold bg-blue-100 text-blue-800">
+                          {test.rank_label}
+                        </span>
+                      )}
                       <span className="text-sm font-semibold text-text-primary">
                         {test.correct_count}/{test.total_questions}
                       </span>
-                      {test.score !== null && (
-                        <span className="text-sm text-text-secondary">
-                          ({test.score}점)
-                        </span>
-                      )}
+                      <span className="text-sm text-text-secondary">
+                        ({test.accuracy}%)
+                      </span>
                     </div>
                     <span className="text-xs text-text-secondary">
-                      {new Date(test.started_at).toLocaleDateString('ko-KR')}
+                      {test.test_date}
                     </span>
                   </button>
                 ))}

@@ -1,4 +1,4 @@
-import type { TestSessionData } from '../../services/test';
+import type { TestSessionData } from '../../types/test';
 import type { User } from '../../types/auth';
 
 function InfoPill({

@@ -33,6 +33,7 @@ class ScoreTrend(BaseModel):
 
 
 class TestHistoryItem(BaseModel):
+    id: Optional[str] = None
     test_date: str
     accuracy: int
     determined_level: Optional[int] = None
@@ -82,6 +83,20 @@ class PeerRanking(BaseModel):
     total_peers: int
 
 
+class EngineStats(BaseModel):
+    engine: str
+    label: str
+    total: int
+    correct: int
+    accuracy_pct: float
+    avg_time_sec: Optional[float] = None
+
+
+class EngineDiagnosis(BaseModel):
+    weaknesses: list[EngineStats] = []
+    strengths: list[EngineStats] = []
+
+
 class EnhancedTestReport(BaseModel):
     test_session: TestSessionResponse
     answers: list[AnswerDetail]
@@ -93,6 +108,8 @@ class EnhancedTestReport(BaseModel):
     recommended_book: str
     total_time_seconds: Optional[int] = None
     category_times: dict[str, int] = {}
+    per_engine_stats: list[EngineStats] = []
+    diagnosis: Optional[EngineDiagnosis] = None
 
 
 class MasteryAnswerDetail(BaseModel):
@@ -105,6 +122,7 @@ class MasteryAnswerDetail(BaseModel):
     word_level: int
     time_taken_seconds: Optional[float] = None
     stage: int
+    question_type: Optional[str] = None
 
 
 class MasteryWordSummary(BaseModel):
@@ -150,6 +168,8 @@ class MasteryReportResponse(BaseModel):
     student_grade: Optional[str] = None
     student_school: Optional[str] = None
     test_type: Optional[str] = None
+    per_engine_stats: list[EngineStats] = []
+    diagnosis: Optional[EngineDiagnosis] = None
 
 
 class DashboardStats(BaseModel):

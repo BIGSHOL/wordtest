@@ -26,6 +26,7 @@ class Word(Base):
     example_en: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     example_ko: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     is_excluded: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    compatible_engines: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         TZDateTime(), default=now_kst, nullable=False
     )

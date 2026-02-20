@@ -1,4 +1,4 @@
-import type { TestSessionData } from '../../services/test';
+import type { TestSessionData } from '../../types/test';
 
 export function formatDuration(seconds: number | null | undefined): string {
   if (!seconds) return '-';

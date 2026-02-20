@@ -1,13 +1,14 @@
 /**
  * Test configuration panel for test assignment.
- * Unified card design with sectioned layout.
- * Supports cross-book range selection: start book/lesson ~ end book/lesson.
+ * 2-engine model: Level-Up (adaptive) and Legacy (fixed).
+ * Multi-select question types with presets.
+ * Supports cross-book range selection.
  */
 import { Check, Info } from 'lucide-react';
 import type { LessonInfo } from '../../services/word';
 
 export interface TestConfigState {
-  testType: 'placement' | 'periodic' | 'listening';
+  engine: 'levelup' | 'legacy';
   questionCount: number;
   customQuestionCount: string;
   perQuestionTime: number;
@@ -35,22 +36,24 @@ const TIME_OPTIONS = [
   { label: '20초', value: 20 },
   { label: '30초', value: 30 },
 ];
-const ENGINE_MODE_OPTIONS = [
-  {
-    value: 'word',
-    label: '워드 모드',
-    desc: '영어↔한국어 4지선다 (단어→뜻, 뜻→단어)',
-  },
-  {
-    value: 'stage',
-    label: '스테이지 모드',
-    desc: '5단계 순환 학습 (선다형 → 듣기 → 타이핑)',
-  },
-  {
-    value: 'listen',
-    label: '리스닝 모드',
-    desc: '듣기 중심 학습 (발음 듣고 뜻 고르기 / 타이핑)',
-  },
+
+/** Available question types with canonical names */
+const QUESTION_TYPE_OPTIONS = [
+  { value: 'en_to_ko', label: '영한', desc: '영어 단어 보고 한국어 뜻 고르기' },
+  { value: 'ko_to_en', label: '한영', desc: '한국어 뜻 보고 영어 단어 고르기' },
+  { value: 'listen_en', label: '듣기 영어', desc: '발음 듣고 영어 단어 고르기' },
+  { value: 'listen_ko', label: '듣기 한국어', desc: '발음 듣고 한국어 뜻 고르기' },
+  { value: 'listen_type', label: '듣기 타이핑', desc: '발음 듣고 영어 타이핑' },
+  { value: 'ko_type', label: '한영 타이핑', desc: '한국어 뜻 보고 영어 타이핑' },
+  { value: 'emoji', label: '이모지', desc: '이모지 보고 영어 단어 고르기' },
+  { value: 'sentence', label: '예문 빈칸', desc: '예문의 빈칸에 맞는 단어 고르기' },
+];
+
+/** Presets for common question type combinations */
+const PRESETS = [
+  { label: '기본', types: ['en_to_ko', 'ko_to_en'] },
+  { label: '리스닝', types: ['listen_en', 'listen_ko', 'listen_type'] },
+  { label: '전체', types: QUESTION_TYPE_OPTIONS.map(o => o.value) },
 ];
 
 function formatTotalTime(count: number, perQuestion: number): string {
@@ -106,8 +109,17 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
       ? parseInt(config.customQuestionCount) || 0
       : config.questionCount;
 
-  const selectMode = (mode: string) => {
-    update({ questionTypes: [mode] });
+  const toggleQuestionType = (type: string) => {
+    const current = config.questionTypes;
+    if (current.includes(type)) {
+      update({ questionTypes: current.filter(t => t !== type) });
+    } else {
+      update({ questionTypes: [...current, type] });
+    }
+  };
+
+  const applyPreset = (types: string[]) => {
+    update({ questionTypes: types });
   };
 
   const isSameBook = config.bookStart === config.bookEnd;
@@ -126,40 +138,34 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
         </div>
       </div>
 
-      {/* Section: Test Type */}
+      {/* Section: Engine Type */}
       <div style={{ padding: '18px 24px' }}>
-        <h3 className="text-[13px] font-bold text-text-primary mb-3">테스트 모드</h3>
+        <h3 className="text-[13px] font-bold text-text-primary mb-3">테스트 엔진</h3>
         <div className="flex flex-wrap gap-2">
           <OptionPill
-            selected={config.testType === 'placement'}
-            onClick={() => update({ testType: 'placement' })}
+            selected={config.engine === 'levelup'}
+            onClick={() => update({ engine: 'levelup' })}
           >
-            적응형
+            레벨업 (적응형)
           </OptionPill>
           <OptionPill
-            selected={config.testType === 'periodic'}
-            onClick={() => update({ testType: 'periodic' })}
+            selected={config.engine === 'legacy'}
+            onClick={() => update({ engine: 'legacy' })}
           >
-            정기형
-          </OptionPill>
-          <OptionPill
-            selected={config.testType === 'listening'}
-            onClick={() => update({ testType: 'listening' })}
-          >
-            리스닝
+            레거시 (고정형)
           </OptionPill>
         </div>
-        {config.testType === 'listening' && (
-          <div
-            className="flex items-center gap-2 rounded-lg mt-3"
-            style={{ backgroundColor: '#EBF8FA', padding: '10px 14px' }}
-          >
-            <Info className="w-3.5 h-3.5 shrink-0" style={{ color: '#2D9CAE' }} />
-            <span className="text-[11px] font-medium" style={{ color: '#2D9CAE' }}>
-              발음을 듣고 영어 단어를 고르는 테스트입니다. 문제 유형은 자동 설정됩니다.
-            </span>
-          </div>
-        )}
+        <div
+          className="flex items-center gap-2 rounded-lg mt-3"
+          style={{ backgroundColor: '#EBF8FA', padding: '10px 14px' }}
+        >
+          <Info className="w-3.5 h-3.5 shrink-0" style={{ color: '#2D9CAE' }} />
+          <span className="text-[11px] font-medium" style={{ color: '#2D9CAE' }}>
+            {config.engine === 'levelup'
+              ? '정답률과 속도에 따라 난이도가 자동 조절됩니다. 학생 수준에 맞는 적응형 테스트.'
+              : '설정한 범위 내에서 쉬운→어려운 순서로 출제됩니다. 고정 난이도 테스트.'}
+          </span>
+        </div>
       </div>
 
       <Divider />
@@ -221,42 +227,67 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
           >
             <Info className="w-3.5 h-3.5 shrink-0" style={{ color: '#2D9CAE' }} />
             <span className="text-[11px] font-medium" style={{ color: '#2D9CAE' }}>
-              {effectiveCount}문제 × {config.perQuestionTime}초 = 총{' '}
+              {effectiveCount}문제 x {config.perQuestionTime}초 = 총{' '}
               {formatTotalTime(effectiveCount, config.perQuestionTime)}
             </span>
           </div>
         )}
       </div>
 
-      {config.testType !== 'listening' && <Divider />}
+      <Divider />
 
-      {/* Section: Question Types — hidden for listening mode */}
-      {config.testType !== 'listening' && <div style={{ padding: '18px 24px' }}>
+      {/* Section: Question Types (multi-select with presets) */}
+      <div style={{ padding: '18px 24px' }}>
         <h3 className="text-[13px] font-bold text-text-primary mb-3">문제 유형</h3>
-        <div className="space-y-2">
-          {ENGINE_MODE_OPTIONS.map((option) => {
-            const isSelected = config.questionTypes[0] === option.value;
+
+        {/* Presets */}
+        <div className="flex gap-2 mb-3">
+          {PRESETS.map((preset) => {
+            const isMatch =
+              preset.types.length === config.questionTypes.length &&
+              preset.types.every(t => config.questionTypes.includes(t));
+            return (
+              <button
+                key={preset.label}
+                onClick={() => applyPreset(preset.types)}
+                className="px-3 py-1 rounded-md text-[11px] font-semibold transition-all"
+                style={{
+                  backgroundColor: isMatch ? '#2D9CAE' : '#F0F0EE',
+                  color: isMatch ? 'white' : '#6D6C6A',
+                }}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Checkbox grid */}
+        <div className="grid grid-cols-2 gap-2">
+          {QUESTION_TYPE_OPTIONS.map((option) => {
+            const isSelected = config.questionTypes.includes(option.value);
             return (
               <button
                 key={option.value}
-                onClick={() => selectMode(option.value)}
-                className="w-full flex items-center gap-3 rounded-xl transition-all text-left"
+                onClick={() => toggleQuestionType(option.value)}
+                className="flex items-center gap-2.5 rounded-lg transition-all text-left"
                 style={{
-                  padding: '12px 16px',
+                  padding: '10px 12px',
                   backgroundColor: isSelected ? '#EBF8FA' : '#F8F8F6',
                   border: isSelected ? '2px solid #2D9CAE' : '1px solid #E8E8E6',
                 }}
               >
                 <span
-                  className="rounded-full flex items-center justify-center shrink-0"
+                  className="rounded flex items-center justify-center shrink-0"
                   style={{
-                    width: 18,
-                    height: 18,
+                    width: 16,
+                    height: 16,
                     backgroundColor: isSelected ? '#2D9CAE' : 'transparent',
-                    border: isSelected ? 'none' : '2px solid #E8E8E6',
+                    border: isSelected ? 'none' : '2px solid #D1D5DB',
+                    borderRadius: 4,
                   }}
                 >
-                  {isSelected && <Check className="w-3 h-3 text-white" />}
+                  {isSelected && <Check className="w-2.5 h-2.5 text-white" />}
                 </span>
                 <div className="flex-1 min-w-0">
                   <div
@@ -265,13 +296,25 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
                   >
                     {option.label}
                   </div>
-                  <div className="text-[11px] text-text-secondary mt-0.5">{option.desc}</div>
+                  <div className="text-[10px] text-text-secondary truncate">{option.desc}</div>
                 </div>
               </button>
             );
           })}
         </div>
-      </div>}
+
+        {config.questionTypes.length === 0 && (
+          <div
+            className="flex items-center gap-2 rounded-lg mt-3"
+            style={{ backgroundColor: '#FEF2F2', padding: '10px 14px' }}
+          >
+            <Info className="w-3.5 h-3.5 shrink-0" style={{ color: '#DC2626' }} />
+            <span className="text-[11px] font-medium" style={{ color: '#DC2626' }}>
+              최소 1개 이상의 문제 유형을 선택해주세요
+            </span>
+          </div>
+        )}
+      </div>
 
       <Divider />
 

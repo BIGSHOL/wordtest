@@ -24,29 +24,27 @@ description: 백엔드 Router-Service-Schema-Model 계층 간 참조 일관성�
 | File | Purpose |
 |------|---------|
 | `backend/app/api/v1/auth.py` | 인증 API 라우터 |
-| `backend/app/api/v1/mastery.py` | 마스터리 테스트 API 라우터 |
-| `backend/app/api/v1/stage_test.py` | 스테이지 테스트 API 라우터 |
+| `backend/app/api/v1/levelup.py` | 레벨업 테스트 API 라우터 |
+| `backend/app/api/v1/legacy_test.py` | 레거시 테스트 API 라우터 |
 | `backend/app/api/v1/stats.py` | 통계 API 라우터 |
 | `backend/app/api/v1/students.py` | 학생 관리 API 라우터 |
-| `backend/app/api/v1/tests.py` | 레벨 테스트 API 라우터 |
 | `backend/app/api/v1/test_assignments.py` | 테스트 배정 API 라우터 |
 | `backend/app/api/v1/test_configs.py` | 테스트 설정 API 라우터 |
 | `backend/app/api/v1/tts.py` | TTS API 라우터 |
 | `backend/app/api/v1/users.py` | 사용자 프로필 API 라우터 |
 | `backend/app/api/v1/words.py` | 단어 DB API 라우터 |
-| `backend/app/services/mastery.py` | 마스터리 서비스 |
-| `backend/app/services/mastery_engine.py` | 문제 생성 엔진 |
-| `backend/app/services/stage_test.py` | 스테이지 테스트 서비스 |
-| `backend/app/services/level_engine.py` | 레벨 테스트 엔진 |
-| `backend/app/services/test.py` | 테스트 세션 서비스 |
+| `backend/app/services/levelup_service.py` | 레벨업(적응형) 엔진 서비스 |
+| `backend/app/services/legacy_service.py` | 레거시(고정형) 엔진 서비스 |
+| `backend/app/services/test_common.py` | 공통 테스트 유틸 (format_rank_label, get_test_result 등) |
 | `backend/app/services/report_engine.py` | 리포트 엔진 |
 | `backend/app/services/auth.py` | 인증 서비스 |
 | `backend/app/services/student.py` | 학생 서비스 |
 | `backend/app/services/test_assignment.py` | 테스트 배정 서비스 |
 | `backend/app/services/test_config.py` | 테스트 설정 서비스 |
-| `backend/app/schemas/mastery.py` | 마스터리 스키마 |
-| `backend/app/schemas/stage_test.py` | 스테이지 테스트 스키마 |
-| `backend/app/schemas/test.py` | 테스트 스키마 |
+| `backend/app/services/emoji_engine.py` | 이모지 매핑 엔진 |
+| `backend/app/schemas/levelup.py` | 레벨업 스키마 |
+| `backend/app/schemas/legacy_test.py` | 레거시 테스트 스키마 |
+| `backend/app/schemas/test.py` | 테스트 공통 스키마 |
 | `backend/app/schemas/auth.py` | 인증 스키마 |
 | `backend/app/schemas/stats.py` | 통계 스키마 |
 | `backend/app/schemas/student.py` | 학생 스키마 |
@@ -90,7 +88,7 @@ Grep pattern="^from app\.(services|schemas|models)\." path="backend/app/api/v1/"
 
 ```bash
 # 라우터에서 서비스 함수 호출 패턴 추출
-Grep pattern="\b(mastery|stage_test|test|auth|student|test_assignment|test_config|level_engine|report_engine)\.\w+\(" path="backend/app/api/v1/" output_mode="content"
+Grep pattern="\b(levelup_service|legacy_service|test_common|auth|student|test_assignment|test_config|report_engine)\.\w+\(" path="backend/app/api/v1/" output_mode="content"
 ```
 
 각 호출된 함수에 대해 해당 서비스 파일에 `def <function_name>` 또는 `async def <function_name>`이 존재하는지 확인합니다.
@@ -126,9 +124,10 @@ Grep pattern="^from app\.services\." path="backend/app/services/" output_mode="c
 ```
 
 **PASS 기준:** import 그래프에 순환이 없음. 허용되는 방향:
-- `mastery.py` → `mastery_engine.py` (OK)
-- `stage_test.py` → `mastery_engine.py`, `mastery.py` (OK)
-- `test.py` → `level_engine.py` (OK)
+- `levelup_service.py` → `test_common.py` (OK)
+- `legacy_service.py` → `test_common.py` (OK)
+- `test_assignment.py` → `test_common.py` (OK)
+- `test_common.py`는 다른 서비스를 import하지 않음 (유틸 모듈)
 
 **FAIL:** A → B → A 형태의 순환 import가 존재하면 런타임 에러 발생.
 
@@ -146,6 +145,20 @@ Grep pattern="^from app\.models\.\w+ import" path="backend/app/services/" output
 
 **FAIL:** 존재하지 않는 모델을 사용하면 ImportError 발생.
 
+### Step 6: main.py 라우터 등록 검증
+
+**도구:** Read
+
+`backend/app/main.py`에서 등록된 라우터가 실제 존재하는 API 파일과 일치하는지 확인합니다.
+
+```bash
+Grep pattern="include_router|from app.api.v1 import" path="backend/app/main.py" output_mode="content"
+```
+
+**PASS 기준:** import된 모든 라우터 모듈이 `backend/app/api/v1/` 디렉토리에 실제 존재하고, `include_router`로 등록됨.
+
+**FAIL:** 삭제된 라우터를 import/등록하면 ImportError 발생.
+
 ## Output Format
 
 ```markdown
@@ -158,10 +171,12 @@ Grep pattern="^from app\.models\.\w+ import" path="backend/app/services/" output
 | Schema 모델 참조 | PASS/FAIL | N | ... |
 | 순환 의존 | PASS/FAIL | N | ... |
 | DB Model 참조 | PASS/FAIL | N | ... |
+| main.py 라우터 등록 | PASS/FAIL | N | ... |
 ```
 
 ## Exceptions
 
 1. **라우터 내 직접 DB 쿼리** — `test_configs.py`, `users.py`, `words.py`, `tts.py`는 서비스 레이어 없이 직접 DB 쿼리를 수행함. 이는 아키텍처 선택이며 검증 위반이 아님.
-2. **private 함수 import** — `mastery.py`의 `_get_assignment_and_config`, `_ensure_mastery_records` 등이 다른 서비스에서 import되는 것은 허용. 언더스코어 접두사는 외부 API가 아닌 모듈 내부 사용을 의미하지만, 같은 패키지 내 사용은 허용.
-3. **level_engine, report_engine** — 이 파일들은 유틸리티/계산 모듈로, 전통적인 서비스 레이어가 아님. 라우터에서 직접 import하는 것은 정상.
+2. **private 함수 import** — `test_common.py`의 `_get_assignment_and_config`, `_ensure_mastery_records` 등이 다른 서비스에서 import되는 것은 허용. 언더스코어 접두사는 외부 API가 아닌 모듈 내부 사용을 의미하지만, 같은 패키지 내 사용은 허용.
+3. **test_common.py, report_engine.py** — 이 파일들은 유틸리티/계산 모듈로, 전통적인 서비스 레이어가 아님. 라우터에서 직접 import하는 것은 정상.
+4. **question_engines/ 디렉토리** — 문제 엔진 모듈은 서비스에서만 사용되며 라우터에서 직접 import하지 않음. 이는 정상 패턴.

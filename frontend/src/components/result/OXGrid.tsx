@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { CircleCheck, CircleX } from 'lucide-react';
-import type { AnswerDetail, TestSessionData } from '../../services/test';
+import type { AnswerDetail, TestSessionData } from '../../types/test';
 
 function ProgressBar({ value, max, color }: { value: number; max: number; color: string }) {
   const pct = max > 0 ? Math.round((value / max) * 100) : 0;

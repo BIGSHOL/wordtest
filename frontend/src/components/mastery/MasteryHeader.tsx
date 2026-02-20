@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { getLevelRank } from '../../types/rank';
 import { ComboCounter } from './ComboCounter';
-import type { XpBreakdown } from '../../stores/masteryStore';
+import type { XpBreakdown } from '../../stores/unifiedTestStore';
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   shield: Shield, sword: Sword, award: Award, crown: Crown,

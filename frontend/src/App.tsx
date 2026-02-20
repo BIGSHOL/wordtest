@@ -35,14 +35,8 @@ const StudentResultPage = lazyRetry(() => import('./pages/teacher/StudentResultP
 const MasteryReportPage = lazyRetry(() => import('./pages/teacher/MasteryReportPage'));
 const StudentMainPage = lazyRetry(() => import('./pages/student/MainPage'));
 const TestStartPage = lazyRetry(() => import('./pages/student/TestStartPage'));
-const TestPage = lazyRetry(() => import('./pages/student/TestPage'));
-const ResultPage = lazyRetry(() => import('./pages/student/ResultPage'));
-const WrongWordsPage = lazyRetry(() => import('./pages/student/WrongWordsPage'));
-const MasteryPage = lazyRetry(() => import('./pages/student/MasteryPage'));
-const StageTestPage = lazyRetry(() => import('./pages/student/StageTestPage'));
-const ListeningTestPage = lazyRetry(() => import('./pages/student/ListeningTestPage'));
+const UnifiedTestPage = lazyRetry(() => import('./pages/student/UnifiedTestPage'));
 const StudentReportPage = lazyRetry(() => import('./pages/student/StudentReportPage'));
-const StageTestPreview = lazyRetry(() => import('./pages/dev/StageTestPreview'));
 
 function PageLoader() {
   return (
@@ -58,9 +52,6 @@ function App() {
       <div className="min-h-screen bg-background">
         <Suspense fallback={<PageLoader />}>
         <Routes>
-          {/* Dev preview (no auth) */}
-          <Route path="/dev/stage-preview" element={<StageTestPreview />} />
-
           {/* Auth */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -157,54 +148,9 @@ function App() {
             element={<StudentReportPage />}
           />
           <Route
-            path="/mastery"
-            element={
-              <RouteGuard roles={['student']}>
-                <MasteryPage />
-              </RouteGuard>
-            }
+            path="/unified-test"
+            element={<UnifiedTestPage />}
           />
-          <Route
-            path="/stage-test"
-            element={
-              <RouteGuard roles={['student']}>
-                <StageTestPage />
-              </RouteGuard>
-            }
-          />
-          <Route
-            path="/listening-test"
-            element={
-              <RouteGuard roles={['student']}>
-                <ListeningTestPage />
-              </RouteGuard>
-            }
-          />
-          <Route
-            path="/test"
-            element={
-              <RouteGuard roles={['student']}>
-                <TestPage />
-              </RouteGuard>
-            }
-          />
-          <Route
-            path="/result/:testId"
-            element={
-              <RouteGuard roles={['student']}>
-                <ResultPage />
-              </RouteGuard>
-            }
-          />
-          <Route
-            path="/result/:testId/wrong"
-            element={
-              <RouteGuard roles={['student']}>
-                <WrongWordsPage />
-              </RouteGuard>
-            }
-          />
-
           {/* Default redirect */}
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>

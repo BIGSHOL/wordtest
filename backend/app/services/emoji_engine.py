@@ -57,6 +57,16 @@ EMOJI_MAP: dict[str, str] = {
     "peacock": "🦚",
     "swan": "🦢",
     "eagle": "🦅",
+    "crab": "🦀",
+    "dinosaur": "🦕",
+    "dragon": "🐉",
+    "kangaroo": "🦘",
+    "koala": "🐨",
+    "mosquito": "🦟",
+    "panda": "🐼",
+    "rooster": "🐓",
+    "turkey": "🦃",
+    "worm": "🪱",
     # "bat" excluded — ambiguous (animal vs baseball bat)
 
     # ── Food & Drink ──
@@ -112,6 +122,12 @@ EMOJI_MAP: dict[str, str] = {
     "beer": "🍺",
     "juice": "🧃",
     "ice cream": "🍦",
+    "bean": "🫘",
+    "blueberry": "🫐",
+    "cucumber": "🥒",
+    "olive": "🫒",
+    "pancake": "🥞",
+    "pepper": "🌶️",
 
     # ── Nature & Weather ──
     "sun": "☀️",
@@ -143,6 +159,8 @@ EMOJI_MAP: dict[str, str] = {
     "comet": "☄️",
     "cactus": "🌵",
     "bamboo": "🎋",
+    "forest": "🌲",
+    "river": "🏞️",
 
     # ── Objects ──
     "book": "📖",
@@ -212,6 +230,15 @@ EMOJI_MAP: dict[str, str] = {
     "crown": "👑",
     "diamond": "💎",
     "ring": "💍",
+    "anchor": "⚓",
+    "bandage": "🩹",
+    "coin": "🪙",
+    "feather": "🪶",
+    "pill": "💊",
+    "rope": "🪢",
+    "satellite": "📡",
+    "thermometer": "🌡️",
+    "nest": "🪹",
 
     # ── Vehicles & Transport ──
     "car": "🚗",
@@ -259,6 +286,17 @@ EMOJI_MAP: dict[str, str] = {
     "mermaid": "🧜",
     "wizard": "🧙",
     "pirate": "🏴‍☠️",
+    "doctor": "👨‍⚕️",
+    "teacher": "👨‍🏫",
+    "student": "👨‍🎓",
+    "farmer": "👨‍🌾",
+    "police": "👮",
+    "soldier": "🪖",
+    "astronaut": "👨‍🚀",
+    "pilot": "👨‍✈️",
+    "artist": "👨‍🎨",
+    "scientist": "👨‍🔬",
+    "judge": "👨‍⚖️",
 
     # ── Emotions & States ──
     "happy": "😊",
@@ -319,6 +357,9 @@ EMOJI_MAP: dict[str, str] = {
     "bridge": "🌉",
     "fountain": "⛲",
     "tower": "🗼",
+    "palace": "🏯",
+    "temple": "🛕",
+    "statue": "🗽",
     # "lighthouse" excluded — no dedicated emoji
 
     # ── Clothing & Accessories ──
@@ -352,6 +393,8 @@ EMOJI_MAP: dict[str, str] = {
     "puzzle": "🧩",
     "target": "🎯",
     "kite": "🪁",
+    "badminton": "🏸",
+    "rugby": "🏉",
 
     # ── Music & Art ──
     "music": "🎵",

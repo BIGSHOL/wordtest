@@ -17,6 +17,7 @@ class WordResponse(BaseModel):
     part_of_speech: Optional[str] = None
     example_en: Optional[str] = None
     example_ko: Optional[str] = None
+    compatible_engines: Optional[str] = None
     created_at: Optional[datetime] = None
 
 
@@ -47,3 +48,32 @@ class UpdateWordRequest(BaseModel):
 class WordListResponse(BaseModel):
     words: list[WordResponse]
     total: int
+
+
+# ── Engine Audit Schemas ─────────────────────────────────────────────────────
+
+
+class EngineCoverage(BaseModel):
+    count: int
+    pct: float
+
+
+class ProblemWord(BaseModel):
+    id: str
+    english: str
+    korean: str
+    compatible_engines: list[str]
+    issue: str
+
+
+class EngineAuditResponse(BaseModel):
+    total_words: int
+    engine_coverage: dict[str, EngineCoverage]
+    problem_words: list[ProblemWord]
+    unmapped_count: int
+
+
+class EngineAuditRefreshResponse(BaseModel):
+    updated_count: int
+    total_words: int
+    engine_coverage: dict[str, EngineCoverage]

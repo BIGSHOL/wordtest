@@ -5,9 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, func, and_, Integer
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
-from app.services.level_engine import format_rank_label
+from app.services.test_common import format_rank_label
 from app.schemas.stats import (
     DashboardStats,
+    EngineDiagnosis,
+    EngineStats,
     EnhancedTestReport,
     LevelDistribution,
     MasteryAnswerDetail,
@@ -34,7 +36,7 @@ from app.models.learning_session import LearningSession
 from app.models.learning_answer import LearningAnswer
 from app.models.word_mastery import WordMastery
 from app.core.timezone import now_kst
-from app.services.test import get_test_result
+from app.services.test_common import get_test_result
 from app.services import report_engine
 
 router = APIRouter(prefix="/stats", tags=["stats"])
@@ -445,6 +447,7 @@ async def get_student_history(
             rl = format_rank_label(s.determined_level, s.determined_sublevel)
         history.append(
             TestHistoryItem(
+                id=s.id,
                 test_date=test_date,
                 accuracy=accuracy,
                 determined_level=s.determined_level,
@@ -515,80 +518,56 @@ async def get_enhanced_report(
         rank_label = format_rank_label(
             session.determined_level, session.determined_sublevel
         )
-    from app.api.v1.tests import _session_response
-    session_resp = _session_response(session)
+    # Inline session response (was previously in tests.py)
+    rank_label_str = None
+    if session.determined_level and session.determined_sublevel:
+        rank_label_str = format_rank_label(session.determined_level, session.determined_sublevel)
+    session_resp = TestSessionResponse(
+        id=session.id,
+        student_id=session.student_id,
+        test_type=session.test_type,
+        total_questions=session.total_questions,
+        correct_count=session.correct_count,
+        determined_level=session.determined_level,
+        determined_sublevel=session.determined_sublevel,
+        rank_name=session.rank_name,
+        rank_label=rank_label_str,
+        score=session.score,
+        test_config_id=session.test_config_id,
+        started_at=str(session.started_at),
+        completed_at=str(session.completed_at) if session.completed_at else None,
+    )
 
-    # Calculate metrics
+    # Calculate all metrics via consolidated function
     rank = session.determined_level or 1
     score = session.score or 0
-
-    # Radar metrics
-    accuracy_score = report_engine.calculate_accuracy_score(
-        session.correct_count, session.total_questions
-    )
-    speed_score, avg_answer_time = report_engine.calculate_speed_score(answers)
-    vocab_raw, vocab_score = await report_engine.calculate_vocab_size(
-        db, student_id, determined_rank=rank, test_answers=answers
-    )
-
-    radar = RadarMetrics(
-        vocabulary_level=float(rank),
-        accuracy=accuracy_score,
-        speed=speed_score,
-        vocabulary_size=vocab_score,
-    )
-
-    # Peer ranking
-    peer = await report_engine.calculate_peer_ranking(
-        db, student_id, score, student.grade
-    )
-    peer_ranking = PeerRanking(**peer) if peer else None
-
-    # Same-grade averages
     teacher_id = student.teacher_id or current_user.id
-    avg_metrics = await report_engine.calculate_member_averages(db, teacher_id, grade=student.grade)
 
-    # Metric details with descriptions
-    metrics_dict = {
-        "vocabulary_level": float(rank),
-        "accuracy": accuracy_score,
-        "speed": speed_score,
-        "vocabulary_size": vocab_score,
-    }
-    details_raw = report_engine.get_metric_descriptions(rank, metrics_dict)
-
-    # Fill avg_score and raw_value
-    raw_values = {
-        "vocabulary_level": f"Lv.{rank}",
-        "accuracy": f"{score}%",
-        "speed": f"평균 {avg_answer_time}초" if avg_answer_time else "-",
-        "vocabulary_size": f"{vocab_raw:,}개",
-    }
-    metric_details = []
-    for d in details_raw:
-        d["avg_score"] = avg_metrics.get(d["key"], 5.0)
-        d["raw_value"] = raw_values.get(d["key"])
-        metric_details.append(MetricDetail(**d))
-
-    # Time breakdown
-    total_time, cat_times = report_engine.calculate_time_breakdown(answers)
-
-    # Mappings
-    grade_level = report_engine.RANK_TO_GRADE.get(rank, "미정")
-    vocab_desc = report_engine.get_vocab_description(rank, score)
-    recommended_book = report_engine.RANK_TO_BOOK.get(rank, "")
+    metrics = await report_engine.assemble_report_metrics(
+        db=db,
+        student_id=student_id,
+        teacher_id=teacher_id,
+        student_grade=student.grade,
+        rank=rank,
+        score=score,
+        correct_count=session.correct_count,
+        total_questions=session.total_questions,
+        answers=answers,
+    )
 
     return EnhancedTestReport(
         test_session=session_resp,
         answers=[AnswerDetail(**a) for a in answers],
-        radar_metrics=radar,
-        metric_details=metric_details,
-        peer_ranking=peer_ranking,
-        grade_level=grade_level,
-        vocab_description=vocab_desc,
-        recommended_book=recommended_book,
-        total_time_seconds=total_time,
-        category_times=cat_times,
+        radar_metrics=RadarMetrics(**metrics["radar"]),
+        metric_details=[MetricDetail(**d) for d in metrics["metric_details"]],
+        peer_ranking=PeerRanking(**metrics["peer_ranking"]) if metrics["peer_ranking"] else None,
+        grade_level=metrics["grade_level"],
+        vocab_description=metrics["vocab_description"],
+        recommended_book=metrics["recommended_book"],
+        total_time_seconds=metrics["total_time_seconds"],
+        category_times=metrics["category_times"],
+        per_engine_stats=[EngineStats(**s) for s in metrics["per_engine_stats"]],
+        diagnosis=EngineDiagnosis(**metrics["diagnosis"]),
     )
 
 
@@ -657,6 +636,7 @@ async def get_mastery_report(
             word_level=word.level,
             time_taken_seconds=ans.time_taken_sec,
             stage=ans.stage,
+            question_type=ans.question_type,
         ))
 
     # Build word summaries (group by word_id)
@@ -702,70 +682,34 @@ async def get_mastery_report(
     # Sort word summaries: mastered first, then by accuracy desc
     word_summaries.sort(key=lambda w: (-int(w.mastered), -w.accuracy))
 
-    # Radar metrics
+    # Build answer dicts for report engine
     rank = session.current_level or 1
-    accuracy_score = report_engine.calculate_accuracy_score(correct_q, total_q)
-
-    # Speed score from correct answer times
-    correct_times = [
-        row[0].time_taken_sec for row in answer_rows
-        if row[0].is_correct and row[0].time_taken_sec
-    ]
-    if correct_times:
-        avg_time = round(sum(correct_times) / len(correct_times), 1)
-        speed_score = round(max(0.0, min(10.0, 10.0 - (avg_time / 3.0))), 1)
-    else:
-        avg_time = None
-        speed_score = 5.0
-
-    vocab_raw, vocab_score = await report_engine.calculate_vocab_size(
-        db, student_id, determined_rank=rank
-    )
-
-    radar = RadarMetrics(
-        vocabulary_level=float(rank),
-        accuracy=accuracy_score,
-        speed=speed_score,
-        vocabulary_size=vocab_score,
-    )
-
-    # Peer ranking
-    peer = await report_engine.calculate_peer_ranking(
-        db, student_id, score, student.grade
-    )
-    peer_ranking = PeerRanking(**peer) if peer else None
-
-    # Same-grade averages
     teacher_id = student.teacher_id or current_user.id
-    avg_metrics = await report_engine.calculate_member_averages(db, teacher_id, grade=student.grade)
 
-    # Total word count for frontend bar proportions
+    answer_dicts = [
+        {
+            "is_correct": ans.is_correct,
+            "time_taken_seconds": ans.time_taken_sec,
+            "question_type": ans.question_type,
+            "stage": ans.stage,
+            "word_level": word.level,
+        }
+        for ans, word in answer_rows
+    ]
+
+    metrics = await report_engine.assemble_report_metrics(
+        db=db,
+        student_id=student_id,
+        teacher_id=teacher_id,
+        student_grade=student.grade,
+        rank=rank,
+        score=score,
+        correct_count=correct_q,
+        total_questions=total_q,
+        answers=answer_dicts,
+    )
+
     total_word_count = await report_engine.get_total_word_count(db)
-
-    # Metric details
-    metrics_dict = {
-        "vocabulary_level": float(rank),
-        "accuracy": accuracy_score,
-        "speed": speed_score,
-        "vocabulary_size": vocab_score,
-    }
-    details_raw = report_engine.get_metric_descriptions(rank, metrics_dict)
-    raw_values = {
-        "vocabulary_level": f"Lv.{rank}",
-        "accuracy": f"{score}%",
-        "speed": f"평균 {avg_time}초" if avg_time else "-",
-        "vocabulary_size": f"{vocab_raw:,}개",
-    }
-    metric_details = []
-    for d in details_raw:
-        d["avg_score"] = avg_metrics.get(d["key"], 5.0)
-        d["raw_value"] = raw_values.get(d["key"])
-        metric_details.append(MetricDetail(**d))
-
-    # Mappings
-    grade_level = report_engine.RANK_TO_GRADE.get(rank, "미정")
-    vocab_desc = report_engine.get_vocab_description(rank, score)
-    recommended_book = report_engine.RANK_TO_BOOK.get(rank, "")
 
     session_data = MasterySessionData(
         id=session.id,
@@ -785,13 +729,15 @@ async def get_mastery_report(
     return MasteryReportResponse(
         session=session_data,
         answers=answers_list,
-        radar_metrics=radar,
-        metric_details=metric_details,
-        peer_ranking=peer_ranking,
-        grade_level=grade_level,
-        vocab_description=vocab_desc,
-        recommended_book=recommended_book,
-        total_time_seconds=total_time or None,
+        radar_metrics=RadarMetrics(**metrics["radar"]),
+        metric_details=[MetricDetail(**d) for d in metrics["metric_details"]],
+        peer_ranking=PeerRanking(**metrics["peer_ranking"]) if metrics["peer_ranking"] else None,
+        grade_level=metrics["grade_level"],
+        vocab_description=metrics["vocab_description"],
+        recommended_book=metrics["recommended_book"],
+        total_time_seconds=metrics["total_time_seconds"],
         total_word_count=total_word_count,
         word_summaries=word_summaries,
+        per_engine_stats=[EngineStats(**s) for s in metrics["per_engine_stats"]],
+        diagnosis=EngineDiagnosis(**metrics["diagnosis"]),
     )

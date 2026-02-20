@@ -96,6 +96,11 @@ def get_engine(name: str) -> QuestionEngine:
     return ENGINES[canonical]
 
 
+def compute_compatible_engines(word: Word) -> list[str]:
+    """Return list of canonical engine names compatible with the given word."""
+    return [name for name, engine in ENGINES.items() if engine.can_generate(word)]
+
+
 def build_pool(all_words: list[Word]) -> DistractorPool:
     """Build a DistractorPool from a list of words."""
     return DistractorPool(
@@ -124,6 +129,7 @@ __all__ = [
     "DistractorPool",
     "QuestionEngine",
     "get_engine",
+    "compute_compatible_engines",
     "build_pool",
     "resolve_name",
     "to_level_name",

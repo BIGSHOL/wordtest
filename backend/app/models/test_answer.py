@@ -28,6 +28,7 @@ class TestAnswer(Base):
     is_correct: Mapped[bool] = mapped_column(Boolean, nullable=False)
     question_order: Mapped[int] = mapped_column(Integer, nullable=False)
     answered_at: Mapped[Optional[datetime]] = mapped_column(TZDateTime(), nullable=True)
+    question_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     # Relationships
     test_session: Mapped["TestSession"] = relationship(

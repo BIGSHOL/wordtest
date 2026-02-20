@@ -1,7 +1,7 @@
 import { RankBadge } from '../test/RankBadge';
 import { getLevelRank } from '../../types/rank';
 import { formatDuration, computeDuration } from './helpers';
-import type { TestSessionData } from '../../services/test';
+import type { TestSessionData } from '../../types/test';
 
 function MobileStatCard({
   value,

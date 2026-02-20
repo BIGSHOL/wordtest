@@ -2,7 +2,7 @@
  * Report header - logo, title, student info table, red divider.
  * Matches Pencil design node 7wxb0.
  */
-import type { TestSessionData } from '../../services/test';
+import type { TestSessionData } from '../../types/test';
 import type { User } from '../../types/auth';
 
 interface Props {

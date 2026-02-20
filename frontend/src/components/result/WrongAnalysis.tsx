@@ -1,4 +1,4 @@
-import type { AnswerDetail } from '../../services/test';
+import type { AnswerDetail } from '../../types/test';
 
 function levelBadge(level: number) {
   if (level <= 3) return { text: `Lv.${level}`, color: 'text-[#4F46E5]', bg: 'bg-[#EEF2FF]' };

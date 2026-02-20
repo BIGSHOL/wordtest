@@ -1,11 +1,14 @@
-"""Report engine - calculates enhanced report metrics for Placement Test Report.
+"""Report engine - calculates enhanced report metrics for test reports.
 
 Provides:
 - Radar chart metrics (4 axes: 어휘수준/정답률/속도/어휘사이즈, each 0-10)
+- Per-engine accuracy/speed/count analysis
+- Weakness/strength diagnosis per engine type
 - Rank-to-grade/vocab/book mappings
 - Peer ranking (percentile within same grade)
 - Metric descriptions (interpretive text per axis)
-- Time breakdown by category
+- Time breakdown by engine category
+- Consolidated report assembly (assemble_report_metrics)
 """
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -117,6 +120,41 @@ METRIC_NAMES: dict[str, str] = {
     "accuracy": "정확도",
     "speed": "속도",
     "vocabulary_size": "어휘 범위",
+}
+
+
+# ---------------------------------------------------------------------------
+# Engine analysis tables
+# ---------------------------------------------------------------------------
+
+STAGE_ENGINE_MAP: dict[int, str] = {
+    1: "en_to_ko",
+    2: "ko_to_en",
+    3: "listen_type",
+    4: "listen_ko",
+    5: "ko_type",
+}
+
+ENGINE_LABELS: dict[str, str] = {
+    "en_to_ko": "영한",
+    "ko_to_en": "한영",
+    "emoji": "이모지",
+    "sentence": "예문",
+    "listen_en": "리스닝E",
+    "listen_ko": "리스닝K",
+    "listen_type": "리스닝T",
+    "ko_type": "한영T",
+}
+
+_ENGINE_CATEGORY: dict[str, str] = {
+    "en_to_ko": "단어",
+    "ko_to_en": "단어",
+    "emoji": "이모지",
+    "sentence": "빈칸",
+    "listen_en": "리스닝",
+    "listen_ko": "리스닝",
+    "listen_type": "리스닝",
+    "ko_type": "타이핑",
 }
 
 
@@ -352,32 +390,113 @@ async def get_total_word_count(db: AsyncSession) -> int:
     return result.scalar() or 0
 
 
-def calculate_time_breakdown(answers: list[dict]) -> tuple[int | None, dict[str, int]]:
-    """Calculate total time and time breakdown from answers.
+# ---------------------------------------------------------------------------
+# Per-engine analysis functions
+# ---------------------------------------------------------------------------
 
-    Returns (total_seconds, {"단어": secs, "빈칸": secs, "뜻": secs}).
+def infer_question_type(answer: dict) -> str | None:
+    """Infer canonical question_type from answer dict when not stored.
+
+    For LearningAnswer: use stage mapping as fallback.
+    For TestAnswer: no reliable inference possible (return None).
+    """
+    qt = answer.get("question_type")
+    if qt:
+        return qt
+    stage = answer.get("stage")
+    if stage:
+        return STAGE_ENGINE_MAP.get(stage)
+    return None
+
+
+def calculate_per_engine_stats(answers: list[dict]) -> list[dict]:
+    """Calculate per-engine accuracy, speed, and count.
+
+    Returns list of dicts sorted by accuracy ascending (weakest first).
+    Each dict: {engine, label, total, correct, accuracy_pct, avg_time_sec}.
+    """
+    engine_data: dict[str, dict] = {}
+
+    for a in answers:
+        qt = infer_question_type(a)
+        if not qt:
+            continue
+
+        if qt not in engine_data:
+            engine_data[qt] = {"total": 0, "correct": 0, "times": []}
+
+        engine_data[qt]["total"] += 1
+        if a.get("is_correct"):
+            engine_data[qt]["correct"] += 1
+        t = a.get("time_taken_seconds")
+        if t is not None and a.get("is_correct"):
+            engine_data[qt]["times"].append(t)
+
+    results = []
+    for engine_name, data in engine_data.items():
+        total = data["total"]
+        correct = data["correct"]
+        times = data["times"]
+        accuracy_pct = round(correct / total * 100, 1) if total > 0 else 0.0
+        avg_time = round(sum(times) / len(times), 1) if times else None
+
+        results.append({
+            "engine": engine_name,
+            "label": ENGINE_LABELS.get(engine_name, engine_name),
+            "total": total,
+            "correct": correct,
+            "accuracy_pct": accuracy_pct,
+            "avg_time_sec": avg_time,
+        })
+
+    results.sort(key=lambda x: x["accuracy_pct"])
+    return results
+
+
+def diagnose_strengths_weaknesses(
+    engine_stats: list[dict],
+    threshold_weak: float = 60.0,
+    threshold_strong: float = 80.0,
+) -> dict:
+    """Identify weak and strong engines from per-engine stats.
+
+    Returns {"weaknesses": [...], "strengths": [...]}.
+    Only includes engines with >= 2 questions for reliability.
+    """
+    weaknesses = [
+        {"engine": s["engine"], "label": s["label"], "accuracy_pct": s["accuracy_pct"]}
+        for s in engine_stats
+        if s["accuracy_pct"] < threshold_weak and s["total"] >= 2
+    ]
+    strengths = [
+        {"engine": s["engine"], "label": s["label"], "accuracy_pct": s["accuracy_pct"]}
+        for s in engine_stats
+        if s["accuracy_pct"] >= threshold_strong and s["total"] >= 2
+    ]
+    return {"weaknesses": weaknesses, "strengths": strengths}
+
+
+def calculate_time_breakdown(answers: list[dict]) -> tuple[int | None, dict[str, int]]:
+    """Calculate total time and time breakdown by engine category.
+
+    Returns (total_seconds, {"단어": secs, "리스닝": secs, ...}).
     """
     total = 0.0
-    categories: dict[str, float] = {"단어": 0.0, "빈칸": 0.0, "뜻": 0.0}
+    categories: dict[str, float] = {}
 
     for a in answers:
         t = a.get("time_taken_seconds")
         if t is None:
             continue
         total += t
-        # Distribute time across categories by word level range
-        wl = a.get("word_level", 1)
-        if wl <= 4:
-            categories["단어"] += t
-        elif wl <= 7:
-            categories["빈칸"] += t
-        else:
-            categories["뜻"] += t
+        qt = infer_question_type(a)
+        cat = _ENGINE_CATEGORY.get(qt, "기타") if qt else "기타"
+        categories[cat] = categories.get(cat, 0.0) + t
 
     if total == 0:
         return None, {}
 
-    return round(total), {k: round(v) for k, v in categories.items()}
+    return round(total), {k: round(v) for k, v in categories.items() if round(v) > 0}
 
 
 def get_metric_descriptions(
@@ -403,3 +522,93 @@ def get_metric_descriptions(
         })
 
     return details
+
+
+# ---------------------------------------------------------------------------
+# Consolidated report assembly
+# ---------------------------------------------------------------------------
+
+async def assemble_report_metrics(
+    db: AsyncSession,
+    student_id: str,
+    teacher_id: str | None,
+    student_grade: str | None,
+    rank: int,
+    score: int,
+    correct_count: int,
+    total_questions: int,
+    answers: list[dict],
+) -> dict:
+    """Consolidated report metric assembly used by all report endpoints.
+
+    Returns dict with keys: radar, metric_details, peer_ranking, grade_level,
+    vocab_description, recommended_book, total_time_seconds, category_times,
+    per_engine_stats, diagnosis, vocab_raw.
+    """
+    # Radar metrics
+    accuracy_score = calculate_accuracy_score(correct_count, total_questions)
+    speed_score, avg_time = calculate_speed_score(answers)
+    vocab_raw, vocab_score = await calculate_vocab_size(
+        db, student_id, determined_rank=rank, test_answers=answers
+    )
+
+    radar = {
+        "vocabulary_level": float(rank),
+        "accuracy": accuracy_score,
+        "speed": speed_score,
+        "vocabulary_size": vocab_score,
+    }
+
+    # Peer ranking
+    peer = await calculate_peer_ranking(db, student_id, score, student_grade)
+
+    # Same-grade averages
+    if teacher_id:
+        avg_metrics = await calculate_member_averages(
+            db, teacher_id, grade=student_grade
+        )
+    else:
+        avg_metrics = {
+            "vocabulary_level": 5.0, "accuracy": 5.0,
+            "speed": 5.0, "vocabulary_size": 5.0,
+        }
+
+    # Metric details with descriptions
+    details_raw = get_metric_descriptions(rank, radar)
+    raw_values = {
+        "vocabulary_level": f"Lv.{rank}",
+        "accuracy": f"{score}%",
+        "speed": f"평균 {avg_time}초" if avg_time else "-",
+        "vocabulary_size": f"{vocab_raw:,}개",
+    }
+    metric_details = []
+    for d in details_raw:
+        d["avg_score"] = avg_metrics.get(d["key"], 5.0)
+        d["raw_value"] = raw_values.get(d["key"])
+        metric_details.append(d)
+
+    # Time breakdown (by engine category)
+    total_time, cat_times = calculate_time_breakdown(answers)
+
+    # Per-engine stats and diagnosis
+    engine_stats = calculate_per_engine_stats(answers)
+    diagnosis = diagnose_strengths_weaknesses(engine_stats)
+
+    # Mappings
+    grade_level = RANK_TO_GRADE.get(rank, "미정")
+    vocab_desc = get_vocab_description(rank, score)
+    recommended_book = RANK_TO_BOOK.get(rank, "")
+
+    return {
+        "radar": radar,
+        "metric_details": metric_details,
+        "peer_ranking": peer,
+        "grade_level": grade_level,
+        "vocab_description": vocab_desc,
+        "recommended_book": recommended_book,
+        "total_time_seconds": total_time,
+        "category_times": cat_times,
+        "per_engine_stats": engine_stats,
+        "diagnosis": diagnosis,
+        "vocab_raw": vocab_raw,
+    }

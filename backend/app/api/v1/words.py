@@ -9,9 +9,14 @@ from app.schemas.word import (
     UpdateWordRequest,
     WordResponse,
     WordListResponse,
+    EngineAuditResponse,
+    EngineAuditRefreshResponse,
+    EngineCoverage,
+    ProblemWord,
 )
 from app.core.deps import CurrentUser, CurrentTeacher
 from app.models.word import Word
+from app.services.question_engines import ENGINES, compute_compatible_engines
 
 router = APIRouter(prefix="/words", tags=["words"])
 
@@ -131,6 +136,107 @@ async def count_words_in_range(
     result = await db.execute(query)
     count = result.scalar() or 0
     return {"count": count}
+
+
+@router.get("/engine-audit", response_model=EngineAuditResponse)
+async def engine_audit(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    teacher: CurrentTeacher,
+):
+    """Return engine compatibility audit report based on stored compatible_engines."""
+    result = await db.execute(select(Word).where(Word.is_excluded == False))
+    words = result.scalars().all()
+
+    total = len(words)
+    engine_names = list(ENGINES.keys())
+
+    # Count per-engine coverage
+    counts: dict[str, int] = {name: 0 for name in engine_names}
+    problem_words: list[ProblemWord] = []
+    unmapped = 0
+
+    for w in words:
+        if not w.compatible_engines:
+            unmapped += 1
+            continue
+
+        engines = [e.strip() for e in w.compatible_engines.split(",") if e.strip()]
+        for name in engines:
+            if name in counts:
+                counts[name] += 1
+
+        if len(engines) <= 2:
+            # Determine issue
+            issues = []
+            if not w.korean:
+                issues.append("korean 누락")
+            if not w.example_en:
+                issues.append("example_en 누락")
+            issue = ", ".join(issues) if issues else f"엔진 {len(engines)}개만 호환"
+
+            problem_words.append(ProblemWord(
+                id=w.id,
+                english=w.english,
+                korean=w.korean or "",
+                compatible_engines=engines,
+                issue=issue,
+            ))
+
+    engine_coverage = {
+        name: EngineCoverage(
+            count=counts[name],
+            pct=round(counts[name] / total * 100, 1) if total else 0,
+        )
+        for name in engine_names
+    }
+
+    return EngineAuditResponse(
+        total_words=total,
+        engine_coverage=engine_coverage,
+        problem_words=problem_words,
+        unmapped_count=unmapped,
+    )
+
+
+@router.post("/engine-audit/refresh", response_model=EngineAuditRefreshResponse)
+async def engine_audit_refresh(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    teacher: CurrentTeacher,
+):
+    """Recompute compatible_engines for all words and update DB."""
+    result = await db.execute(select(Word))
+    words = result.scalars().all()
+
+    engine_names = list(ENGINES.keys())
+    counts: dict[str, int] = {name: 0 for name in engine_names}
+    updated = 0
+
+    for w in words:
+        engines = compute_compatible_engines(w)
+        new_value = ",".join(engines)
+        if w.compatible_engines != new_value:
+            w.compatible_engines = new_value
+            updated += 1
+        for name in engines:
+            if name in counts:
+                counts[name] += 1
+
+    await db.commit()
+
+    total = len(words)
+    engine_coverage = {
+        name: EngineCoverage(
+            count=counts[name],
+            pct=round(counts[name] / total * 100, 1) if total else 0,
+        )
+        for name in engine_names
+    }
+
+    return EngineAuditRefreshResponse(
+        updated_count=updated,
+        total_words=total,
+        engine_coverage=engine_coverage,
+    )
 
 
 @router.post("", response_model=WordResponse, status_code=status.HTTP_201_CREATED)

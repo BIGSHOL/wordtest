@@ -1,145 +1,219 @@
-"""Test configuration and fixtures."""
-from typing import AsyncGenerator
-
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
+"""Shared test fixtures for the entire test suite."""
+import uuid
+import pytest
+from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 
 from app.db.base import Base
 from app.db.session import get_db
-from app.core.security import create_access_token, create_refresh_token, get_password_hash
 from app.main import app
+from app.core.security import create_access_token, pwd_context
+
+# Import ALL models so create_all picks them up
 from app.models.user import User
 from app.models.word import Word
+from app.models.test_config import TestConfig
+from app.models.test_assignment import TestAssignment
 from app.models.test_session import TestSession
 from app.models.test_answer import TestAnswer
+from app.models.learning_session import LearningSession
+from app.models.learning_answer import LearningAnswer
+from app.models.word_mastery import WordMastery
 from app.models.auth_token import AuthToken
-from app.models.test_config import TestConfig
-
-# SQLite for tests (in-memory)
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-
-engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-TestSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+from app.models.tts_cache import TtsCache
 
 
-@pytest_asyncio.fixture
-async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    """Create tables and yield a test database session."""
+# ── DB ────────────────────────────────────────────────────────────────────────
+
+TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
+
+
+@pytest.fixture
+async def db_session():
+    engine = create_async_engine(TEST_DB_URL, echo=False)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
-    async with TestSessionLocal() as session:
+    session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async with session_factory() as session:
         yield session
-
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
 
 
-@pytest_asyncio.fixture
-async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    """Create an async test client with overridden DB dependency."""
-
-    async def override_get_db():
+@pytest.fixture
+async def client(db_session):
+    async def _override_db():
         yield db_session
 
-    app.dependency_overrides[get_db] = override_get_db
-
+    app.dependency_overrides[get_db] = _override_db
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
-
+    async with AsyncClient(transport=transport, base_url="http://test") as c:
+        yield c
     app.dependency_overrides.clear()
 
 
-@pytest_asyncio.fixture
-async def teacher_user(db_session: AsyncSession) -> User:
-    """Create a teacher user for testing."""
+# ── Users ─────────────────────────────────────────────────────────────────────
+
+@pytest.fixture
+async def teacher_user(db_session):
     user = User(
-        username="st2000423",
-        password_hash=get_password_hash("password123"),
-        name="PSS",
+        id=str(uuid.uuid4()),
+        username="teacher01",
+        password_hash=pwd_context.hash("pass1234"),
+        name="Test Teacher",
         role="teacher",
+        grade="고1",
     )
     db_session.add(user)
     await db_session.commit()
-    await db_session.refresh(user)
     return user
 
 
-@pytest_asyncio.fixture
-async def teacher_token(teacher_user: User) -> str:
-    """Create a JWT token for the teacher."""
+@pytest.fixture
+async def teacher_token(teacher_user):
     return create_access_token(subject=teacher_user.id)
 
 
-@pytest_asyncio.fixture
-async def teacher_refresh_token(db_session: AsyncSession, teacher_user: User) -> str:
-    """Create a DB-backed refresh token for the teacher."""
-    from datetime import timedelta
-    from app.core.timezone import now_kst
-    token = create_refresh_token(subject=teacher_user.id)
-    auth_token = AuthToken(
-        user_id=teacher_user.id,
-        refresh_token=token,
-        expires_at=now_kst() + timedelta(days=7),
-    )
-    db_session.add(auth_token)
-    await db_session.commit()
-    return token
-
-
-@pytest_asyncio.fixture
-async def teacher_headers(teacher_token: str) -> dict:
-    """Return auth headers for teacher."""
+@pytest.fixture
+async def teacher_headers(teacher_token):
     return {"Authorization": f"Bearer {teacher_token}"}
 
 
-@pytest_asyncio.fixture
-async def student_user(db_session: AsyncSession, teacher_user: User) -> User:
-    """Create a student user for testing."""
+@pytest.fixture
+async def student_user(db_session, teacher_user):
     user = User(
-        username="test01",
-        password_hash=get_password_hash("password123"),
-        name="테스트01",
+        id=str(uuid.uuid4()),
+        username="student01",
+        password_hash=pwd_context.hash("pass1234"),
+        name="Test Student",
         role="student",
         teacher_id=teacher_user.id,
+        grade="중3",
     )
     db_session.add(user)
     await db_session.commit()
-    await db_session.refresh(user)
     return user
 
 
-@pytest_asyncio.fixture
-async def student_token(student_user: User) -> str:
-    """Create a JWT token for the student."""
+@pytest.fixture
+async def student_token(student_user):
     return create_access_token(subject=student_user.id)
 
 
-@pytest_asyncio.fixture
-async def student_headers(student_token: str) -> dict:
-    """Return auth headers for student."""
+@pytest.fixture
+async def student_headers(student_token):
     return {"Authorization": f"Bearer {student_token}"}
 
 
-@pytest_asyncio.fixture
-async def sample_words(db_session: AsyncSession) -> list[Word]:
-    """Create sample words across multiple levels."""
+# ── Words ─────────────────────────────────────────────────────────────────────
+
+# Words that have emoji mapping (from emoji_engine.py EMOJI_MAP)
+_EMOJI_WORDS = ["dog", "cat", "apple", "book", "car", "sun", "tree", "fish", "star", "house"]
+_EMOJI_KOREAN = ["개", "고양이", "사과", "책", "자동차", "태양", "나무", "물고기", "별", "집"]
+
+
+@pytest.fixture
+async def sample_words(db_session):
+    """50 words: 5 levels x 10 words, with korean, example_en, some with emoji."""
     words = []
     for level in range(1, 6):
         for i in range(10):
+            idx = (level - 1) * 10 + i
+            if idx < len(_EMOJI_WORDS):
+                english = _EMOJI_WORDS[idx]
+                korean = _EMOJI_KOREAN[idx]
+            else:
+                english = f"word{idx}"
+                korean = f"단어{idx}"
             word = Word(
-                english=f"word_{level}_{i}",
-                korean=f"단어_{level}_{i}",
+                id=str(uuid.uuid4()),
+                english=english,
+                korean=korean,
                 level=level,
-                category="noun",
-                lesson=f"Lesson {(i % 25) + 1:02d}",
+                book_name="POWER VOCA 5000-01",
+                lesson=f"Lesson {(i // 5) + 1}",
+                example_en=f"I like the {english} very much.",
+                example_ko=f"나는 {korean}을(를) 매우 좋아합니다.",
+                part_of_speech="noun",
                 is_excluded=False,
             )
-            db_session.add(word)
             words.append(word)
+    db_session.add_all(words)
     await db_session.commit()
-    for w in words:
-        await db_session.refresh(w)
     return words
+
+
+# ── Config & Assignment ───────────────────────────────────────────────────────
+
+@pytest.fixture
+async def test_config(db_session, teacher_user):
+    config = TestConfig(
+        id=str(uuid.uuid4()),
+        teacher_id=teacher_user.id,
+        name="Test Config",
+        test_type="mastery",
+        question_count=20,
+        time_limit_seconds=300,
+        is_active=True,
+        book_name="POWER VOCA 5000-01",
+        level_range_min=1,
+        level_range_max=5,
+        per_question_time_seconds=10,
+        question_types="en_to_ko,ko_to_en",
+    )
+    db_session.add(config)
+    await db_session.commit()
+    return config
+
+
+@pytest.fixture
+async def levelup_assignment(db_session, test_config, student_user, teacher_user):
+    assignment = TestAssignment(
+        id=str(uuid.uuid4()),
+        test_config_id=test_config.id,
+        student_id=student_user.id,
+        teacher_id=teacher_user.id,
+        test_code="LU0001",
+        assignment_type="mastery",
+        engine_type="levelup",
+        status="pending",
+    )
+    db_session.add(assignment)
+    await db_session.commit()
+    return assignment
+
+
+@pytest.fixture
+async def legacy_assignment(db_session, student_user, teacher_user):
+    """Separate config+assignment for legacy engine (avoids unique constraint)."""
+    config = TestConfig(
+        id=str(uuid.uuid4()),
+        teacher_id=teacher_user.id,
+        name="Legacy Config",
+        test_type="mastery",
+        question_count=10,
+        time_limit_seconds=300,
+        is_active=True,
+        book_name="POWER VOCA 5000-01",
+        level_range_min=1,
+        level_range_max=5,
+        per_question_time_seconds=10,
+        question_types="en_to_ko,ko_to_en",
+    )
+    db_session.add(config)
+    await db_session.flush()
+
+    assignment = TestAssignment(
+        id=str(uuid.uuid4()),
+        test_config_id=config.id,
+        student_id=student_user.id,
+        teacher_id=teacher_user.id,
+        test_code="LG0001",
+        assignment_type="mastery",
+        engine_type="legacy",
+        status="pending",
+    )
+    db_session.add(assignment)
+    await db_session.commit()
+    return assignment

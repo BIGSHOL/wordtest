@@ -6,10 +6,10 @@ from pydantic import BaseModel, ConfigDict
 
 class AssignTestRequest(BaseModel):
     student_ids: list[str]
-    test_type: str = "periodic"  # periodic / placement
+    engine: str = "levelup"  # "levelup" or "legacy"
     question_count: int = 20
     per_question_time_seconds: int = 15
-    question_types: list[str] = ["word_meaning"]
+    question_types: list[str] = ["en_to_ko", "ko_to_en"]
     book_name: Optional[str] = None
     book_name_end: Optional[str] = None
     lesson_range_start: Optional[str] = None

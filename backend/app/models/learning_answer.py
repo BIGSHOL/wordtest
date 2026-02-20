@@ -33,6 +33,7 @@ class LearningAnswer(Base):
     answered_at: Mapped[datetime] = mapped_column(
         TZDateTime(), default=now_kst, nullable=False
     )
+    question_type: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     __table_args__ = (
         Index("idx_lanswer_session", "session_id"),

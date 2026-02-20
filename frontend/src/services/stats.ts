@@ -33,6 +33,7 @@ export interface DashboardStats {
 }
 
 export interface TestHistoryItem {
+  id: string | null;
   test_date: string;
   accuracy: number;
   determined_level: number | null;
