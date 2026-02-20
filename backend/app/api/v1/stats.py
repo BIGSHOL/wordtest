@@ -395,6 +395,100 @@ async def get_dashboard_stats(
     )
 
 
+@router.get("/word-stats", response_model=WordStatsResponse)
+async def get_word_stats(
+    teacher: CurrentTeacher,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Get per-word accuracy and response time stats (teacher only)."""
+    student_ids_subq = (
+        select(User.id)
+        .where(and_(User.role == "student", User.teacher_id == teacher.id))
+        .scalar_subquery()
+    )
+
+    # Aggregate from LearningAnswer (main data source)
+    la_query = (
+        select(
+            LearningAnswer.word_id,
+            Word.english,
+            Word.korean,
+            func.count(LearningAnswer.id).label("attempt_count"),
+            func.sum(func.cast(LearningAnswer.is_correct, Integer)).label("correct_count"),
+            func.avg(LearningAnswer.time_taken_sec).label("avg_time"),
+        )
+        .join(Word, LearningAnswer.word_id == Word.id)
+        .join(LearningSession, LearningAnswer.session_id == LearningSession.id)
+        .where(LearningSession.student_id.in_(student_ids_subq))
+        .group_by(LearningAnswer.word_id, Word.english, Word.korean)
+    )
+    la_result = await db.execute(la_query)
+    word_map: dict[str, dict] = {}
+    for row in la_result.fetchall():
+        word_map[row.word_id] = {
+            "english": row.english,
+            "korean": row.korean,
+            "attempts": row.attempt_count or 0,
+            "correct": int(row.correct_count or 0),
+            "time_sum": float(row.avg_time or 0) * (row.attempt_count or 1),
+        }
+
+    # Also aggregate from TestAnswer
+    ta_query = (
+        select(
+            TestAnswer.word_id,
+            Word.english,
+            Word.korean,
+            func.count(TestAnswer.id).label("attempt_count"),
+            func.sum(func.cast(TestAnswer.is_correct, Integer)).label("correct_count"),
+        )
+        .join(Word, TestAnswer.word_id == Word.id)
+        .join(TestSession, TestAnswer.test_session_id == TestSession.id)
+        .where(TestSession.student_id.in_(student_ids_subq))
+        .group_by(TestAnswer.word_id, Word.english, Word.korean)
+    )
+    ta_result = await db.execute(ta_query)
+    for row in ta_result.fetchall():
+        if row.word_id in word_map:
+            word_map[row.word_id]["attempts"] += row.attempt_count or 0
+            word_map[row.word_id]["correct"] += int(row.correct_count or 0)
+        else:
+            word_map[row.word_id] = {
+                "english": row.english,
+                "korean": row.korean,
+                "attempts": row.attempt_count or 0,
+                "correct": int(row.correct_count or 0),
+                "time_sum": 0,
+            }
+
+    # Build WordStat list (minimum 2 attempts to be meaningful)
+    all_stats = []
+    for wid, d in word_map.items():
+        if d["attempts"] < 2:
+            continue
+        acc = round(d["correct"] / d["attempts"] * 100, 1)
+        avg_t = round(d["time_sum"] / d["attempts"], 1) if d["time_sum"] > 0 else None
+        all_stats.append(WordStat(
+            word_id=wid,
+            english=d["english"],
+            korean=d["korean"],
+            accuracy=acc,
+            attempt_count=d["attempts"],
+            avg_time_seconds=avg_t,
+        ))
+
+    lowest_accuracy = sorted(all_stats, key=lambda w: w.accuracy)[:20]
+    slowest_response = sorted(
+        [w for w in all_stats if w.avg_time_seconds],
+        key=lambda w: -(w.avg_time_seconds or 0),
+    )[:20]
+
+    return WordStatsResponse(
+        lowest_accuracy=lowest_accuracy,
+        slowest_response=slowest_response,
+    )
+
+
 @router.get("/student/{student_id}/history", response_model=TestHistoryResponse)
 async def get_student_history(
     student_id: str,

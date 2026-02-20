@@ -48,7 +48,26 @@ export interface TestHistoryResponse {
   history: TestHistoryItem[];
 }
 
+export interface WordStat {
+  word_id: string;
+  english: string;
+  korean: string;
+  accuracy: number;
+  attempt_count: number;
+  avg_time_seconds: number | null;
+}
+
+export interface WordStatsResponse {
+  lowest_accuracy: WordStat[];
+  slowest_response: WordStat[];
+}
+
 export const statsService = {
+  async getWordStats(): Promise<WordStatsResponse> {
+    const response = await api.get<WordStatsResponse>('/api/v1/stats/word-stats');
+    return response.data;
+  },
+
   async getDashboardStats(): Promise<DashboardStats> {
     const response = await api.get<DashboardStats>('/api/v1/stats/dashboard');
     return response.data;
