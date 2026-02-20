@@ -7,6 +7,7 @@
 import { create } from 'zustand';
 import { useAuthStore } from './auth';
 import { getErrorMessage } from '../utils/error';
+import type { User } from '../types/auth';
 import { wordLevelToRank } from '../types/rank';
 import {
   unifiedTestService,
@@ -198,7 +199,14 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
 
       // Set auth token for unauthenticated student access
       if (response.access_token) {
-        useAuthStore.getState().setTokens(response.access_token, '');
+        useAuthStore.getState().setTokenDirect(response.access_token, {
+          id: response.student_id,
+          name: response.student_name,
+          role: 'student',
+          email: null, username: null, teacher_id: null,
+          school_name: null, grade: null, phone_number: null,
+          created_at: '', updated_at: '',
+        } as User);
       }
 
       // Group questions by word level
@@ -231,7 +239,7 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
 
       return response;
     } catch (e) {
-      set({ isLoading: false, error: getErrorMessage(e) });
+      set({ isLoading: false, error: getErrorMessage(e, '오류가 발생했습니다') });
       throw e;
     }
   },
@@ -244,7 +252,14 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
       const response = await unifiedTestService.startLegacy(code, allowRestart);
 
       if (response.access_token) {
-        useAuthStore.getState().setTokens(response.access_token, '');
+        useAuthStore.getState().setTokenDirect(response.access_token, {
+          id: response.student_id,
+          name: response.student_name,
+          role: 'student',
+          email: null, username: null, teacher_id: null,
+          school_name: null, grade: null, phone_number: null,
+          created_at: '', updated_at: '',
+        } as User);
       }
 
       set({
@@ -261,7 +276,7 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
 
       return response;
     } catch (e) {
-      set({ isLoading: false, error: getErrorMessage(e) });
+      set({ isLoading: false, error: getErrorMessage(e, '오류가 발생했습니다') });
       throw e;
     }
   },
@@ -372,7 +387,7 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
 
       return result;
     } catch (e) {
-      set({ isSubmitting: false, error: getErrorMessage(e) });
+      set({ isSubmitting: false, error: getErrorMessage(e, '오류가 발생했습니다') });
       return null;
     }
   },
@@ -453,7 +468,7 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
         });
       }
     } catch (e) {
-      set({ error: getErrorMessage(e) });
+      set({ error: getErrorMessage(e, '오류가 발생했습니다') });
     }
   },
 
