@@ -160,7 +160,7 @@ export function TestSettingsPage() {
   const handleAssign = async () => {
     if (selectedIds.size === 0) return;
     if (!config.bookStart || !config.bookEnd || !config.lessonStart || !config.lessonEnd) return;
-    if (config.questionTypes.length === 0) return;
+    if (config.testType !== 'listening' && config.questionTypes.length === 0) return;
 
     const questionCount = config.questionCount === -1
       ? parseInt(config.customQuestionCount) || 0
@@ -223,7 +223,7 @@ export function TestSettingsPage() {
     !!config.bookEnd &&
     !!config.lessonStart &&
     !!config.lessonEnd &&
-    config.questionTypes.length > 0 &&
+    (config.testType === 'listening' || config.questionTypes.length > 0) &&
     (config.questionCount > 0 || (config.questionCount === -1 && parseInt(config.customQuestionCount) > 0));
 
   return (

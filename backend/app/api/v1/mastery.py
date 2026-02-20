@@ -87,7 +87,7 @@ async def start_mastery_by_code(
 
         # Determine routing: engine_type takes priority, fallback to test_type
         is_legacy_stage = (_engine in ("legacy_stage", "legacy_listen")) or (
-            not _engine and _config.test_type == "periodic"
+            not _engine and _config.test_type in ("periodic", "listening")
         )
         is_legacy_word = _engine == "legacy_word"
 
@@ -96,7 +96,9 @@ async def start_mastery_by_code(
                 select(User).where(User.id == _assignment.student_id)
             )).scalar_one_or_none()
             _token = create_access_token(subject=_assignment.student_id)
-            _atype = "stage_test" if is_legacy_stage else "legacy"
+            _atype = "listening" if _config.test_type == "listening" else (
+                "stage_test" if is_legacy_stage else "legacy"
+            )
             return StartMasteryResponse(
                 session=MasterySessionInfo(
                     id="", assignment_id=_assignment.id,

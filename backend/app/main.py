@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import text
 
-from app.api.v1 import auth, users, students, tests, words, stats, test_configs, test_assignments, tts, mastery, stage_test
+from app.api.v1 import auth, users, students, tests, words, stats, test_configs, test_assignments, tts, mastery, stage_test, listening_test
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 from app.utils.load_words import classify_expression
@@ -74,6 +74,7 @@ app.include_router(test_assignments.router, prefix="/api/v1")
 app.include_router(tts.router, prefix="/api/v1")
 app.include_router(mastery.router, prefix="/api/v1")
 app.include_router(stage_test.router, prefix="/api/v1")
+app.include_router(listening_test.router, prefix="/api/v1")
 
 
 @app.get("/health")

@@ -24,6 +24,9 @@ const DEFAULT_QUESTION_COUNT = 50;
 /** Track ongoing prefetches to avoid duplicate requests */
 const _prefetchingLevels = new Set<number>();
 
+/** Track which books have had a question served (to handle pool index on book change) */
+const _servedBooks = new Set<number>();
+
 // --- XP Configuration ---
 
 /** XP needed to clear one lesson in a given book. Book 1: 5, Book 5: 9, Book 10: 14 */
@@ -218,6 +221,11 @@ export const useMasteryStore = create<MasteryStore>()((set, get) => ({
         poolIndex[Number(lvl)] = 0;
       }
 
+      // Mark starting book as served (its first question will be shown immediately)
+      _servedBooks.clear();
+      _prefetchingLevels.clear();
+      _servedBooks.add(startLevel);
+
       set({
         session: response.session,
         stageSummary: response.stage_summary,
@@ -395,7 +403,12 @@ export const useMasteryStore = create<MasteryStore>()((set, get) => ({
 
     // Advance pool index for current book
     const book = state.currentBook;
-    const currentIdx = (state.poolIndex[book] ?? 0) + 1;
+    // If this book hasn't served a question yet (first visit after level-up),
+    // use current poolIndex without incrementing to avoid skipping the first question.
+    const currentIdx = _servedBooks.has(book)
+      ? (state.poolIndex[book] ?? 0) + 1   // same/returning book: advance past answered
+      : (state.poolIndex[book] ?? 0);       // new book: start at first unshown
+    _servedBooks.add(book);
 
     // Check latest state (prefetch may have extended the pool)
     const latestState = useMasteryStore.getState();
@@ -466,6 +479,8 @@ export const useMasteryStore = create<MasteryStore>()((set, get) => ({
   },
 
   reset: () => {
+    _prefetchingLevels.clear();
+    _servedBooks.clear();
     set({ ...initialState });
   },
 }));

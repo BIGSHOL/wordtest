@@ -19,6 +19,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.models.word import Word
 from app.services.mastery_engine import is_likely_loanword
+from app.services.emoji_engine import get_emoji, get_emoji_distractors
+
+_EMOJI_QUESTION_PROBABILITY = 0.35
 
 MAX_RANK = 15
 
@@ -267,12 +270,25 @@ async def generate_questions(
 
         if qtype == "meaning_word":
             # Korean → English: show korean meaning, choices are english words
+            # Emoji variant: if word has emoji, 35% chance to show emoji instead
+            word_emoji = get_emoji(word.english)
+            if word_emoji and random.random() < _EMOJI_QUESTION_PROBABILITY:
+                qtype = "emoji_word"
+                sampled = get_emoji_distractors(word.english, unique_english_words, 3)
+                choices = [word.english] + sampled
+            else:
+                wrong_words = [e for e in unique_english_words if e != word.english]
+                sampled = random.sample(wrong_words, min(3, len(wrong_words)))
+                choices = [word.english] + sampled
+            correct = word.english
+        elif qtype == "sentence_blank" and word.example_en:
+            # Sentence blank: choices are english words
             wrong_words = [e for e in unique_english_words if e != word.english]
             sampled = random.sample(wrong_words, min(3, len(wrong_words)))
             choices = [word.english] + sampled
             correct = word.english
-        elif qtype == "sentence_blank" and word.example_en:
-            # Sentence blank: choices are english words
+        elif qtype == "listening":
+            # Listening: hear TTS pronunciation, pick correct English word
             wrong_words = [e for e in unique_english_words if e != word.english]
             sampled = random.sample(wrong_words, min(3, len(wrong_words)))
             choices = [word.english] + sampled

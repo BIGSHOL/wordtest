@@ -24,6 +24,7 @@ class TestQuestionWord(BaseModel):
     english: str
     korean: Optional[str] = None
     example_en: Optional[str] = None
+    emoji: Optional[str] = None
     level: int = 1  # word DB level (1-15)
     lesson: str = ""  # lesson name within book
 
@@ -34,6 +35,7 @@ class TestQuestion(BaseModel):
     choices: list[str]
     correct_answer: str
     question_type: str = "word_meaning"
+    emoji: Optional[str] = None
 
 
 class TestSessionResponse(BaseModel):

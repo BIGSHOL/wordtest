@@ -22,6 +22,7 @@ from app.core.security import create_access_token
 from app.services.test import start_test, submit_answer, get_test_result, list_tests_by_student
 from app.services.test_config import get_config_by_code
 from app.services.level_engine import format_rank_label
+from app.services.emoji_engine import get_emoji
 from app.models.user import User
 from sqlalchemy import select
 
@@ -51,23 +52,26 @@ def _session_response(session) -> TestSessionResponse:
 
 
 def _questions_response(questions: list[dict]) -> list[TestQuestion]:
-    return [
-        TestQuestion(
+    result = []
+    for q in questions:
+        emoji = get_emoji(q["word"].english)
+        result.append(TestQuestion(
             question_order=q["question_order"],
             word=TestQuestionWord(
                 id=q["word"].id,
                 english=q["word"].english,
                 korean=q["word"].korean,
                 example_en=q["word"].example_en,
+                emoji=emoji,
                 level=q["word"].level,
                 lesson=q["word"].lesson or "",
             ),
             choices=q["choices"],
             correct_answer=q["correct_answer"],
             question_type=q.get("question_type", "word_meaning"),
-        )
-        for q in questions
-    ]
+            emoji=emoji,
+        ))
+    return result
 
 router = APIRouter(prefix="/tests", tags=["tests"])
 

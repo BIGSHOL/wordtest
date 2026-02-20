@@ -4,6 +4,7 @@ import { BookOpen, Hash, AlertCircle, Loader2, Play, RotateCcw, BarChart3, Alert
 import { useTestStore } from '../../stores/testStore';
 import { useMasteryStore } from '../../stores/masteryStore';
 import { useStageTestStore } from '../../stores/stageTestStore';
+import { useListeningTestStore } from '../../stores/listeningTestStore';
 
 const CODE_LENGTH = 8;
 const CODE_CHARS = /[^A-Z0-9]/g;
@@ -20,6 +21,7 @@ export function TestStartPage() {
   const { startTestByCode } = useTestStore();
   const { startByCode: startMasteryByCode } = useMasteryStore();
   const { startByCode: startStageTestByCode } = useStageTestStore();
+  const { startByCode: startListeningTestByCode } = useListeningTestStore();
   const [testCode, setTestCode] = useState('');
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +77,12 @@ export function TestStartPage() {
       if (response.assignment_type === 'stage_test') {
         await startStageTestByCode(code);
         navigate('/stage-test', { replace: true });
+        return;
+      }
+      if (response.assignment_type === 'listening') {
+        // Listening test: call separate start endpoint
+        await startListeningTestByCode(code);
+        navigate('/listening-test', { replace: true });
         return;
       }
       if (response.assignment_type === 'mastery') {

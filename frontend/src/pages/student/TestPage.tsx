@@ -9,13 +9,15 @@ import { TimerBar } from '../../components/test/TimerBar';
 import { WordCard } from '../../components/test/WordCard';
 import { MeaningCard } from '../../components/test/MeaningCard';
 import { SentenceCard } from '../../components/test/SentenceCard';
+import { EmojiCard } from '../../components/test/EmojiCard';
+import { ListeningCard } from '../../components/test/ListeningCard';
 import { ChoiceButton } from '../../components/test/ChoiceButton';
 import { FeedbackBanner } from '../../components/test/FeedbackBanner';
 import { useTestStore } from '../../stores/testStore';
 import { useAuthStore } from '../../stores/auth';
 import { useTimer } from '../../hooks/useTimer';
 import { playSound, stopSound, stopAllSounds, unlockAudio } from '../../hooks/useSound';
-import { preloadWordAudio, preloadSentenceAudio, batchPreloadPool, randomizeTtsVoice } from '../../utils/tts';
+import { preloadWordAudio, preloadSentenceAudio, batchPreloadPool, randomizeTtsVoice, speakWord } from '../../utils/tts';
 
 const TIMER_SECONDS = 15;
 const FEEDBACK_DELAY_MS = 800;
@@ -102,6 +104,10 @@ export function TestPage() {
         const exEn = next.word.example_en;
         if (exEn) preloadSentenceAudio(exEn);
       }
+    }
+    // Auto-play TTS for listening questions
+    if (current?.question_type === 'listening') {
+      setTimeout(() => speakWord(current.word.english), 350);
     }
   }, [currentIndex, resetTimer, questions]);
 
@@ -250,7 +256,11 @@ export function TestPage() {
 
         {/* Word Card or Sentence Card */}
         <div className="w-full md:w-[640px] lg:w-[640px]">
-          {questionType === 'sentence_blank' && currentQuestion.word.example_en ? (
+          {questionType === 'listening' ? (
+            <ListeningCard english={currentQuestion.word.english} />
+          ) : questionType === 'emoji_word' && (currentQuestion.emoji || currentQuestion.word.emoji) ? (
+            <EmojiCard emoji={currentQuestion.emoji || currentQuestion.word.emoji || ''} />
+          ) : questionType === 'sentence_blank' && currentQuestion.word.example_en ? (
             <SentenceCard
               sentence={currentQuestion.word.example_en}
               word={currentQuestion.word.english}

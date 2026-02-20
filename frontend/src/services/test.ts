@@ -16,10 +16,11 @@ export interface SubmitAnswerRequest {
 
 export interface TestQuestion {
   question_order: number;
-  word: { id: string; english: string; korean?: string; example_en?: string; level: number; lesson: string };
+  word: { id: string; english: string; korean?: string; example_en?: string; emoji?: string; level: number; lesson: string };
   choices: string[];
   correct_answer: string;
   question_type?: string;
+  emoji?: string;
 }
 
 export interface TestSessionData {

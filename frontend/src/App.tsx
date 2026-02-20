@@ -40,6 +40,7 @@ const ResultPage = lazyRetry(() => import('./pages/student/ResultPage'));
 const WrongWordsPage = lazyRetry(() => import('./pages/student/WrongWordsPage'));
 const MasteryPage = lazyRetry(() => import('./pages/student/MasteryPage'));
 const StageTestPage = lazyRetry(() => import('./pages/student/StageTestPage'));
+const ListeningTestPage = lazyRetry(() => import('./pages/student/ListeningTestPage'));
 const StudentReportPage = lazyRetry(() => import('./pages/student/StudentReportPage'));
 const StageTestPreview = lazyRetry(() => import('./pages/dev/StageTestPreview'));
 
@@ -168,6 +169,14 @@ function App() {
             element={
               <RouteGuard roles={['student']}>
                 <StageTestPage />
+              </RouteGuard>
+            }
+          />
+          <Route
+            path="/listening-test"
+            element={
+              <RouteGuard roles={['student']}>
+                <ListeningTestPage />
               </RouteGuard>
             }
           />

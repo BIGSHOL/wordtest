@@ -7,7 +7,7 @@ import { Check, Info } from 'lucide-react';
 import type { LessonInfo } from '../../services/word';
 
 export interface TestConfigState {
-  testType: 'placement' | 'periodic';
+  testType: 'placement' | 'periodic' | 'listening';
   questionCount: number;
   customQuestionCount: string;
   perQuestionTime: number;
@@ -126,6 +126,44 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
         </div>
       </div>
 
+      {/* Section: Test Type */}
+      <div style={{ padding: '18px 24px' }}>
+        <h3 className="text-[13px] font-bold text-text-primary mb-3">테스트 모드</h3>
+        <div className="flex flex-wrap gap-2">
+          <OptionPill
+            selected={config.testType === 'placement'}
+            onClick={() => update({ testType: 'placement' })}
+          >
+            적응형
+          </OptionPill>
+          <OptionPill
+            selected={config.testType === 'periodic'}
+            onClick={() => update({ testType: 'periodic' })}
+          >
+            정기형
+          </OptionPill>
+          <OptionPill
+            selected={config.testType === 'listening'}
+            onClick={() => update({ testType: 'listening' })}
+          >
+            리스닝
+          </OptionPill>
+        </div>
+        {config.testType === 'listening' && (
+          <div
+            className="flex items-center gap-2 rounded-lg mt-3"
+            style={{ backgroundColor: '#EBF8FA', padding: '10px 14px' }}
+          >
+            <Info className="w-3.5 h-3.5 shrink-0" style={{ color: '#2D9CAE' }} />
+            <span className="text-[11px] font-medium" style={{ color: '#2D9CAE' }}>
+              발음을 듣고 영어 단어를 고르는 테스트입니다. 문제 유형은 자동 설정됩니다.
+            </span>
+          </div>
+        )}
+      </div>
+
+      <Divider />
+
       {/* Section: Question Count */}
       <div style={{ padding: '18px 24px' }}>
         <h3 className="text-[13px] font-bold text-text-primary mb-3">문제 수</h3>
@@ -190,10 +228,10 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
         )}
       </div>
 
-      <Divider />
+      {config.testType !== 'listening' && <Divider />}
 
-      {/* Section: Engine Mode */}
-      <div style={{ padding: '18px 24px' }}>
+      {/* Section: Question Types — hidden for listening mode */}
+      {config.testType !== 'listening' && <div style={{ padding: '18px 24px' }}>
         <h3 className="text-[13px] font-bold text-text-primary mb-3">문제 유형</h3>
         <div className="space-y-2">
           {ENGINE_MODE_OPTIONS.map((option) => {
@@ -233,7 +271,7 @@ export function TestConfigPanel({ config, onConfigChange, books, lessonsStart, l
             );
           })}
         </div>
-      </div>
+      </div>}
 
       <Divider />
 

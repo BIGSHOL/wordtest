@@ -49,6 +49,7 @@ class MasteryQuestionWord(BaseModel):
     level: int
     lesson: str
     part_of_speech: Optional[str] = None
+    emoji: Optional[str] = None
 
 
 class MasteryQuestion(BaseModel):
@@ -61,6 +62,7 @@ class MasteryQuestion(BaseModel):
     timer_seconds: int
     context_mode: str = "word"              # "word" | "sentence"
     sentence_blank: Optional[str] = None    # English sentence with ____ for fill-in-blank
+    emoji: Optional[str] = None             # emoji for emoji_to_word questions
 
 
 class StageSummary(BaseModel):
@@ -112,7 +114,7 @@ class MasteryAnswerResult(BaseModel):
     previous_stage: int
     word_mastered: bool
     stage_streak: int = 0         # current consecutive correct at this stage
-    required_streak: int = 2      # needed to advance
+    required_streak: int = 1      # needed to advance
     example_en: Optional[str] = None
     example_ko: Optional[str] = None
     current_level: int = 1

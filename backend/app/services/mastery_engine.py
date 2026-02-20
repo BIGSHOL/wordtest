@@ -10,6 +10,10 @@ from app.models.word_mastery import WordMastery
 from app.schemas.mastery import (
     MasteryQuestion, MasteryQuestionWord, STAGE_TIMERS, STAGE_QUESTION_TYPES,
 )
+from app.services.emoji_engine import get_emoji, has_emoji, get_emoji_distractors
+
+# Probability of using emoji_to_word when the word has an emoji mapping (stage 1-2 only)
+_EMOJI_QUESTION_PROBABILITY = 0.4
 
 
 # ── Loanword (외래어) Detection ─────────────────────────────────────────────
@@ -379,6 +383,7 @@ def _word_response(word: Word) -> MasteryQuestionWord:
         level=word.level,
         lesson=word.lesson,
         part_of_speech=word.part_of_speech,
+        emoji=get_emoji(word.english),
     )
 
 
@@ -399,7 +404,7 @@ def generate_stage_questions(
     unique_korean = list({w.korean for w in all_words if w.korean})
     unique_english = list({w.english for w in all_words})
 
-    question_type = STAGE_QUESTION_TYPES.get(stage, "word_to_meaning")
+    default_question_type = STAGE_QUESTION_TYPES.get(stage, "word_to_meaning")
     timer = STAGE_TIMERS.get(stage, 5)
 
     questions: list[MasteryQuestion] = []
@@ -408,6 +413,9 @@ def generate_stage_questions(
         word = words_map.get(mastery.word_id)
         if not word:
             continue
+
+        # Reset question_type each iteration (emoji branch may override)
+        question_type = default_question_type
 
         # Decide context mode based on word level
         prob = _sentence_probability(word.level)
@@ -426,8 +434,23 @@ def generate_stage_questions(
         choices = None
         correct_answer = ""
 
+        # Check emoji availability for stage 1-2
+        word_emoji = get_emoji(word.english) if stage in (1, 2) else None
+        use_emoji = (
+            word_emoji
+            and not use_sentence
+            and random.random() < _EMOJI_QUESTION_PROBABILITY
+        )
+
         if stage == 1:
-            if use_sentence:
+            if use_emoji:
+                # Emoji → English word (choice)
+                question_type = "emoji_to_word"
+                correct_answer = word.english
+                sampled = get_emoji_distractors(word.english, unique_english)
+                choices = [correct_answer] + sampled
+                random.shuffle(choices)
+            elif use_sentence:
                 # Sentence blank → always English word choices
                 correct_answer = word.english
                 sampled = _pick_english_distractors(word.english, unique_english)
@@ -441,11 +464,19 @@ def generate_stage_questions(
                 random.shuffle(choices)
 
         elif stage == 2:
-            # Korean meaning → English word (4 choices)
-            correct_answer = word.english
-            sampled = _pick_english_distractors(word.english, unique_english)
-            choices = [correct_answer] + sampled
-            random.shuffle(choices)
+            if use_emoji:
+                # Emoji → English word (choice)
+                question_type = "emoji_to_word"
+                correct_answer = word.english
+                sampled = get_emoji_distractors(word.english, unique_english)
+                choices = [correct_answer] + sampled
+                random.shuffle(choices)
+            else:
+                # Korean meaning → English word (4 choices)
+                correct_answer = word.english
+                sampled = _pick_english_distractors(word.english, unique_english)
+                choices = [correct_answer] + sampled
+                random.shuffle(choices)
 
         elif stage == 3:
             # Listen → Type English word
@@ -479,6 +510,7 @@ def generate_stage_questions(
             timer_seconds=timer,
             context_mode=context_mode,
             sentence_blank=sentence_blank,
+            emoji=word_emoji if question_type == "emoji_to_word" else None,
         ))
 
     return questions
@@ -540,6 +572,9 @@ def generate_mixed_questions(
         n_choices = _choice_count_for_level(word.level)
         n_distractors = n_choices - 1
 
+        # Check emoji availability for stage 1-2
+        word_emoji = get_emoji(word.english) if stage in (1, 2) else None
+
         # Determine question type based on internal stage
         if stage == 1 or stage == 2:
             # Typing probability: high-level words may get typing even at stage 1-2
@@ -553,6 +588,14 @@ def generate_mixed_questions(
                 question_type = "meaning_to_word"
                 correct_answer = word.english
                 sampled = _pick_english_distractors(word.english, unique_english, n_distractors)
+                choices = [correct_answer] + sampled
+                random.shuffle(choices)
+                timer = _base_timer_for_level(word.level, stage)
+            elif word_emoji and random.random() < _EMOJI_QUESTION_PROBABILITY:
+                # Emoji → English word (choice)
+                question_type = "emoji_to_word"
+                correct_answer = word.english
+                sampled = get_emoji_distractors(word.english, unique_english, n_distractors)
                 choices = [correct_answer] + sampled
                 random.shuffle(choices)
                 timer = _base_timer_for_level(word.level, stage)
@@ -612,6 +655,7 @@ def generate_mixed_questions(
             timer_seconds=timer_override if timer_override else timer,
             context_mode=context_mode,
             sentence_blank=sentence_blank,
+            emoji=word_emoji if question_type == "emoji_to_word" else None,
         ))
 
     return questions

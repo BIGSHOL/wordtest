@@ -25,6 +25,7 @@ import { ChoiceButton } from '../../components/test/ChoiceButton';
 import { ListenCard } from '../../components/mastery/ListenCard';
 import { TypingInput } from '../../components/mastery/TypingInput';
 import { SentenceBlankCard } from '../../components/mastery/SentenceBlankCard';
+import { EmojiCard } from '../../components/test/EmojiCard';
 import { Loader2, Trophy, LogIn } from 'lucide-react';
 import { getLevelRank } from '../../types/rank';
 
@@ -343,6 +344,8 @@ export function MasteryPage() {
 
     // Word-based question
     switch (questionType) {
+      case 'emoji_to_word':
+        return <EmojiCard emoji={currentQuestion.emoji || currentQuestion.word.emoji || ''} />;
       case 'word_to_meaning':
         return <WordCard word={currentQuestion.word.english} />;
       case 'meaning_to_word':

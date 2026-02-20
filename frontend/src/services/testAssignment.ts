@@ -5,7 +5,7 @@ import api from './api';
 
 export interface AssignTestRequest {
   student_ids: string[];
-  test_type?: 'placement' | 'periodic';
+  test_type?: 'placement' | 'periodic' | 'listening';
   question_count: number;
   per_question_time_seconds: number;
   question_types: string[];
@@ -22,12 +22,12 @@ export interface TestAssignmentItem {
   student_school: string | null;
   student_grade: string | null;
   test_code: string;
-  test_type: 'placement' | 'periodic';
+  test_type: 'placement' | 'periodic' | 'listening';
   question_count: number;
   per_question_time_seconds: number | null;
   question_types: string | null;
   lesson_range: string | null;
-  assignment_type?: 'mastery' | 'legacy' | 'stage_test';
+  assignment_type?: 'mastery' | 'legacy' | 'stage_test' | 'listening';
   engine_type?: string | null;
   status: 'pending' | 'in_progress' | 'completed';
   assigned_at: string;

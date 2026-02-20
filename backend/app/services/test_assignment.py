@@ -112,12 +112,19 @@ async def assign_test(
     assignments = []
     for student_id in data.student_ids:
         individual_code = await generate_test_code(db)
+        # Map test_type to assignment_type
+        if data.test_type == "listening":
+            a_type = "listening"
+        elif data.test_type == "periodic":
+            a_type = "mastery"
+        else:
+            a_type = "mastery"
         assignment = TestAssignment(
             test_config_id=config.id,
             student_id=student_id,
             teacher_id=teacher_id,
             test_code=individual_code,
-            assignment_type=assignment_type,
+            assignment_type=a_type,
             engine_type=engine_type,
         )
         db.add(assignment)

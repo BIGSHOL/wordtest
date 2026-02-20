@@ -23,7 +23,8 @@ export type QuestionType =
   | 'meaning_to_word'    // Korean → pick English (choice)
   | 'listen_and_type'    // Listen → type English
   | 'listen_to_meaning'  // Listen → pick Korean (choice)
-  | 'meaning_and_type';  // Korean → type English
+  | 'meaning_and_type'   // Korean → type English
+  | 'emoji_to_word';     // Emoji → pick English (choice)
 
 export function isTypingQuestion(type: string): boolean {
   return type === 'listen_and_type' || type === 'meaning_and_type';
@@ -34,7 +35,7 @@ export function isListenQuestion(type: string): boolean {
 }
 
 export function isChoiceQuestion(type: string): boolean {
-  return type === 'word_to_meaning' || type === 'meaning_to_word' || type === 'listen_to_meaning';
+  return type === 'word_to_meaning' || type === 'meaning_to_word' || type === 'listen_to_meaning' || type === 'emoji_to_word';
 }
 
 /** Get timer for a question type */
@@ -43,6 +44,8 @@ export function getQuestionTimer(type: string): number {
     case 'word_to_meaning':
     case 'meaning_to_word':
       return 5;
+    case 'emoji_to_word':
+      return 8;
     case 'listen_to_meaning':
       return 10;
     case 'listen_and_type':
@@ -76,6 +79,7 @@ export interface MasteryQuestionWord {
   level: number;
   lesson: string;
   part_of_speech?: string;
+  emoji?: string;
 }
 
 export interface MasteryQuestion {
@@ -88,6 +92,7 @@ export interface MasteryQuestion {
   timer_seconds: number;
   context_mode: 'word' | 'sentence';
   sentence_blank: string | null;
+  emoji?: string;
 }
 
 export interface StageSummary {
