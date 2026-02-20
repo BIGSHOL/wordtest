@@ -11,6 +11,8 @@ from app.schemas.mastery import (
     MasteryQuestion, MasteryQuestionWord, STAGE_TIMERS, STAGE_QUESTION_TYPES,
 )
 from app.services.emoji_engine import get_emoji, has_emoji, get_emoji_distractors
+from app.services.question_engines import get_engine, build_pool, apply_sentence_overlay
+from app.services.question_engines.base import DistractorPool
 
 # Probability of using emoji_to_word when the word has an emoji mapping (stage 1-2 only)
 _EMOJI_QUESTION_PROBABILITY = 0.4
@@ -396,16 +398,17 @@ def generate_stage_questions(
     """Generate stage-appropriate questions for a batch of word masteries.
 
     Higher-level words get sentence/context-based questions more often.
+    Uses modular question engines for question/distractor generation.
     """
     if not masteries or not all_words:
         return []
 
-    # Pre-compute distractor pools
-    unique_korean = list({w.korean for w in all_words if w.korean})
-    unique_english = list({w.english for w in all_words})
-
-    default_question_type = STAGE_QUESTION_TYPES.get(stage, "word_to_meaning")
+    pool = build_pool(all_words)
     timer = STAGE_TIMERS.get(stage, 5)
+
+    # Stage -> canonical engine mapping
+    _STAGE_ENGINE = {1: "en_to_ko", 2: "ko_to_en", 3: "listen_type", 4: "listen_ko", 5: "ko_type"}
+    default_engine_name = _STAGE_ENGINE.get(stage, "en_to_ko")
 
     questions: list[MasteryQuestion] = []
 
@@ -414,25 +417,12 @@ def generate_stage_questions(
         if not word:
             continue
 
-        # Reset question_type each iteration (emoji branch may override)
-        question_type = default_question_type
+        engine_name = default_engine_name
 
         # Decide context mode based on word level
         prob = _sentence_probability(word.level)
         has_example = bool(word.example_en and word.example_ko)
         use_sentence = has_example and (random.random() < prob)
-
-        # Pre-compute sentence blank if using sentence mode
-        sentence_blank = None
-        if use_sentence and word.example_en:
-            sentence_blank = _make_sentence_blank(word.example_en, word.english)
-            if not sentence_blank:
-                use_sentence = False  # fallback to word mode
-
-        context_mode = "sentence" if use_sentence else "word"
-
-        choices = None
-        correct_answer = ""
 
         # Check emoji availability for stage 1-2
         word_emoji = get_emoji(word.english) if stage in (1, 2) else None
@@ -442,75 +432,51 @@ def generate_stage_questions(
             and random.random() < _EMOJI_QUESTION_PROBABILITY
         )
 
+        # Override engine based on emoji/sentence conditions
         if stage == 1:
             if use_emoji:
-                # Emoji → English word (choice)
-                question_type = "emoji_to_word"
-                correct_answer = word.english
-                sampled = get_emoji_distractors(word.english, unique_english)
-                choices = [correct_answer] + sampled
-                random.shuffle(choices)
+                engine_name = "emoji"
             elif use_sentence:
-                # Sentence blank → always English word choices
-                correct_answer = word.english
-                sampled = _pick_english_distractors(word.english, unique_english)
-                choices = [correct_answer] + sampled
-                random.shuffle(choices)
-            else:
-                # English → Korean meaning (4 choices)
-                correct_answer = word.korean
-                sampled = _pick_korean_distractors(word.korean, unique_korean)
-                choices = [correct_answer] + sampled
-                random.shuffle(choices)
-
+                engine_name = "sentence"
         elif stage == 2:
             if use_emoji:
-                # Emoji → English word (choice)
-                question_type = "emoji_to_word"
-                correct_answer = word.english
-                sampled = get_emoji_distractors(word.english, unique_english)
-                choices = [correct_answer] + sampled
-                random.shuffle(choices)
-            else:
-                # Korean meaning → English word (4 choices)
-                correct_answer = word.english
-                sampled = _pick_english_distractors(word.english, unique_english)
-                choices = [correct_answer] + sampled
-                random.shuffle(choices)
-
-        elif stage == 3:
-            # Listen → Type English word
-            correct_answer = word.english
-
+                engine_name = "emoji"
         elif stage == 4:
             if use_sentence:
-                # Sentence blank → always English word choices
-                correct_answer = word.english
-                sampled = _pick_english_distractors(word.english, unique_english)
-                choices = [correct_answer] + sampled
-                random.shuffle(choices)
-            else:
-                # Listen → Korean meaning (4 choices)
-                correct_answer = word.korean
-                sampled = _pick_korean_distractors(word.korean, unique_korean)
-                choices = [correct_answer] + sampled
-                random.shuffle(choices)
+                engine_name = "sentence"
 
-        elif stage == 5:
-            # Korean meaning → Type English word
-            correct_answer = word.english
+        # Generate via engine
+        engine = get_engine(engine_name)
+        spec = engine.generate(word, pool)
+
+        # Apply sentence overlay if needed (for non-sentence engines)
+        if use_sentence and spec.context_mode != "sentence" and stage not in (3, 5):
+            overlaid = apply_sentence_overlay(spec)
+            if overlaid:
+                spec = overlaid
+            else:
+                use_sentence = False
+
+        # Map to mastery question type names
+        _CANONICAL_TO_MASTERY_QT = {
+            "en_to_ko": "word_to_meaning", "ko_to_en": "meaning_to_word",
+            "emoji": "emoji_to_word", "sentence": "meaning_to_word",
+            "listen_ko": "listen_to_meaning", "listen_type": "listen_and_type",
+            "ko_type": "meaning_and_type", "listen_en": "listen_to_meaning",
+        }
+        question_type = _CANONICAL_TO_MASTERY_QT.get(spec.question_type, spec.question_type)
 
         questions.append(MasteryQuestion(
             word_mastery_id=mastery.id,
             word=_word_response(word),
             stage=stage,
             question_type=question_type,
-            choices=choices,
-            correct_answer=correct_answer,
+            choices=spec.choices,
+            correct_answer=spec.correct_answer,
             timer_seconds=timer,
-            context_mode=context_mode,
-            sentence_blank=sentence_blank,
-            emoji=word_emoji if question_type == "emoji_to_word" else None,
+            context_mode=spec.context_mode,
+            sentence_blank=spec.sentence_blank,
+            emoji=spec.emoji,
         ))
 
     return questions
@@ -524,138 +490,97 @@ def generate_mixed_questions(
 ) -> list[MasteryQuestion]:
     """Generate mixed-type questions based on each word's internal mastery stage.
 
-    Stages are internal only - not shown to user. Question types are mixed:
-    - Stage 1-2: randomly word_to_meaning OR meaning_to_word (50:50), timer=5s
-    - Stage 3: listen_and_type, timer=15s
-    - Stage 4: listen_to_meaning, timer=10s
-    - Stage 5: meaning_and_type, timer=15s
+    Uses modular engines for question generation while preserving:
+    - Level-based minimum stage, typing probability, choice count, timer
+    - Sentence overlay probability, emoji trigger probability
 
-    Sentence mode based on word level (higher = more sentences).
+    Stages are internal only - not shown to user.
     """
     if not masteries or not all_words:
         return []
 
-    # Pre-compute distractor pools
-    unique_korean = list({w.korean for w in all_words if w.korean})
-    unique_english = list({w.english for w in all_words})
-
+    pool = build_pool(all_words)
     questions: list[MasteryQuestion] = []
+
+    # Mastery question type name mapping
+    _C2M = {
+        "en_to_ko": "word_to_meaning", "ko_to_en": "meaning_to_word",
+        "emoji": "emoji_to_word", "sentence": "meaning_to_word",
+        "listen_ko": "listen_to_meaning", "listen_type": "listen_and_type",
+        "ko_type": "meaning_and_type", "listen_en": "listen_to_meaning",
+    }
 
     for mastery in masteries:
         word = words_map.get(mastery.word_id)
         if not word:
             continue
 
-        # Get effective stage: max of mastery stage and level-based minimum
         stage = max(mastery.stage, _min_stage_for_level(word.level))
+        n_choices = _choice_count_for_level(word.level)
 
-        # Decide context mode based on word level
+        # Decide context mode
         prob = _sentence_probability(word.level)
         has_example = bool(word.example_en and word.example_ko)
         use_sentence = has_example and (random.random() < prob)
 
-        # Pre-compute sentence blank if using sentence mode
-        sentence_blank = None
-        if use_sentence and word.example_en:
-            sentence_blank = _make_sentence_blank(word.example_en, word.english)
-            if not sentence_blank:
-                use_sentence = False  # fallback to word mode
-
-        context_mode = "sentence" if use_sentence else "word"
-
-        choices = None
-        correct_answer = ""
-        question_type = ""
-        timer = 5
-
-        # Level-based choice count (distractors = n_choices - 1)
-        n_choices = _choice_count_for_level(word.level)
-        n_distractors = n_choices - 1
-
-        # Check emoji availability for stage 1-2
+        # Check emoji for stage 1-2
         word_emoji = get_emoji(word.english) if stage in (1, 2) else None
 
-        # Determine question type based on internal stage
-        if stage == 1 or stage == 2:
-            # Typing probability: high-level words may get typing even at stage 1-2
+        # Determine engine based on stage + adaptive rules
+        engine_name: str
+        timer: int
+
+        if stage in (1, 2):
             if random.random() < _typing_probability(word.level):
-                # Upgrade to typing (meaning_and_type)
-                question_type = "meaning_and_type"
-                correct_answer = word.english
+                engine_name = "ko_type"
                 timer = _base_timer_for_level(word.level, 5)
             elif use_sentence:
-                # Sentence blank → always English word choices
-                question_type = "meaning_to_word"
-                correct_answer = word.english
-                sampled = _pick_english_distractors(word.english, unique_english, n_distractors)
-                choices = [correct_answer] + sampled
-                random.shuffle(choices)
+                engine_name = "sentence"
                 timer = _base_timer_for_level(word.level, stage)
             elif word_emoji and random.random() < _EMOJI_QUESTION_PROBABILITY:
-                # Emoji → English word (choice)
-                question_type = "emoji_to_word"
-                correct_answer = word.english
-                sampled = get_emoji_distractors(word.english, unique_english, n_distractors)
-                choices = [correct_answer] + sampled
-                random.shuffle(choices)
+                engine_name = "emoji"
                 timer = _base_timer_for_level(word.level, stage)
             elif random.random() < 0.5:
-                # word_to_meaning: English → Korean meaning
-                question_type = "word_to_meaning"
-                correct_answer = word.korean
-                sampled = _pick_korean_distractors(word.korean, unique_korean, n_distractors)
-                choices = [correct_answer] + sampled
-                random.shuffle(choices)
+                engine_name = "en_to_ko"
                 timer = _base_timer_for_level(word.level, stage)
             else:
-                # meaning_to_word: Korean meaning → English word
-                question_type = "meaning_to_word"
-                correct_answer = word.english
-                sampled = _pick_english_distractors(word.english, unique_english, n_distractors)
-                choices = [correct_answer] + sampled
-                random.shuffle(choices)
+                engine_name = "ko_to_en"
                 timer = _base_timer_for_level(word.level, stage)
-
         elif stage == 3:
-            # listen_and_type: Listen → Type English word
-            question_type = "listen_and_type"
-            correct_answer = word.english
+            engine_name = "listen_type"
             timer = _base_timer_for_level(word.level, stage)
-
         elif stage == 4:
             if use_sentence:
-                # Sentence blank → always English word choices
-                question_type = "listen_to_meaning"
-                correct_answer = word.english
-                sampled = _pick_english_distractors(word.english, unique_english, n_distractors)
-                choices = [correct_answer] + sampled
-                random.shuffle(choices)
+                engine_name = "sentence"
             else:
-                # listen_to_meaning: Listen → Korean meaning
-                question_type = "listen_to_meaning"
-                correct_answer = word.korean
-                sampled = _pick_korean_distractors(word.korean, unique_korean, n_distractors)
-                choices = [correct_answer] + sampled
-                random.shuffle(choices)
+                engine_name = "listen_ko"
+            timer = _base_timer_for_level(word.level, stage)
+        else:  # stage == 5
+            engine_name = "ko_type"
             timer = _base_timer_for_level(word.level, stage)
 
-        elif stage == 5:
-            # meaning_and_type: Korean meaning → Type English word
-            question_type = "meaning_and_type"
-            correct_answer = word.english
-            timer = _base_timer_for_level(word.level, stage)
+        engine = get_engine(engine_name)
+        spec = engine.generate(word, pool, n_choices)
+
+        # Apply sentence overlay for non-sentence engines when sentence mode desired
+        if use_sentence and spec.context_mode != "sentence" and not spec.is_typing:
+            overlaid = apply_sentence_overlay(spec)
+            if overlaid:
+                spec = overlaid
+
+        question_type = _C2M.get(spec.question_type, spec.question_type)
 
         questions.append(MasteryQuestion(
             word_mastery_id=mastery.id,
             word=_word_response(word),
             stage=stage,
             question_type=question_type,
-            choices=choices,
-            correct_answer=correct_answer,
+            choices=spec.choices,
+            correct_answer=spec.correct_answer,
             timer_seconds=timer_override if timer_override else timer,
-            context_mode=context_mode,
-            sentence_blank=sentence_blank,
-            emoji=word_emoji if question_type == "emoji_to_word" else None,
+            context_mode=spec.context_mode,
+            sentence_blank=spec.sentence_blank,
+            emoji=spec.emoji,
         ))
 
     return questions
@@ -691,76 +616,63 @@ def generate_word_questions(
 ) -> list[MasteryQuestion]:
     """Generate word-only questions (no listen/audio).
 
-    Question types: word_to_meaning, meaning_to_word, meaning_and_type (based on level).
+    Uses modular engines. Choice-only (no typing) - typing is stage-only.
     Used by xp_word and legacy_word engines.
     """
     if not masteries or not all_words:
         return []
 
-    unique_korean = list({w.korean for w in all_words if w.korean})
-    unique_english = list({w.english for w in all_words})
-
+    pool = build_pool(all_words)
     questions: list[MasteryQuestion] = []
+
+    _C2M = {
+        "en_to_ko": "word_to_meaning", "ko_to_en": "meaning_to_word",
+        "sentence": "meaning_to_word",
+    }
 
     for mastery in masteries:
         word = words_map.get(mastery.word_id)
         if not word:
             continue
 
-        # Sentence mode probability based on word level
+        n_choices = max(4, _choice_count_for_level(word.level))
+
+        # Sentence mode probability
         prob = _sentence_probability(word.level)
         has_example = bool(word.example_en and word.example_ko)
         use_sentence = has_example and (random.random() < prob)
 
-        sentence_blank = None
-        if use_sentence and word.example_en:
-            sentence_blank = _make_sentence_blank(word.example_en, word.english)
-            if not sentence_blank:
-                use_sentence = False
-
-        context_mode = "sentence" if use_sentence else "word"
-
-        # Word mode is always 4지선다 minimum
-        n_choices = max(4, _choice_count_for_level(word.level))
-        n_distractors = n_choices - 1
-
-        choices = None
-        correct_answer = ""
-        question_type = ""
-
-        # Word engine: choice-only (no typing) — typing is stage-only
         if use_sentence:
-            question_type = "meaning_to_word"
-            correct_answer = word.english
-            sampled = _pick_english_distractors(word.english, unique_english, n_distractors)
-            choices = [correct_answer] + sampled
-            random.shuffle(choices)
+            engine_name = "sentence"
             timer = _base_timer_for_level(word.level, 2)
         elif random.random() < 0.5:
-            question_type = "word_to_meaning"
-            correct_answer = word.korean
-            sampled = _pick_korean_distractors(word.korean, unique_korean, n_distractors)
-            choices = [correct_answer] + sampled
-            random.shuffle(choices)
+            engine_name = "en_to_ko"
             timer = _base_timer_for_level(word.level, 1)
         else:
-            question_type = "meaning_to_word"
-            correct_answer = word.english
-            sampled = _pick_english_distractors(word.english, unique_english, n_distractors)
-            choices = [correct_answer] + sampled
-            random.shuffle(choices)
+            engine_name = "ko_to_en"
             timer = _base_timer_for_level(word.level, 2)
+
+        engine = get_engine(engine_name)
+        spec = engine.generate(word, pool, n_choices)
+
+        # Apply sentence overlay if sentence engine can't handle
+        if use_sentence and spec.context_mode != "sentence":
+            overlaid = apply_sentence_overlay(spec)
+            if overlaid:
+                spec = overlaid
+
+        question_type = _C2M.get(spec.question_type, spec.question_type)
 
         questions.append(MasteryQuestion(
             word_mastery_id=mastery.id,
             word=_word_response(word),
             stage=mastery.stage,
             question_type=question_type,
-            choices=choices,
-            correct_answer=correct_answer,
+            choices=spec.choices,
+            correct_answer=spec.correct_answer,
             timer_seconds=timer_override if timer_override else timer,
-            context_mode=context_mode,
-            sentence_blank=sentence_blank,
+            context_mode=spec.context_mode,
+            sentence_blank=spec.sentence_blank,
         ))
 
     return questions
@@ -774,15 +686,13 @@ def generate_listen_questions(
 ) -> list[MasteryQuestion]:
     """Generate listen-only questions (audio-focused).
 
-    Question types: listen_and_type, listen_to_meaning (50:50).
+    Uses modular engines. 50:50 listen_type vs listen_ko.
     Used by xp_listen and legacy_listen engines.
     """
     if not masteries or not all_words:
         return []
 
-    unique_korean = list({w.korean for w in all_words if w.korean})
-    unique_english = list({w.english for w in all_words})
-
+    pool = build_pool(all_words)
     questions: list[MasteryQuestion] = []
 
     for mastery in masteries:
@@ -790,56 +700,51 @@ def generate_listen_questions(
         if not word:
             continue
 
-        # Sentence mode probability based on word level
+        n_choices = _choice_count_for_level(word.level)
+
+        # Sentence mode
         prob = _sentence_probability(word.level)
         has_example = bool(word.example_en and word.example_ko)
         use_sentence = has_example and (random.random() < prob)
 
-        sentence_blank = None
-        if use_sentence and word.example_en:
-            sentence_blank = _make_sentence_blank(word.example_en, word.english)
-            if not sentence_blank:
-                use_sentence = False
-
-        context_mode = "sentence" if use_sentence else "word"
-
-        n_choices = _choice_count_for_level(word.level)
-        n_distractors = n_choices - 1
-
-        choices = None
-        correct_answer = ""
-
-        # 50:50 between listen_and_type and listen_to_meaning
+        # 50:50 between listen_type and listen_ko
         if random.random() < 0.5:
-            # listen_and_type: hear pronunciation → type English word
-            question_type = "listen_and_type"
-            correct_answer = word.english
+            engine_name = "listen_type"
             timer = _base_timer_for_level(word.level, 3)
         else:
-            # listen_to_meaning: hear pronunciation → pick Korean meaning
-            question_type = "listen_to_meaning"
             if use_sentence:
-                correct_answer = word.english
-                sampled = _pick_english_distractors(word.english, unique_english, n_distractors)
-                choices = [correct_answer] + sampled
-                random.shuffle(choices)
+                # Sentence mode: use sentence engine (English choices)
+                engine_name = "sentence"
             else:
-                correct_answer = word.korean
-                sampled = _pick_korean_distractors(word.korean, unique_korean, n_distractors)
-                choices = [correct_answer] + sampled
-                random.shuffle(choices)
+                engine_name = "listen_ko"
             timer = _base_timer_for_level(word.level, 4)
+
+        engine = get_engine(engine_name)
+        spec = engine.generate(word, pool, n_choices)
+
+        # Apply sentence overlay if needed
+        if use_sentence and spec.context_mode != "sentence" and not spec.is_typing:
+            overlaid = apply_sentence_overlay(spec)
+            if overlaid:
+                spec = overlaid
+
+        # Map to mastery names
+        _C2M_LISTEN = {
+            "listen_type": "listen_and_type", "listen_ko": "listen_to_meaning",
+            "sentence": "listen_to_meaning",
+        }
+        question_type = _C2M_LISTEN.get(spec.question_type, spec.question_type)
 
         questions.append(MasteryQuestion(
             word_mastery_id=mastery.id,
             word=_word_response(word),
             stage=mastery.stage,
             question_type=question_type,
-            choices=choices,
-            correct_answer=correct_answer,
+            choices=spec.choices,
+            correct_answer=spec.correct_answer,
             timer_seconds=timer_override if timer_override else timer,
-            context_mode=context_mode,
-            sentence_blank=sentence_blank,
+            context_mode=spec.context_mode,
+            sentence_blank=spec.sentence_blank,
         ))
 
     return questions

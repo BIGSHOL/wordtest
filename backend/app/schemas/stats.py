@@ -149,6 +149,7 @@ class MasteryReportResponse(BaseModel):
     student_name: Optional[str] = None
     student_grade: Optional[str] = None
     student_school: Optional[str] = None
+    test_type: Optional[str] = None
 
 
 class DashboardStats(BaseModel):

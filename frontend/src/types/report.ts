@@ -93,4 +93,5 @@ export interface MasteryReport {
   student_name?: string | null;
   student_grade?: string | null;
   student_school?: string | null;
+  test_type?: string | null;
 }

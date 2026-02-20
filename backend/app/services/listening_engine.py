@@ -1,12 +1,11 @@
 """Listening engine - generates listen-to-word questions.
 
 Students hear pronunciation via frontend TTS and pick the correct English word.
+Uses the modular listen_en engine for question generation.
 """
-import random
-
 from app.models.word import Word
 from app.models.word_mastery import WordMastery
-from app.services.mastery_engine import _pick_english_distractors
+from app.services.question_engines import get_engine, build_pool
 
 
 def generate_listening_questions(
@@ -18,13 +17,14 @@ def generate_listening_questions(
 ) -> list[dict]:
     """Generate listen-to-word questions for all given mastery records.
 
-    Each question: hear pronunciation → pick correct English word from choices.
+    Each question: hear pronunciation -> pick correct English word from choices.
     Returns list of question dicts in order (no shuffle).
     """
     if not masteries or not all_words:
         return []
 
-    all_english = list({w.english for w in all_words})
+    pool = build_pool(all_words)
+    engine = get_engine("listen_en")
     questions: list[dict] = []
 
     for idx, mastery in enumerate(masteries):
@@ -32,18 +32,13 @@ def generate_listening_questions(
         if not word:
             continue
 
-        # Pick distractors (phrase-aware)
-        distractors = _pick_english_distractors(
-            word.english, all_english, count=choice_count - 1
-        )
-        choices = [word.english] + distractors
-        random.shuffle(choices)
+        spec = engine.generate(word, pool, choice_count)
 
         questions.append({
             "word_mastery_id": mastery.id,
             "word_id": word.id,
             "english": word.english,
-            "choices": choices,
+            "choices": spec.choices or [],
             "question_index": idx,
             "timer_seconds": timer_seconds,
         })

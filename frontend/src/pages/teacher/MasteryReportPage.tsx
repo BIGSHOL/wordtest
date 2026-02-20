@@ -79,6 +79,7 @@ export function MasteryReportPage() {
 
   const level = report?.session.determined_level || 1;
   const levelName = LEVEL_NAMES[level] || '';
+  const isListening = report?.test_type === 'listening';
 
   return (
     <TeacherLayout>
@@ -104,7 +105,7 @@ export function MasteryReportPage() {
                 <ArrowLeft className="w-[18px] h-[18px] text-text-primary" />
               </Link>
               <h1 className="font-display text-lg font-bold text-text-primary">
-                레벨테스트 리포트
+                {isListening ? '리스닝 테스트 리포트' : '레벨테스트 리포트'}
               </h1>
             </div>
 
@@ -126,7 +127,7 @@ export function MasteryReportPage() {
                 <div className="flex flex-col items-start gap-1">
                   <img src="/images/logo-joshua.png" alt="Logo" className="h-10 w-auto" />
                   <span className="text-[#0D0D0D] text-sm font-medium tracking-tight">
-                    조슈아 영단어 레벨테스트
+                    {isListening ? '조슈아 영단어 리스닝 테스트' : '조슈아 영단어 레벨테스트'}
                   </span>
                 </div>
                 <table className="border-collapse border border-[#D0D0D0] text-xs">
@@ -154,114 +155,145 @@ export function MasteryReportPage() {
             </div>
 
             {/* 2. Overview row */}
-            <div className="flex gap-5">
-              {/* Left: Overall result */}
-              <div className="flex-1 border border-[#E8E8E8] rounded-sm p-5 space-y-4 bg-[#FAFAFA]">
-                <h3 className="text-base font-semibold text-[#0D0D0D]">종합 학습 결과</h3>
-                <div className="flex items-center gap-4">
-                  <div className="flex-1 space-y-1">
-                    <p className="text-[10px] text-[#7A7A7A]">추천 교재</p>
-                    <p className="text-sm font-semibold text-[#CC0000]">{report.recommended_book}</p>
+            {isListening ? (
+              /* Listening test: simplified overview — no radar, no rank badge, no level */
+              <div className="flex gap-5">
+                <div className="flex-1 border border-[#E8E8E8] rounded-sm p-5 space-y-4 bg-[#FAFAFA]">
+                  <h3 className="text-base font-semibold text-[#0D0D0D]">리스닝 테스트 결과</h3>
+                  <div className="flex gap-3">
+                    <div className="flex-1 border border-[#CC0000] rounded p-3 text-center space-y-1">
+                      <p className="text-xs font-bold text-[#CC0000]">정답률</p>
+                      <p className="text-lg font-bold text-[#0D0D0D]">{report.session.score}%</p>
+                    </div>
+                    <div className="flex-1 border border-[#CC0000] rounded p-3 text-center space-y-1">
+                      <p className="text-xs font-bold text-[#CC0000]">정답</p>
+                      <p className="text-lg font-bold text-[#0D0D0D]">{report.session.correct_count}/{report.session.total_questions}</p>
+                    </div>
+                    <div className="flex-1 border border-[#CC0000] rounded p-3 text-center space-y-1">
+                      <p className="text-xs font-bold text-[#CC0000]">소요시간</p>
+                      <p className="text-lg font-bold text-[#0D0D0D]">
+                        {report.total_time_seconds != null ? formatTime(report.total_time_seconds) : '-'}
+                      </p>
+                    </div>
+                    <div className="flex-1 border border-[#CC0000] rounded p-3 text-center space-y-1">
+                      <p className="text-xs font-bold text-[#CC0000]">학습 단어</p>
+                      <p className="text-lg font-bold text-[#0D0D0D]">{report.session.words_practiced}개</p>
+                    </div>
                   </div>
-                  {(() => {
-                    const rank = getLevelRank(level);
-                    const Icon = RANK_ICON_MAP[rank.icon] || Award;
-                    const [c0, c1] = rank.colors;
-                    return (
-                      <div className="relative flex flex-col items-center gap-1">
-                        {/* Outer ring with shimmer */}
-                        <div className="relative w-[76px] h-[76px] flex items-center justify-center">
-                          {/* Rotating conic ring */}
-                          <div
-                            className="absolute inset-0 rounded-full animate-[spin_8s_linear_infinite]"
-                            style={{
-                              background: `conic-gradient(from 0deg, ${c0}00, ${c0}BB, ${c1}BB, ${c0}00)`,
-                              mask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
-                              WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
-                            }}
-                          />
-                          {/* Pulse glow */}
-                          <div
-                            className="absolute rounded-full animate-[pulse_3s_ease-in-out_infinite]"
-                            style={{
-                              inset: 4,
-                              background: `radial-gradient(circle, ${c0}20 0%, ${c0}00 70%)`,
-                            }}
-                          />
-                          {/* Badge circle */}
-                          <div
-                            className="w-[68px] h-[68px] rounded-full flex flex-col items-center justify-center relative z-10"
-                            style={{
-                              background: `linear-gradient(160deg, ${c0}28, ${c1}18)`,
-                              border: `2.5px solid ${c1}90`,
-                            }}
-                          >
-                            <Icon style={{ color: c1, width: 20, height: 20 }} />
-                            <span className="text-[11px] font-bold leading-none mt-0.5" style={{ color: c1 }}>
-                              Lv.{level}
-                            </span>
-                          </div>
-                        </div>
-                        <span className="text-[9px] font-semibold" style={{ color: c1 }}>{levelName}</span>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-5">
+                  {/* Left: Overall result */}
+                  <div className="flex-1 border border-[#E8E8E8] rounded-sm p-5 space-y-4 bg-[#FAFAFA]">
+                    <h3 className="text-base font-semibold text-[#0D0D0D]">종합 학습 결과</h3>
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 space-y-1">
+                        <p className="text-[10px] text-[#7A7A7A]">추천 교재</p>
+                        <p className="text-sm font-semibold text-[#CC0000]">{report.recommended_book}</p>
                       </div>
-                    );
-                  })()}
-                </div>
-                <div className="flex gap-2">
-                  <div className="flex-1 border border-[#CC0000] rounded p-2.5 text-center space-y-1">
-                    <p className="text-xs font-bold text-[#CC0000]">학년수준</p>
-                    <p className="text-xs font-semibold text-[#0D0D0D] leading-tight">{report.grade_level}</p>
+                      {(() => {
+                        const rank = getLevelRank(level);
+                        const Icon = RANK_ICON_MAP[rank.icon] || Award;
+                        const [c0, c1] = rank.colors;
+                        return (
+                          <div className="relative flex flex-col items-center gap-1">
+                            {/* Outer ring with shimmer */}
+                            <div className="relative w-[76px] h-[76px] flex items-center justify-center">
+                              {/* Rotating conic ring */}
+                              <div
+                                className="absolute inset-0 rounded-full animate-[spin_8s_linear_infinite]"
+                                style={{
+                                  background: `conic-gradient(from 0deg, ${c0}00, ${c0}BB, ${c1}BB, ${c0}00)`,
+                                  mask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
+                                  WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
+                                }}
+                              />
+                              {/* Pulse glow */}
+                              <div
+                                className="absolute rounded-full animate-[pulse_3s_ease-in-out_infinite]"
+                                style={{
+                                  inset: 4,
+                                  background: `radial-gradient(circle, ${c0}20 0%, ${c0}00 70%)`,
+                                }}
+                              />
+                              {/* Badge circle */}
+                              <div
+                                className="w-[68px] h-[68px] rounded-full flex flex-col items-center justify-center relative z-10"
+                                style={{
+                                  background: `linear-gradient(160deg, ${c0}28, ${c1}18)`,
+                                  border: `2.5px solid ${c1}90`,
+                                }}
+                              >
+                                <Icon style={{ color: c1, width: 20, height: 20 }} />
+                                <span className="text-[11px] font-bold leading-none mt-0.5" style={{ color: c1 }}>
+                                  Lv.{level}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-[9px] font-semibold" style={{ color: c1 }}>{levelName}</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="flex-1 border border-[#CC0000] rounded p-2.5 text-center space-y-1">
+                        <p className="text-xs font-bold text-[#CC0000]">학년수준</p>
+                        <p className="text-xs font-semibold text-[#0D0D0D] leading-tight">{report.grade_level}</p>
+                      </div>
+                      <div className="flex-1 border border-[#CC0000] rounded p-2.5 text-center space-y-1">
+                        <p className="text-xs font-bold text-[#CC0000]">어휘수준</p>
+                        <p className="text-xs font-semibold text-[#0D0D0D] leading-tight">{report.vocab_description}</p>
+                      </div>
+                      <div className="flex-1 border border-[#CC0000] rounded p-2.5 text-center space-y-1">
+                        <p className="text-xs font-bold text-[#CC0000]">동학년순위</p>
+                        <p className="text-xs font-semibold text-[#0D0D0D] leading-tight">
+                          {report.peer_ranking ? `상위 ${report.peer_ranking.percentile}%` : '-'}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1 border border-[#CC0000] rounded p-2.5 text-center space-y-1">
-                    <p className="text-xs font-bold text-[#CC0000]">어휘수준</p>
-                    <p className="text-xs font-semibold text-[#0D0D0D] leading-tight">{report.vocab_description}</p>
+
+                  {/* Center: Radar chart */}
+                  <RadarChart metrics={report.radar_metrics} />
+
+                  {/* Right: Stats summary */}
+                  <div className="w-[180px] shrink-0 border border-[#E8E8E8] rounded-sm p-5 space-y-3 bg-[#FAFAFA]">
+                    <h3 className="text-lg font-bold text-[#0D0D0D]">학습 통계</h3>
+                    <div className="space-y-1">
+                      <p className="text-sm text-[#555]">소요시간</p>
+                      <p className="text-xl font-bold text-[#CC0000]">
+                        {report.total_time_seconds != null ? formatTime(report.total_time_seconds) : '-'}
+                      </p>
+                    </div>
+                    <div className="h-px bg-[#E8E8E8]" />
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-[#555]">총 문제수</span>
+                      <span className="text-sm font-semibold text-[#0D0D0D]">{report.session.total_questions}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-[#555]">정답률</span>
+                      <span className="text-sm font-semibold text-[#0D0D0D]">{report.session.score}%</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-[#555]">최고 콤보</span>
+                      <span className="text-sm font-semibold text-[#0D0D0D]">{report.session.best_combo}연속</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-[#555]">학습 단어</span>
+                      <span className="text-sm font-semibold text-[#0D0D0D]">{report.session.words_practiced}개</span>
+                    </div>
                   </div>
-                  <div className="flex-1 border border-[#CC0000] rounded p-2.5 text-center space-y-1">
-                    <p className="text-xs font-bold text-[#CC0000]">동학년순위</p>
-                    <p className="text-xs font-semibold text-[#0D0D0D] leading-tight">
-                      {report.peer_ranking ? `상위 ${report.peer_ranking.percentile}%` : '-'}
-                    </p>
-                  </div>
                 </div>
-              </div>
 
-              {/* Center: Radar chart */}
-              <RadarChart metrics={report.radar_metrics} />
+                {/* 3. Level Chart */}
+                <LevelChartTable currentRank={level} />
 
-              {/* Right: Stats summary */}
-              <div className="w-[180px] shrink-0 border border-[#E8E8E8] rounded-sm p-5 space-y-3 bg-[#FAFAFA]">
-                <h3 className="text-lg font-bold text-[#0D0D0D]">학습 통계</h3>
-                <div className="space-y-1">
-                  <p className="text-sm text-[#555]">소요시간</p>
-                  <p className="text-xl font-bold text-[#CC0000]">
-                    {report.total_time_seconds != null ? formatTime(report.total_time_seconds) : '-'}
-                  </p>
-                </div>
-                <div className="h-px bg-[#E8E8E8]" />
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-[#555]">총 문제수</span>
-                  <span className="text-sm font-semibold text-[#0D0D0D]">{report.session.total_questions}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-[#555]">정답률</span>
-                  <span className="text-sm font-semibold text-[#0D0D0D]">{report.session.score}%</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-[#555]">최고 콤보</span>
-                  <span className="text-sm font-semibold text-[#0D0D0D]">{report.session.best_combo}연속</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-[#555]">학습 단어</span>
-                  <span className="text-sm font-semibold text-[#0D0D0D]">{report.session.words_practiced}개</span>
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Level Chart */}
-            <LevelChartTable currentRank={level} />
-
-            {/* 4. Metric Detail Section */}
-            <MetricDetailSection details={report.metric_details} totalWordCount={report.total_word_count} />
+                {/* 4. Metric Detail Section */}
+                <MetricDetailSection details={report.metric_details} totalWordCount={report.total_word_count} />
+              </>
+            )}
 
             {/* 5. Word Mastery Summary Table */}
             {report.word_summaries.length > 0 && (
@@ -273,8 +305,7 @@ export function MasteryReportPage() {
                       <tr className="bg-[#F8F8F6]">
                         <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#7A7A7A]">단어</th>
                         <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#7A7A7A]">뜻</th>
-                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#7A7A7A]">단계</th>
-                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#7A7A7A]">시도</th>
+                        {!isListening && <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#7A7A7A]">단계</th>}
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#7A7A7A]">정답</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#7A7A7A]">정답률</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#7A7A7A]">평균시간</th>
@@ -286,14 +317,13 @@ export function MasteryReportPage() {
                           <td className="px-3 py-2 font-medium text-[#0D0D0D]">
                             <div className="flex items-center gap-2">
                               {w.english}
-                              {w.mastered && (
+                              {w.mastered && !isListening && (
                                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 text-green-600 font-semibold">완료</span>
                               )}
                             </div>
                           </td>
                           <td className="px-3 py-2 text-[#7A7A7A]">{w.korean}</td>
-                          <td className="px-3 py-2 text-center"><StageLabel stage={w.final_stage} /></td>
-                          <td className="px-3 py-2 text-center text-[#7A7A7A]">{w.total_attempts}</td>
+                          {!isListening && <td className="px-3 py-2 text-center"><StageLabel stage={w.final_stage} /></td>}
                           <td className="px-3 py-2 text-center text-[#7A7A7A]">{w.correct_count}</td>
                           <td className="px-3 py-2 text-center">
                             <span className={w.accuracy >= 80 ? 'text-green-600 font-medium' : w.accuracy >= 50 ? 'text-amber-600 font-medium' : 'text-red-500 font-medium'}>
@@ -329,7 +359,7 @@ export function MasteryReportPage() {
                           <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">단어</th>
                           <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">정답</th>
                           <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">내 답</th>
-                          <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#DC2626]">단계</th>
+                          {!isListening && <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#DC2626]">단계</th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -339,7 +369,7 @@ export function MasteryReportPage() {
                             <td className="px-3 py-2 font-medium text-[#0D0D0D]">{a.word_english}</td>
                             <td className="px-3 py-2 text-green-600">{a.correct_answer}</td>
                             <td className="px-3 py-2 text-red-500">{a.selected_answer || '(시간초과)'}</td>
-                            <td className="px-3 py-2 text-center"><StageLabel stage={a.stage} /></td>
+                            {!isListening && <td className="px-3 py-2 text-center"><StageLabel stage={a.stage} /></td>}
                           </tr>
                         ))}
                       </tbody>

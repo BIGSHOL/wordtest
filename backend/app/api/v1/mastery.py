@@ -492,6 +492,20 @@ async def mastery_session_report(
         words_demoted=session.words_demoted or 0,
     )
 
+    # Determine test_type from assignment → config
+    test_type = None
+    assignment_result = await db.execute(
+        select(TestAssignment).where(TestAssignment.id == session.assignment_id)
+    )
+    _assignment = assignment_result.scalar_one_or_none()
+    if _assignment:
+        config_result = await db.execute(
+            select(TestConfig).where(TestConfig.id == _assignment.test_config_id)
+        )
+        _config = config_result.scalar_one_or_none()
+        if _config:
+            test_type = _config.test_type
+
     return MasteryReportResponse(
         session=session_data,
         answers=answers_list,
@@ -507,4 +521,5 @@ async def mastery_session_report(
         student_name=student.name,
         student_grade=student.grade,
         student_school=student.school_name,
+        test_type=test_type,
     )

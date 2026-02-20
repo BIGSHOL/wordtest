@@ -19,9 +19,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.models.word import Word
 from app.services.mastery_engine import is_likely_loanword
-from app.services.emoji_engine import get_emoji, get_emoji_distractors
+from app.services.emoji_engine import get_emoji
+from app.services.question_engines import (
+    get_engine, build_pool, to_level_name, resolve_name,
+)
 
-_EMOJI_QUESTION_PROBABILITY = 0.35
+_EMOJI_QUESTION_PROBABILITY = 0.70
 
 MAX_RANK = 15
 
@@ -251,73 +254,41 @@ async def generate_questions(
 
         question_words.extend(selected)
 
-    # Pre-group for wrong-answer generation
-    words_by_korean: dict[str, list[Word]] = defaultdict(list)
-    unique_english_set: set[str] = set()
-    for w in all_words:
-        words_by_korean[w.korean].append(w)
-        unique_english_set.add(w.english)
-    unique_korean_meanings = list(words_by_korean.keys())
-    unique_english_words = list(unique_english_set)
-
     if not question_types:
         question_types = ["word_meaning"]
 
-    # Build questions (ordered easy → hard)
+    # Build shared distractor pool for all engines
+    pool = build_pool(all_words)
+
+    # Build questions (ordered easy -> hard) using modular engines
     questions = []
     for i, word in enumerate(question_words):
-        qtype = question_types[i % len(question_types)]
+        qtype_legacy = question_types[i % len(question_types)]
 
-        if qtype == "meaning_word":
-            # Korean → English: show korean meaning, choices are english words
-            # Emoji variant: if word has emoji, 35% chance to show emoji instead
+        # meaning_word -> emoji variant at 70% probability if emoji available
+        if qtype_legacy == "meaning_word":
             word_emoji = get_emoji(word.english)
             if word_emoji and random.random() < _EMOJI_QUESTION_PROBABILITY:
-                qtype = "emoji_word"
-                sampled = get_emoji_distractors(word.english, unique_english_words, 3)
-                choices = [word.english] + sampled
-            else:
-                wrong_words = [e for e in unique_english_words if e != word.english]
-                sampled = random.sample(wrong_words, min(3, len(wrong_words)))
-                choices = [word.english] + sampled
-            correct = word.english
-        elif qtype == "sentence_blank" and word.example_en:
-            # Sentence blank: choices are english words
-            wrong_words = [e for e in unique_english_words if e != word.english]
-            sampled = random.sample(wrong_words, min(3, len(wrong_words)))
-            choices = [word.english] + sampled
-            correct = word.english
-        elif qtype == "listening":
-            # Listening: hear TTS pronunciation, pick correct English word
-            wrong_words = [e for e in unique_english_words if e != word.english]
-            sampled = random.sample(wrong_words, min(3, len(wrong_words)))
-            choices = [word.english] + sampled
-            correct = word.english
-        else:
-            # word_meaning (default): show english, choices are korean meanings
-            # Match ~ prefix pattern so tilde answers don't stand out
-            correct_has_tilde = word.korean.strip().startswith('~')
-            same_type = [k for k in unique_korean_meanings
-                         if k != word.korean and k.strip().startswith('~') == correct_has_tilde]
-            if len(same_type) >= 3:
-                sampled = random.sample(same_type, 3)
-            else:
-                other = [k for k in unique_korean_meanings
-                         if k != word.korean and k.strip().startswith('~') != correct_has_tilde]
-                pool = same_type + other
-                sampled = random.sample(pool, min(3, len(pool)))
-            choices = [word.korean] + sampled
-            correct = word.korean
-            qtype = "word_meaning"
+                qtype_legacy = "emoji_word"
 
-        random.shuffle(choices)
+        # sentence_blank fallback: if no example sentence, fall back to word_meaning
+        if qtype_legacy == "sentence_blank" and not word.example_en:
+            qtype_legacy = "word_meaning"
+
+        # Resolve legacy name -> canonical -> engine
+        canonical = resolve_name(qtype_legacy)
+        engine = get_engine(canonical)
+        spec = engine.generate(word, pool)
+
+        # Convert back to level test legacy name for API compatibility
+        output_qtype = to_level_name(spec.question_type)
 
         questions.append({
             "question_order": i + 1,
             "word": word,
-            "correct_answer": correct,
-            "choices": choices,
-            "question_type": qtype,
+            "correct_answer": spec.correct_answer,
+            "choices": spec.choices or [],
+            "question_type": output_qtype,
         })
 
     return questions
