@@ -1,7 +1,7 @@
 /**
  * Enhanced test report types matching backend EnhancedTestReport schema.
  */
-import type { TestSessionData, AnswerDetail } from '../services/test';
+import type { TestSessionData, AnswerDetail } from './test';
 
 export interface RadarMetrics {
   vocabulary_level: number; // 어휘수준 0-10
