@@ -40,10 +40,10 @@ export function UnifiedTestPage() {
   const navigate = useNavigate();
   const store = useUnifiedTestStore();
   const {
-    engineType, sessionId, studentName, questionCount,
+    engineType, sessionId, questionCount,
     selectedAnswer, typedAnswer, answerResult, feedbackQuestion,
-    combo, bestCombo, isLoading, isComplete, finalResult,
-    currentBook, xp, lastXpChange, levelChanged,
+    isLoading, isComplete, finalResult,
+    xp, lastXpChange, levelChanged,
     correctCount, totalAnswered, consecutiveWrong,
     error,
   } = store;

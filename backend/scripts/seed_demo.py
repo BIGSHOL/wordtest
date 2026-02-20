@@ -28,7 +28,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 KST = timezone(timedelta(hours=9))
 
 # Pre-computed bcrypt hash for "test1234"
-PW_HASH = "$2b$12$LJ3m4ys2Yox3GNpGFzqKi.q5B2BZHkEk2X7BuHSRLCClBJOxKNqnm"
+PW_HASH = "$2b$10$6BVAnye5fMtUg9eo.BIk1es0sJSbeobYY4OU/NAQXrOR4Qg.keDf6"
 
 TEACHER = {"username": "demo_teacher", "name": "김선생", "school": "조슈아영어학원", "grade": ""}
 
