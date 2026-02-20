@@ -464,12 +464,12 @@ def diagnose_strengths_weaknesses(
     Only includes engines with >= 2 questions for reliability.
     """
     weaknesses = [
-        {"engine": s["engine"], "label": s["label"], "accuracy_pct": s["accuracy_pct"]}
+        {"engine": s["engine"], "label": s["label"], "total": s["total"], "correct": s["correct"], "accuracy_pct": s["accuracy_pct"], "avg_time_sec": s.get("avg_time_sec")}
         for s in engine_stats
         if s["accuracy_pct"] < threshold_weak and s["total"] >= 2
     ]
     strengths = [
-        {"engine": s["engine"], "label": s["label"], "accuracy_pct": s["accuracy_pct"]}
+        {"engine": s["engine"], "label": s["label"], "total": s["total"], "correct": s["correct"], "accuracy_pct": s["accuracy_pct"], "avg_time_sec": s.get("avg_time_sec")}
         for s in engine_stats
         if s["accuracy_pct"] >= threshold_strong and s["total"] >= 2
     ]
