@@ -60,21 +60,23 @@ async def start_by_code(
         db, assignment.student_id, assignment.id, all_words
     )
 
-    # Update assignment status
-    if assignment.status == "pending":
+    # Update assignment status (track if teacher reset it back to pending)
+    was_reset = assignment.status == "pending"
+    if was_reset:
         assignment.status = "in_progress"
 
-    # Check for already-completed session
-    completed_result = await db.execute(
-        select(LearningSession).where(
-            LearningSession.assignment_id == assignment.id,
-            LearningSession.student_id == assignment.student_id,
-            LearningSession.completed_at != None,
-        ).order_by(LearningSession.completed_at.desc()).limit(1)
-    )
-    completed_session = completed_result.scalar_one_or_none()
-    if completed_session and not allow_restart:
-        raise ValueError(f"ALREADY_COMPLETED|{completed_session.id}|{assignment.id}")
+    # Check for already-completed session (skip if teacher just reset)
+    if not was_reset:
+        completed_result = await db.execute(
+            select(LearningSession).where(
+                LearningSession.assignment_id == assignment.id,
+                LearningSession.student_id == assignment.student_id,
+                LearningSession.completed_at != None,
+            ).order_by(LearningSession.completed_at.desc()).limit(1)
+        )
+        completed_session = completed_result.scalar_one_or_none()
+        if completed_session and not allow_restart:
+            raise ValueError(f"ALREADY_COMPLETED|{completed_session.id}|{assignment.id}")
 
     # Find or create session
     session_result = await db.execute(
