@@ -157,7 +157,8 @@ async def ensure_accounts(db: AsyncSession) -> tuple[str, list[dict]]:
     row = r.first()
     if row:
         teacher_id = row.id
-        print(f"  Teacher exists: {TEACHER['name']} ({TEACHER['username']})")
+        await db.execute(text("UPDATE users SET password_hash = :pw WHERE id = :id"), {"pw": PW_HASH, "id": teacher_id})
+        print(f"  Teacher exists (pw reset): {TEACHER['name']} ({TEACHER['username']})")
     else:
         teacher_id = uid()
         await db.execute(text("""
@@ -172,6 +173,7 @@ async def ensure_accounts(db: AsyncSession) -> tuple[str, list[dict]]:
         r = await db.execute(text("SELECT id FROM users WHERE username = :u"), {"u": s["username"]})
         row = r.first()
         if row:
+            await db.execute(text("UPDATE users SET password_hash = :pw WHERE id = :id"), {"pw": PW_HASH, "id": row.id})
             students.append({"id": row.id, **s})
         else:
             sid = uid()
