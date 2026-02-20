@@ -27,7 +27,7 @@ import { TimerBar } from '../../components/test/TimerBar';
 import { FeedbackBanner } from '../../components/test/FeedbackBanner';
 import { ChoiceButton } from '../../components/test/ChoiceButton';
 
-import { Loader2, Trophy, LogIn, X, Headphones, Volume2, RefreshCw } from 'lucide-react';
+import { Loader2, Trophy, LogIn, X, Headphones, Volume2, RefreshCw, BarChart3 } from 'lucide-react';
 
 const MIN_FEEDBACK_CORRECT = 800;
 const MIN_FEEDBACK_WRONG = 1800;
@@ -266,16 +266,41 @@ export function ListeningTestPage() {
           </div>
         </div>
 
-        <button
-          onClick={handleExit}
-          className="flex items-center justify-center gap-2 h-12 px-8 rounded-2xl text-white font-display text-[15px] font-semibold"
-          style={{
-            background: 'linear-gradient(90deg, #4F46E5, #7C3AED)',
-            boxShadow: '0 4px 16px #4F46E540',
-          }}
-        >
-          돌아가기
-        </button>
+        {/* Action buttons */}
+        <div className="flex flex-col gap-3 w-full max-w-[320px]">
+          {sessionId && (
+            <button
+              onClick={() => {
+                const url = `/mastery-report/${sessionId}`;
+                const w = 960;
+                const h = 800;
+                const left = (window.screen.width - w) / 2;
+                const top = (window.screen.height - h) / 2;
+                window.open(url, 'report', `width=${w},height=${h},left=${left},top=${top},scrollbars=yes,resizable=yes`);
+              }}
+              className="flex items-center justify-center gap-2 h-12 rounded-2xl font-display text-[15px] font-semibold"
+              style={{
+                background: '#F5F4F1',
+                border: '1.5px solid #E5E4E1',
+              }}
+            >
+              <BarChart3 className="w-5 h-5 text-text-primary" />
+              <span className="text-text-primary">결과 보기</span>
+            </button>
+          )}
+
+          <button
+            onClick={handleExit}
+            className="flex items-center justify-center gap-2 h-12 rounded-2xl text-white font-display text-[15px] font-semibold"
+            style={{
+              background: 'linear-gradient(90deg, #4F46E5, #7C3AED)',
+              boxShadow: '0 4px 16px #4F46E540',
+            }}
+          >
+            돌아가기
+          </button>
+        </div>
+
         <button
           onClick={() => navigate('/login', { replace: true })}
           className="flex items-center justify-center gap-2"

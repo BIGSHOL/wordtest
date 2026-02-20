@@ -129,6 +129,9 @@ export function TestStartPage() {
       const engine = response.engine_type;
       if (engine?.startsWith('xp_') || response.assignment_type === 'mastery') {
         navigate('/mastery', { replace: true });
+      } else if (response.assignment_type === 'listening') {
+        await startListeningTestByCode(completedInfo.code, true);
+        navigate('/listening-test', { replace: true });
       } else if (engine === 'legacy_stage' || engine === 'legacy_listen' || response.assignment_type === 'stage_test') {
         await startStageTestByCode(completedInfo.code, true);
         navigate('/stage-test', { replace: true });

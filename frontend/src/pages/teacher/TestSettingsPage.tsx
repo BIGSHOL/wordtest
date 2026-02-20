@@ -210,7 +210,7 @@ export function TestSettingsPage() {
   };
 
   const handleViewResult = (item: TestAssignmentItem) => {
-    if (item.assignment_type === 'mastery' && item.learning_session_id) {
+    if ((item.assignment_type === 'mastery' || item.assignment_type === 'listening') && item.learning_session_id) {
       navigate(`/students/${item.student_id}/mastery/${item.learning_session_id}`);
     } else {
       navigate(`/students/${item.student_id}/results`);
