@@ -51,7 +51,7 @@ export function UnifiedTestPage() {
   const levelupProgress = useLevelupProgress();
   const legacyProgress = useLegacyProgress();
 
-  const questionType = currentQuestion?.question_type || 'word_to_meaning';
+  const questionType = currentQuestion?.question_type || 'en_to_ko';
   const timerSeconds = currentQuestion?.timer_seconds ?? 10;
   const isTyping = isTypingQuestion(questionType);
   const isListen = isListenQuestion(questionType);
@@ -339,14 +339,21 @@ export function UnifiedTestPage() {
 
     switch (questionType) {
       case 'emoji_to_word':
+      case 'emoji':
         return <EmojiCard emoji={currentQuestion.emoji || ''} />;
       case 'word_to_meaning':
+      case 'en_to_ko':
         return <WordCard word={currentQuestion.word.english} />;
       case 'meaning_to_word':
       case 'meaning_and_type':
+      case 'ko_to_en':
+      case 'ko_type':
         return <MeaningCard korean={currentQuestion.word.korean || ''} />;
       case 'listen_and_type':
       case 'listen_to_meaning':
+      case 'listen_en':
+      case 'listen_ko':
+      case 'listen_type':
         return <ListenCard word={currentQuestion.word.english} stage={currentQuestion.stage} />;
       default:
         return <WordCard word={currentQuestion.word.english} />;

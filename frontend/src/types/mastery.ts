@@ -27,15 +27,21 @@ export type QuestionType =
   | 'emoji_to_word';     // Emoji → pick English (choice)
 
 export function isTypingQuestion(type: string): boolean {
-  return type === 'listen_and_type' || type === 'meaning_and_type';
+  return type === 'listen_and_type' || type === 'meaning_and_type'
+    || type === 'listen_type' || type === 'ko_type';
 }
 
 export function isListenQuestion(type: string): boolean {
-  return type === 'listen_and_type' || type === 'listen_to_meaning';
+  return type === 'listen_and_type' || type === 'listen_to_meaning'
+    || type === 'listen_en' || type === 'listen_ko' || type === 'listen_type';
 }
 
 export function isChoiceQuestion(type: string): boolean {
-  return type === 'word_to_meaning' || type === 'meaning_to_word' || type === 'listen_to_meaning' || type === 'emoji_to_word';
+  return type === 'word_to_meaning' || type === 'meaning_to_word'
+    || type === 'listen_to_meaning' || type === 'emoji_to_word'
+    || type === 'en_to_ko' || type === 'ko_to_en'
+    || type === 'listen_en' || type === 'listen_ko'
+    || type === 'emoji' || type === 'sentence';
 }
 
 /** Get timer for a question type */

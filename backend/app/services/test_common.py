@@ -23,7 +23,7 @@ from app.models.test_answer import TestAnswer
 from app.models.user import User
 from app.core.timezone import now_kst
 from app.services.question_engines import (
-    get_engine, build_pool, resolve_name, CANONICAL_TO_MASTERY,
+    get_engine, build_pool, resolve_name,
 )
 from app.services.question_engines.base import QuestionSpec
 
@@ -576,9 +576,6 @@ def generate_questions_for_words(
         spec = engine.generate(word, pool)
         mastery = mastery_map.get(word.id)
 
-        # Map canonical type to mastery API name for frontend compatibility
-        mastery_qtype = CANONICAL_TO_MASTERY.get(spec.question_type, spec.question_type)
-
         questions.append({
             "word_mastery_id": mastery.id if mastery else "",
             "word": {
@@ -592,7 +589,7 @@ def generate_questions_for_words(
                 "part_of_speech": word.part_of_speech,
             },
             "stage": 1,
-            "question_type": mastery_qtype,
+            "question_type": spec.question_type,
             "choices": spec.choices,
             "correct_answer": spec.correct_answer,
             "timer_seconds": timer_seconds,
