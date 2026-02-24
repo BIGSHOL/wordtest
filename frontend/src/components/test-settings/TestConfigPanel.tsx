@@ -8,7 +8,6 @@
  *
  * + 출제 범위 (교재/레슨)
  */
-import { useState } from 'react';
 import { Check, Info, Clock, Timer, Hash, Layers } from 'lucide-react';
 import type { LessonInfo } from '../../services/word';
 
