@@ -91,6 +91,7 @@ export interface UnifiedTestStore {
     bookNameEnd: string | null;
     lessonStart: string | null;
     lessonEnd: string | null;
+    questionTypes: string | null;
   } | null;
 
   // Flat question list (both modes use this for navigation)
@@ -291,6 +292,7 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
           bookNameEnd: response.book_name_end ?? null,
           lessonStart: response.lesson_range_start ?? null,
           lessonEnd: response.lesson_range_end ?? null,
+          questionTypes: response.question_types ?? null,
         },
         isLoading: false,
       });
@@ -343,6 +345,7 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
           bookNameEnd: response.book_name_end ?? null,
           lessonStart: response.lesson_range_start ?? null,
           lessonEnd: response.lesson_range_end ?? null,
+          questionTypes: response.question_types ?? null,
         },
         isLoading: false,
       });

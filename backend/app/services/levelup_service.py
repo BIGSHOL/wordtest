@@ -153,6 +153,7 @@ async def start_session(
         "book_name_end": config.book_name_end or config.book_name,
         "lesson_range_start": config.lesson_range_start,
         "lesson_range_end": config.lesson_range_end,
+        "question_types": config.question_types,
     }
 
 

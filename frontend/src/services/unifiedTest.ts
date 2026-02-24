@@ -60,6 +60,7 @@ export interface StartLevelupResponse {
   book_name_end: string | null;
   lesson_range_start: string | null;
   lesson_range_end: string | null;
+  question_types: string | null;
 }
 
 export interface LevelupBatchResponse {
@@ -94,6 +95,7 @@ export interface StartLegacyResponse {
   book_name_end: string | null;
   lesson_range_start: string | null;
   lesson_range_end: string | null;
+  question_types: string | null;
 }
 
 export interface CompleteLegacyResponse {

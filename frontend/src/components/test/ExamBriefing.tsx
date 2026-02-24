@@ -14,8 +14,20 @@ interface ExamBriefingProps {
   totalTimeSeconds: number;
   timeMode?: 'per_question' | 'total';
   perQuestionTime?: number;
+  questionTypes?: string; // comma-separated canonical names
   onStart: () => void;
 }
+
+const QUESTION_TYPE_LABELS: Record<string, { label: string; icon: string; color: string }> = {
+  en_to_ko: { label: '영한 선택', icon: '🇬🇧→🇰🇷', color: '#3B82F6' },
+  ko_to_en: { label: '한영 선택', icon: '🇰🇷→🇬🇧', color: '#8B5CF6' },
+  listen_en: { label: '듣기 영어', icon: '🎧🇬🇧', color: '#10B981' },
+  listen_ko: { label: '듣기 한국어', icon: '🎧🇰🇷', color: '#14B8A6' },
+  listen_type: { label: '듣기 타이핑', icon: '⌨️🎧', color: '#F59E0B' },
+  ko_type: { label: '한영 타이핑', icon: '⌨️🇬🇧', color: '#EF4444' },
+  emoji: { label: '이모지', icon: '😊🍎', color: '#EC4899' },
+  sentence: { label: '예문 빈칸', icon: '📝✏️', color: '#6366F1' },
+};
 
 function formatKoreanDate(date: Date): string {
   const year = date.getFullYear();
@@ -64,6 +76,7 @@ export const ExamBriefing = memo(function ExamBriefing({
   totalTimeSeconds,
   timeMode = 'total',
   perQuestionTime = 10,
+  questionTypes,
   onStart,
 }: ExamBriefingProps) {
   const today = formatKoreanDate(new Date());
@@ -71,6 +84,11 @@ export const ExamBriefing = memo(function ExamBriefing({
   const timeText = timeMode === 'total'
     ? formatTime(totalTimeSeconds)
     : `문제당 ${perQuestionTime}초`;
+
+  // Parse question types
+  const types = questionTypes
+    ? questionTypes.split(',').map(t => t.trim()).filter(t => t in QUESTION_TYPE_LABELS)
+    : [];
 
   return (
     <div className="min-h-screen bg-bg-cream flex items-center justify-center px-5 py-8">
@@ -113,6 +131,41 @@ export const ExamBriefing = memo(function ExamBriefing({
             </span>
           </div>
         </div>
+
+        {/* Question Types */}
+        {types.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <p
+              className="font-display text-xs font-semibold uppercase tracking-wider"
+              style={{ color: '#9C9B99' }}
+            >
+              출제 유형
+            </p>
+            <div className="grid grid-cols-2 gap-2.5">
+              {types.map((type) => {
+                const info = QUESTION_TYPE_LABELS[type];
+                return (
+                  <div
+                    key={type}
+                    className="rounded-xl px-4 py-3 flex items-center gap-2.5 transition-all hover:scale-[1.02]"
+                    style={{
+                      background: `${info.color}10`,
+                      border: `1.5px solid ${info.color}30`,
+                    }}
+                  >
+                    <span style={{ fontSize: 20, lineHeight: 1 }}>{info.icon}</span>
+                    <span
+                      className="font-display text-sm font-semibold"
+                      style={{ color: info.color }}
+                    >
+                      {info.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Instructions */}
         <div className="flex flex-col gap-2">

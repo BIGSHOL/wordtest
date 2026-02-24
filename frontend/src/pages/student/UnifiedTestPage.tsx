@@ -299,6 +299,7 @@ export function UnifiedTestPage() {
         totalTimeSeconds={totalTimeSeconds}
         timeMode={timeMode}
         perQuestionTime={perQuestionTime}
+        questionTypes={briefingInfo?.questionTypes ?? undefined}
         onStart={handleStartExam}
       />
     );
