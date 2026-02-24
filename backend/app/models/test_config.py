@@ -34,6 +34,7 @@ class TestConfig(Base):
     level_range_min: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     level_range_max: Mapped[int] = mapped_column(Integer, nullable=False, default=15)
     per_question_time_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    total_time_override_seconds: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     question_types: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     lesson_range_start: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     lesson_range_end: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)

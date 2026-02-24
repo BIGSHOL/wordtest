@@ -81,6 +81,7 @@ async def assign_test(
         level_range_min=level_min,
         level_range_max=level_max,
         per_question_time_seconds=data.per_question_time_seconds,
+        total_time_override_seconds=data.total_time_override_seconds,
         question_types=question_types_str,
         lesson_range_start=data.lesson_range_start,
         lesson_range_end=data.lesson_range_end,

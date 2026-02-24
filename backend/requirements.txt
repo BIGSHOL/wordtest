@@ -17,3 +17,4 @@ pytest-asyncio
 httpx
 aiosqlite
 edge-tts
+google-genai

@@ -1,13 +1,16 @@
 """Word model - FEAT-1: 단어 데이터."""
 import uuid
 from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import String, Integer, Boolean, Index
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.core.timezone import now_kst, TZDateTime
+
+if TYPE_CHECKING:
+    from app.models.word_example import WordExample
 
 
 class Word(Base):
@@ -29,6 +32,13 @@ class Word(Base):
     compatible_engines: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         TZDateTime(), default=now_kst, nullable=False
+    )
+
+    examples: Mapped[list["WordExample"]] = relationship(
+        "WordExample",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+        order_by="WordExample.order_index",
     )
 
     __table_args__ = (

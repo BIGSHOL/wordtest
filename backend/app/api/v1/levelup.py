@@ -16,6 +16,7 @@ from app.schemas.levelup import (
     LevelupBatchRequest,
     LevelupAnswerRequest,
     CompleteLevelupRequest,
+    LevelupBatchSubmitRequest,
 )
 from app.services import levelup_service
 
@@ -150,6 +151,30 @@ async def submit_levelup_answer(
             detail=str(e),
         )
 
+    return result
+
+
+@router.post("/{session_id}/submit-batch")
+async def submit_levelup_batch(
+    session_id: str,
+    body: LevelupBatchSubmitRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Submit all answers in batch and complete the session (exam mode)."""
+    try:
+        answers = [a.model_dump() for a in body.answers]
+        result = await levelup_service.submit_batch_and_complete(
+            db,
+            session_id=session_id,
+            answers=answers,
+            available_levels=body.available_levels,
+            starting_level=body.starting_level,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
     return result
 
 

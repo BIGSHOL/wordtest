@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { TeacherLayout } from '../../components/layout/TeacherLayout';
 import { wordService, type Word, type CreateWordRequest, type LessonInfo } from '../../services/word';
 import { Search, Plus, Pencil, Trash2, X, Upload, Volume2, BookOpen, ChevronDown } from 'lucide-react';
@@ -205,6 +205,21 @@ export function WordDatabasePage() {
       speakSentence(sentence);
     }
   }, []);
+
+  const [popoverWordId, setPopoverWordId] = useState<string | null>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  // Close popover on outside click
+  useEffect(() => {
+    if (!popoverWordId) return;
+    const handler = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setPopoverWordId(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [popoverWordId]);
 
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
@@ -492,18 +507,61 @@ export function WordDatabasePage() {
                             <span className="truncate block max-w-[160px]">{word.korean}</span>
                           </td>
                           <td className="px-3 text-sm text-text-secondary">
-                            {word.example_en ? (
-                              <div className="flex items-center gap-1 max-w-[280px]">
-                                <span className="truncate">{word.example_en}</span>
-                                <button
-                                  onClick={() => handlePlaySentence(word.example_en!)}
-                                  className="p-1 text-text-tertiary hover:text-teal rounded shrink-0 transition-colors"
-                                  title="예문 발음"
-                                >
-                                  <Volume2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            ) : '-'}
+                            {(() => {
+                              const examples = word.examples || [];
+                              const primaryEn = examples.length > 0 ? examples[0].example_en : word.example_en;
+                              const extraCount = Math.max(0, examples.length - 1);
+
+                              if (!primaryEn) return '-';
+
+                              return (
+                                <div className="relative flex items-center gap-1 max-w-[280px]">
+                                  <span className="truncate">{primaryEn}</span>
+                                  <button
+                                    onClick={() => handlePlaySentence(primaryEn)}
+                                    className="p-1 text-text-tertiary hover:text-teal rounded shrink-0 transition-colors"
+                                    title="예문 발음"
+                                  >
+                                    <Volume2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  {extraCount > 0 && (
+                                    <button
+                                      onClick={() => setPopoverWordId(popoverWordId === word.id ? null : word.id)}
+                                      className="shrink-0 px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-teal/10 text-teal hover:bg-teal/20 transition-colors"
+                                      title={`예문 ${examples.length}개`}
+                                    >
+                                      +{extraCount}
+                                    </button>
+                                  )}
+                                  {popoverWordId === word.id && examples.length > 0 && (
+                                    <div
+                                      ref={popoverRef}
+                                      className="absolute left-0 top-full mt-1 z-50 w-[400px] bg-white border border-border-subtle rounded-xl shadow-lg p-3 space-y-2"
+                                    >
+                                      <div className="text-xs font-semibold text-text-tertiary mb-1">
+                                        예문 목록 ({examples.length}개)
+                                      </div>
+                                      {examples.map((ex, idx) => (
+                                        <div key={ex.id} className="text-xs space-y-0.5 pb-2 border-b border-border-subtle last:border-0 last:pb-0">
+                                          <div className="flex items-center gap-1">
+                                            <span className="text-text-tertiary font-medium w-4">{idx + 1}.</span>
+                                            <span className="text-text-primary font-word">{ex.example_en}</span>
+                                            <button
+                                              onClick={() => handlePlaySentence(ex.example_en)}
+                                              className="p-0.5 text-text-tertiary hover:text-teal rounded shrink-0 transition-colors"
+                                              title="예문 발음"
+                                            >
+                                              <Volume2 className="w-3 h-3" />
+                                            </button>
+                                          </div>
+                                          <div className="pl-5 text-text-secondary">{ex.example_ko}</div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td className="px-3 whitespace-nowrap">
                             <span

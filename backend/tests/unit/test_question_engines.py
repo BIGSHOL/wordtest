@@ -31,12 +31,22 @@ from app.services.question_engines.sentence import make_sentence_blank, apply_se
 # ── Fixtures ────────────────────────────────────────────────────────────────
 
 
-def make_word(english: str, korean: str | None = None, example_en: str | None = None):
+def make_example(example_en: str, example_ko: str, order_index: int = 0):
+    """Create a mock WordExample object for testing."""
+    ex = MagicMock()
+    ex.example_en = example_en
+    ex.example_ko = example_ko
+    ex.order_index = order_index
+    return ex
+
+
+def make_word(english: str, korean: str | None = None, example_en: str | None = None, examples: list | None = None):
     """Create a mock Word object for testing."""
     word = MagicMock()
     word.english = english
     word.korean = korean
     word.example_en = example_en
+    word.examples = examples or []
     return word
 
 
@@ -391,6 +401,53 @@ class TestSentence:
         assert sentence_spec.sentence_blank == "I have a ____."
         assert sentence_spec.choices == ["dog", "cat", "bird", "fish"]
         assert sentence_spec.correct_answer == "dog"
+
+    def test_can_generate_with_examples_list(self):
+        """can_generate should return True if word has examples list with usable sentence."""
+        engine = get_engine("sentence")
+        examples = [
+            make_example("My dog is friendly.", "내 개는 친근하다.", 0),
+            make_example("The dog barked loudly.", "그 개가 크게 짖었다.", 1),
+        ]
+        word = make_word("dog", "개", None, examples=examples)
+        assert engine.can_generate(word) is True
+
+    def test_can_generate_fallback_to_legacy(self):
+        """can_generate should fallback to example_en when examples list is empty."""
+        engine = get_engine("sentence")
+        word = make_word("dog", "개", "I have a dog.", examples=[])
+        assert engine.can_generate(word) is True
+
+    def test_can_generate_false_no_examples_anywhere(self):
+        """can_generate should return False when no examples available at all."""
+        engine = get_engine("sentence")
+        word = make_word("dog", "개", None, examples=[])
+        assert engine.can_generate(word) is False
+
+    def test_generate_picks_from_examples(self, sample_pool):
+        """generate should use word.examples when available."""
+        engine = get_engine("sentence")
+        examples = [
+            make_example("My dog is friendly.", "내 개는 친근하다.", 0),
+            make_example("The dog barked loudly.", "그 개가 크게 짖었다.", 1),
+        ]
+        word = make_word("dog", "개", "I have a dog.", examples=examples)
+        spec = engine.generate(word, sample_pool)
+
+        assert spec.sentence_blank is not None
+        assert "____" in spec.sentence_blank
+        # sentence_en should be one of the examples
+        valid_sentences = {"My dog is friendly.", "The dog barked loudly.", "I have a dog."}
+        assert spec.sentence_en in valid_sentences
+
+    def test_generate_fallback_legacy_columns(self, sample_pool):
+        """generate should use legacy example_en/ko when examples list is empty."""
+        engine = get_engine("sentence")
+        word = make_word("dog", "개", "I have a dog.", examples=[])
+        spec = engine.generate(word, sample_pool)
+
+        assert spec.sentence_blank == "I have a ____."
+        assert spec.sentence_en == "I have a dog."
 
 
 # ══════════════════════════════════════════════════════════════════════════

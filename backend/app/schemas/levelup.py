@@ -25,3 +25,15 @@ class CompleteLevelupRequest(BaseModel):
     session_id: str
     final_level: int
     best_combo: int = 0
+
+
+class BatchAnswerItem(BaseModel):
+    word_mastery_id: str
+    selected_answer: str  # empty string for unanswered
+    question_type: Optional[str] = None
+
+
+class LevelupBatchSubmitRequest(BaseModel):
+    answers: list[BatchAnswerItem]
+    available_levels: list[int]
+    starting_level: int

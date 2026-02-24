@@ -83,6 +83,7 @@ async def start_session(
     # Parse question types from config
     question_types = _parse_question_types(config.question_types)
     timer_seconds = config.per_question_time_seconds or 10
+    total_time = config.total_time_override_seconds or (config.question_count or 50) * timer_seconds
 
     # Filter to words compatible with selected question types (e.g. emoji-only)
     compatible = filter_compatible_words(filtered, question_types)
@@ -136,6 +137,12 @@ async def start_session(
         "level_info": level_info,
         "available_levels": available_levels,
         "per_question_time": timer_seconds,
+        "total_time_seconds": total_time,
+        "time_mode": "total" if config.total_time_override_seconds else "per_question",
+        "book_name": config.book_name,
+        "book_name_end": config.book_name_end or config.book_name,
+        "lesson_range_start": config.lesson_range_start,
+        "lesson_range_end": config.lesson_range_end,
     }
 
 
@@ -250,9 +257,10 @@ async def submit_answer(
     if not mastery:
         raise ValueError("Word mastery record not found")
 
-    # Look up word
+    # Look up word with examples
+    from sqlalchemy.orm import selectinload
     word_result = await db.execute(
-        select(Word).where(Word.id == mastery.word_id)
+        select(Word).options(selectinload(Word.examples)).where(Word.id == mastery.word_id)
     )
     word = word_result.scalar_one_or_none()
     if not word:
@@ -306,13 +314,20 @@ async def submit_answer(
 
     await db.commit()
 
+    # Prefer first example from word_examples, fallback to legacy columns
+    ex_en = word.example_en
+    ex_ko = word.example_ko
+    if word.examples:
+        ex_en = word.examples[0].example_en
+        ex_ko = word.examples[0].example_ko
+
     return {
         "is_correct": is_correct,
         "almost_correct": almost_correct,
         "correct_answer": correct,
         "word_level": word.level,
-        "example_en": word.example_en,
-        "example_ko": word.example_ko,
+        "example_en": ex_en,
+        "example_ko": ex_ko,
     }
 
 
@@ -354,6 +369,137 @@ async def complete_session(
         "correct_count": correct_count,
         "best_combo": best_combo,
     }
+
+
+async def submit_batch_and_complete(
+    db: AsyncSession,
+    session_id: str,
+    answers: list[dict],
+    available_levels: list[int],
+    starting_level: int,
+) -> dict:
+    """Submit all answers in batch and complete the session.
+
+    Simulates XP progression server-side to determine final_level.
+    No speed bonus in exam mode (no per-question timing).
+    """
+    from app.services.test_common import process_batch_answers
+
+    results = await process_batch_answers(db, session_id, answers)
+
+    # Simulate XP to determine final level
+    final_level = _simulate_xp_progression(
+        results=results,
+        available_levels=available_levels,
+        starting_level=starting_level,
+    )
+
+    # Complete session
+    session_result = await db.execute(
+        select(LearningSession).where(LearningSession.id == session_id)
+    )
+    session = session_result.scalar_one_or_none()
+    if not session:
+        raise ValueError("Session not found")
+
+    session.current_level = max(1, min(final_level, 15))
+    session.completed_at = now_kst()
+
+    total_count, correct_count, accuracy = await compute_accuracy(db, session_id)
+
+    if session.assignment_id:
+        await mark_assignment_completed(db, session.assignment_id)
+
+    await db.commit()
+
+    return {
+        "final_level": session.current_level,
+        "accuracy": accuracy,
+        "total_answered": total_count,
+        "correct_count": correct_count,
+        "best_combo": 0,
+    }
+
+
+def _get_lesson_xp(book: int) -> int:
+    """XP needed to level up at a given book level."""
+    return 4 + book
+
+
+def _compute_xp_change(
+    is_correct: bool,
+    question_level: int,
+    current_book: int,
+    combo: int,
+    consecutive_wrong: int,
+) -> int:
+    """Compute XP change for a single answer (no speed bonus in exam mode)."""
+    if is_correct:
+        base = max(4, current_book) if question_level < current_book else 8 + current_book * 2
+        # No speed bonus in exam mode
+        combo_bonus = min(combo // 5 + 1, 5) if combo >= 3 else 0
+        return base + combo_bonus
+    else:
+        if consecutive_wrong >= 2:
+            return -(8 + current_book)
+        elif consecutive_wrong >= 1:
+            return -(5 + current_book)
+        else:
+            return -(3 + current_book)
+
+
+def _simulate_xp_progression(
+    results: list[dict],
+    available_levels: list[int],
+    starting_level: int,
+) -> int:
+    """Simulate XP-based level progression from batch results."""
+    if not available_levels:
+        return starting_level
+
+    current_book = starting_level
+    xp = 0
+    combo = 0
+    consecutive_wrong = 0
+
+    for r in results:
+        is_correct = r["is_correct"]
+        question_level = r.get("word_level", current_book)
+
+        if is_correct:
+            combo += 1
+            consecutive_wrong = 0
+        else:
+            combo = 0
+            consecutive_wrong += 1
+
+        xp_change = _compute_xp_change(
+            is_correct=is_correct,
+            question_level=question_level,
+            current_book=current_book,
+            combo=combo,
+            consecutive_wrong=consecutive_wrong,
+        )
+        xp += xp_change
+
+        lesson_xp = _get_lesson_xp(current_book)
+
+        # Level up
+        if xp >= lesson_xp:
+            next_levels = [l for l in available_levels if l > current_book]
+            if next_levels:
+                current_book = next_levels[0]
+                xp = 0
+        # Level down
+        elif xp < 0:
+            prev_levels = [l for l in available_levels if l < current_book]
+            if prev_levels:
+                current_book = prev_levels[-1]
+                xp = _get_lesson_xp(current_book) // 2
+            else:
+                xp = 0
+
+    return current_book
 
 
 # ── Internal Helpers ─────────────────────────────────────────────────────────

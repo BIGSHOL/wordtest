@@ -8,6 +8,7 @@ Also provides apply_sentence_overlay() for converting any QuestionSpec
 into sentence mode (used by mastery engine).
 """
 import re
+import random
 from app.models.word import Word
 from app.services.question_engines.base import QuestionSpec, DistractorPool
 from app.services.question_engines.distractors import pick_english_distractors, shuffle_choices
@@ -39,13 +40,35 @@ def make_sentence_blank(sentence: str, target_word: str) -> str | None:
     return None
 
 
+def _pick_example(word: Word) -> tuple[str, str] | None:
+    """Pick an example sentence from word.examples or fall back to word.example_en/ko.
+
+    Returns (example_en, example_ko) tuple or None if no usable example.
+    """
+    # Try word.examples first (1:N relationship)
+    examples = getattr(word, 'examples', None)
+    if examples:
+        # Filter to examples where the word appears in the sentence
+        usable = [
+            ex for ex in examples
+            if make_sentence_blank(ex.example_en, word.english) is not None
+        ]
+        if usable:
+            chosen = random.choice(usable)
+            return (chosen.example_en, chosen.example_ko)
+
+    # Fallback to legacy columns
+    if word.example_en and make_sentence_blank(word.example_en, word.english) is not None:
+        return (word.example_en, word.example_ko or "")
+
+    return None
+
+
 class SentenceEngine:
     question_type = "sentence"
 
     def can_generate(self, word: Word) -> bool:
-        if not word.example_en:
-            return False
-        return make_sentence_blank(word.example_en, word.english) is not None
+        return _pick_example(word) is not None
 
     def generate(
         self,
@@ -55,7 +78,12 @@ class SentenceEngine:
     ) -> QuestionSpec:
         correct = word.english
         distractors = pick_english_distractors(correct, pool.all_english, n_choices - 1)
-        blank = make_sentence_blank(word.example_en, word.english)
+
+        example = _pick_example(word)
+        ex_en = example[0] if example else word.example_en
+        ex_ko = example[1] if example else (word.example_ko or "")
+        blank = make_sentence_blank(ex_en, word.english)
+
         return QuestionSpec(
             question_type=self.question_type,
             word=word,
@@ -63,6 +91,8 @@ class SentenceEngine:
             choices=shuffle_choices(correct, distractors),
             context_mode="sentence",
             sentence_blank=blank,
+            sentence_en=ex_en,
+            sentence_ko=ex_ko,
         )
 
 
@@ -74,9 +104,12 @@ def apply_sentence_overlay(spec: QuestionSpec) -> QuestionSpec | None:
     Used by mastery engine to overlay sentence context onto choice questions.
     """
     word = spec.word
-    if not word.example_en:
+    example = _pick_example(word)
+    if not example:
         return None
-    blank = make_sentence_blank(word.example_en, word.english)
+
+    ex_en, ex_ko = example
+    blank = make_sentence_blank(ex_en, word.english)
     if not blank:
         return None
 
@@ -88,5 +121,7 @@ def apply_sentence_overlay(spec: QuestionSpec) -> QuestionSpec | None:
         is_typing=spec.is_typing,
         context_mode="sentence",
         sentence_blank=blank,
+        sentence_en=ex_en,
+        sentence_ko=ex_ko,
         emoji=spec.emoji,
     )

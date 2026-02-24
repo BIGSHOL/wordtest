@@ -1,202 +1,267 @@
 /**
- * Unified Test Page - handles both Level-Up (adaptive) and Legacy (fixed) engines.
+ * Unified Test Page - dual mode support.
  *
- * Level-Up: XP-based adaptive difficulty within teacher's book range.
- * Legacy: Fixed difficulty, all questions served in easy->hard order.
+ * per_question mode: per-question timer, immediate feedback, auto-advance, sounds, TTS
+ * total (exam) mode: briefing, free navigation, batch submit, no feedback
+ *
+ * Phase flow: idle -> briefing -> testing -> (submitting) -> complete
  */
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   useUnifiedTestStore,
   useCurrentQuestion,
   useLevelupProgress,
-  useLegacyProgress,
 } from '../../stores/unifiedTestStore';
 import { useTimer } from '../../hooks/useTimer';
-import { isTypingQuestion, isListenQuestion } from '../../types/mastery';
-import { preloadWordAudio, speakWord, stopAllSounds as stopTtsSounds, randomizeTtsVoice } from '../../utils/tts';
 import { playSound, stopSound, unlockAudio } from '../../hooks/useSound';
+import { speakWord } from '../../utils/tts';
+import { isTypingQuestion, isListenQuestion } from '../../types/mastery';
 
 // Components
-import { MasteryHeader } from '../../components/mastery/MasteryHeader';
-import { GradientProgressBar } from '../../components/test/GradientProgressBar';
+import { TotalTimerDisplay } from '../../components/test/TotalTimerDisplay';
 import { TimerBar } from '../../components/test/TimerBar';
-import { FeedbackBanner } from '../../components/test/FeedbackBanner';
 import { WordCard } from '../../components/test/WordCard';
 import { MeaningCard } from '../../components/test/MeaningCard';
 import { ChoiceButton } from '../../components/test/ChoiceButton';
-import { ListenCard } from '../../components/mastery/ListenCard';
 import { TypingInput } from '../../components/mastery/TypingInput';
 import { SentenceBlankCard } from '../../components/mastery/SentenceBlankCard';
 import { EmojiCard } from '../../components/test/EmojiCard';
-import { Loader2, Trophy, LogIn, ArrowLeft } from 'lucide-react';
+import { ListeningCard } from '../../components/test/ListeningCard';
+import { FeedbackBanner } from '../../components/test/FeedbackBanner';
+import { MasteryHeader } from '../../components/mastery/MasteryHeader';
+import { ExamBriefing } from '../../components/test/ExamBriefing';
+import { QuestionNavigator } from '../../components/test/QuestionNavigator';
+import { SubmitConfirmDialog } from '../../components/test/SubmitConfirmDialog';
+import { Loader2, Trophy, LogIn, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getLevelRank } from '../../types/rank';
-
-const MIN_FEEDBACK_CORRECT = 800;
-const MIN_FEEDBACK_WRONG = 1800;
-const PRONOUNCE_DELAY = 400;
 
 export function UnifiedTestPage() {
   const navigate = useNavigate();
   const store = useUnifiedTestStore();
   const {
-    engineType, sessionId, questionCount,
-    selectedAnswer, typedAnswer, answerResult, feedbackQuestion,
+    engineType, timeMode, sessionId, phase,
+    flatQuestions, currentQuestionIndex,
+    localAnswers, localTypedAnswers,
+    briefingInfo, studentName,
+    questionCount, perQuestionTime, totalTimeSeconds,
     isLoading, isComplete, finalResult,
-    totalAnswered,
+    selectedAnswer, typedAnswer, answerResult,
     error,
   } = store;
 
   const currentQuestion = useCurrentQuestion();
   const levelupProgress = useLevelupProgress();
-  const legacyProgress = useLegacyProgress();
 
-  const questionType = currentQuestion?.question_type || 'en_to_ko';
-  const timerSeconds = currentQuestion?.timer_seconds ?? 10;
-  const isTyping = isTypingQuestion(questionType);
-  const isListen = isListenQuestion(questionType);
-  const submittingRef = useRef(false);
-  const timerSoundPlayed = useRef(false);
-  const twoSoundPlayed = useRef(false);
-  const lastQuestionChangeAt = useRef(0);
+  // ── Exam mode state ────────────────────────────────────────────────
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
 
-  // Timer warning thresholds
-  const timerWarnAt = timerSeconds <= 5 ? timerSeconds : timerSeconds <= 10 ? 7 : 10;
-  const timerAudioStart = Math.max(0, 10 - timerWarnAt);
+  // ── Per-question mode state ────────────────────────────────────────
+  const questionStartTime = useRef(Date.now());
+  const prevPhaseRef = useRef<typeof phase>('idle');
 
-  // Timer
-  const handleTimeout = useCallback(() => {
-    if (!answerResult && currentQuestion && !submittingRef.current) {
-      submittingRef.current = true;
-      store.submitAnswer(timerSeconds, true).catch(() => {
-        submittingRef.current = false;
-      });
+  // ══════════════════════════════════════════════════════════════════════
+  // ── Timers ─────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════
+
+  // Total timer (exam mode)
+  const handleTotalTimeout = useCallback(() => {
+    const s = useUnifiedTestStore.getState();
+    if (s.phase === 'testing' && s.timeMode === 'total') {
+      store.submitAllAnswers();
     }
-  }, [answerResult, currentQuestion, timerSeconds]);
-
-  const timer = useTimer(timerSeconds, handleTimeout);
-
-  // Track question changes to reset timer
-  const prevQuestionRef = useRef<string | null>(null);
-  useEffect(() => {
-    const qid = currentQuestion?.word_mastery_id;
-    if (qid && qid !== prevQuestionRef.current) {
-      prevQuestionRef.current = qid;
-      lastQuestionChangeAt.current = Date.now();
-      timer.reset();
-      stopTtsSounds();
-      stopSound('timer');
-      stopSound('two');
-      timerSoundPlayed.current = false;
-      twoSoundPlayed.current = false;
-
-      if (currentQuestion?.word.english) {
-        preloadWordAudio(currentQuestion.word.english);
-      }
-    }
-  }, [currentQuestion?.word_mastery_id]);
-
-  // Timer warning sounds
-  useEffect(() => {
-    if (answerResult) return;
-    if (timer.fraction > 0.95) return;
-    if (Date.now() - lastQuestionChangeAt.current < 600) return;
-    if (timer.secondsLeft === timerWarnAt && timer.secondsLeft > 0 && !timerSoundPlayed.current) {
-      playSound('timer', { startAt: timerAudioStart });
-      timerSoundPlayed.current = true;
-    }
-    if (timer.secondsLeft === 2 && !twoSoundPlayed.current) {
-      playSound('two', { volume: 0.5 });
-      twoSoundPlayed.current = true;
-    }
-  }, [timer.secondsLeft, answerResult]);
-
-  // Initialize TTS voice + block back button
-  useEffect(() => {
-    randomizeTtsVoice();
-    window.history.pushState(null, '', window.location.href);
-    const onPopState = () => window.history.pushState(null, '', window.location.href);
-    window.addEventListener('popstate', onPopState);
-    return () => {
-      window.removeEventListener('popstate', onPopState);
-      stopTtsSounds();
-      stopSound('timer');
-      stopSound('two');
-    };
   }, []);
 
-  // Handle choice selection
-  const handleChoiceClick = useCallback(
-    (choice: string) => {
-      if (answerResult || submittingRef.current) return;
-      unlockAudio();
-      store.selectAnswer(choice);
-      timer.pause();
-      submittingRef.current = true;
-      const elapsed = timerSeconds - timer.secondsLeft;
-      store.submitAnswer(elapsed).catch(() => {
-        submittingRef.current = false;
-      });
-    },
-    [answerResult, timerSeconds, timer.secondsLeft],
-  );
+  const totalTimer = useTimer(totalTimeSeconds, handleTotalTimeout);
 
-  // Handle typing submission
-  const handleTypingSubmit = useCallback(() => {
-    if (answerResult || !typedAnswer.trim() || submittingRef.current) return;
-    unlockAudio();
-    timer.pause();
-    submittingRef.current = true;
-    const elapsed = timerSeconds - timer.secondsLeft;
-    store.submitAnswer(elapsed).catch(() => {
-      submittingRef.current = false;
-    });
-  }, [answerResult, typedAnswer, timerSeconds, timer.secondsLeft]);
+  // Per-question timer
+  const currentTimerSeconds = (currentQuestion?.timer_seconds || perQuestionTime) || 10;
 
-  // Auto-advance after answer
+  const handlePerQuestionTimeout = useCallback(() => {
+    const s = useUnifiedTestStore.getState();
+    if (s.phase === 'testing' && s.timeMode === 'per_question' && !s.answerResult) {
+      store.submitAnswer(s.perQuestionTime, true);
+    }
+  }, []);
+
+  const perQTimer = useTimer(currentTimerSeconds, handlePerQuestionTimeout);
+
+  // ── Timer control ──────────────────────────────────────────────────
+
+  // Total timer: start on testing phase, pause otherwise
   useEffect(() => {
-    if (!answerResult) {
-      submittingRef.current = false;
+    if (timeMode !== 'total') {
+      totalTimer.pause();
       return;
     }
-    timer.pause();
-    stopTtsSounds();
+    if (prevPhaseRef.current !== 'testing' && phase === 'testing') {
+      totalTimer.reset();
+    }
+    if (phase === 'complete' || phase === 'submitting') {
+      totalTimer.pause();
+    }
+    prevPhaseRef.current = phase;
+  }, [phase, timeMode]);
+
+  // Per-question timer: reset on question change, pause during feedback
+  const hasAnswer = !!answerResult;
+  useEffect(() => {
+    if (timeMode !== 'per_question' || phase !== 'testing') {
+      perQTimer.pause();
+      return;
+    }
+    if (hasAnswer) {
+      perQTimer.pause();
+      return;
+    }
+    // Active question: reset timer and start tracking time
+    perQTimer.reset();
+    questionStartTime.current = Date.now();
+  }, [currentQuestionIndex, phase, timeMode, hasAnswer]);
+
+  // ── Per-question: timer warning sound ──────────────────────────────
+  useEffect(() => {
+    if (timeMode !== 'per_question' || phase !== 'testing' || hasAnswer) return;
+    if (perQTimer.secondsLeft === 3) {
+      playSound('timer', { volume: 0.5 });
+    }
+  }, [perQTimer.secondsLeft, timeMode, phase, hasAnswer]);
+
+  // ── Per-question: feedback sound + auto-advance ────────────────────
+  useEffect(() => {
+    if (!answerResult || timeMode !== 'per_question') return;
+
     stopSound('timer');
-    stopSound('two');
-    playSound(answerResult.is_correct ? 'correct' : 'wrong');
 
-    const wordEnglish = feedbackQuestion?.word?.english;
-    const minDelay = answerResult.is_correct ? MIN_FEEDBACK_CORRECT : MIN_FEEDBACK_WRONG;
-    let cancelled = false;
+    // Feedback sounds
+    if (answerResult.is_correct) {
+      playSound('correct');
+    } else {
+      playSound('wrong');
+    }
 
-    (async () => {
-      await new Promise((r) => setTimeout(r, PRONOUNCE_DELAY));
-      if (cancelled) return;
+    // Level change sounds (levelup engine)
+    const levelChanged = useUnifiedTestStore.getState().levelChanged;
+    if (levelChanged === 'up') playSound('lvlup');
+    else if (levelChanged === 'down') playSound('lvldown');
 
-      const speakDone = wordEnglish ? speakWord(wordEnglish) : Promise.resolve();
-      const minWait = new Promise((r) => setTimeout(r, minDelay - PRONOUNCE_DELAY));
-      await Promise.all([speakDone, minWait]);
-      if (cancelled) return;
-
-      submittingRef.current = false;
-      stopSound('timer');
-      stopSound('two');
+    // Auto-advance after delay
+    const timer = setTimeout(() => {
       store.nextQuestion();
-    })();
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [answerResult, timeMode]);
 
-    return () => { cancelled = true; };
-  }, [answerResult]);
+  // ── Per-question: TTS for listen questions ─────────────────────────
+  useEffect(() => {
+    if (timeMode !== 'per_question' || phase !== 'testing' || hasAnswer) return;
+    if (!currentQuestion) return;
+    const qt = currentQuestion.question_type || '';
+    if (isListenQuestion(qt)) {
+      speakWord(currentQuestion.word.english);
+    }
+  }, [currentQuestionIndex, phase, timeMode, hasAnswer]);
 
-  // Handle exit
+  // ── Keyboard shortcuts ─────────────────────────────────────────────
+  useEffect(() => {
+    if (phase !== 'testing') return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      const q = flatQuestions[currentQuestionIndex];
+      if (!q) return;
+
+      // Arrow keys: exam mode only
+      if (timeMode === 'total') {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          store.goPrev();
+          return;
+        }
+        if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          store.goNext();
+          return;
+        }
+      }
+
+      // Number keys for choice selection (both modes)
+      if (q.choices) {
+        const num = parseInt(e.key, 10);
+        if (num >= 1 && num <= q.choices.length) {
+          e.preventDefault();
+          if (timeMode === 'total') {
+            store.setLocalAnswer(currentQuestionIndex, q.choices[num - 1]);
+          } else if (!answerResult) {
+            // Per-question: select and auto-submit
+            store.selectAnswer(q.choices[num - 1]);
+            const timeTaken = (Date.now() - questionStartTime.current) / 1000;
+            store.submitAnswer(timeTaken);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [phase, timeMode, currentQuestionIndex, flatQuestions, answerResult]);
+
+  // ── Handlers ───────────────────────────────────────────────────────
+
   const handleExit = useCallback(() => {
-    stopTtsSounds();
+    if (phase === 'testing') {
+      if (!confirm('시험을 종료하시겠습니까? 답변이 저장되지 않습니다.')) return;
+    }
     stopSound('timer');
-    stopSound('two');
     store.reset();
     navigate('/student', { replace: true });
-  }, [navigate]);
+  }, [phase, navigate]);
 
-  // ── Loading state ──────────────────────────────────────────────────────
+  const handleStartExam = useCallback(() => {
+    unlockAudio();
+    store.startExam();
+  }, []);
+
+  // Per-question: choice click -> auto-submit
+  const handlePerQuestionChoice = useCallback((choice: string) => {
+    if (answerResult) return;
+    store.selectAnswer(choice);
+    const timeTaken = (Date.now() - questionStartTime.current) / 1000;
+    store.submitAnswer(timeTaken);
+  }, [answerResult]);
+
+  // Per-question: typing submit
+  const handleTypingSubmit = useCallback(() => {
+    if (answerResult) return;
+    const timeTaken = (Date.now() - questionStartTime.current) / 1000;
+    store.submitAnswer(timeTaken);
+  }, [answerResult]);
+
+  // Exam mode: submit confirmation
+  const handleSubmitConfirm = useCallback(() => {
+    setShowSubmitDialog(false);
+    store.submitAllAnswers();
+  }, []);
+
+  // Exam mode: answered indexes for navigator
+  const answeredIndexes = useMemo(() => {
+    const set = new Set<number>();
+    flatQuestions.forEach((q, i) => {
+      if (q.choices) {
+        if (localAnswers[i]) set.add(i);
+      } else {
+        if (localTypedAnswers[i]?.trim()) set.add(i);
+      }
+    });
+    return set;
+  }, [flatQuestions, localAnswers, localTypedAnswers]);
+
+  // ══════════════════════════════════════════════════════════════════════
+  // ── Shared Phase Rendering ─────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════
+
+  // Loading
   if (isLoading && !sessionId) {
     return (
       <div className="min-h-screen bg-bg-cream flex flex-col items-center justify-center gap-4">
@@ -208,6 +273,7 @@ export function UnifiedTestPage() {
     );
   }
 
+  // No session
   if (!sessionId && !isComplete) {
     return (
       <div className="min-h-screen bg-bg-cream flex flex-col items-center justify-center gap-4">
@@ -220,8 +286,36 @@ export function UnifiedTestPage() {
     );
   }
 
-  // ── Completion screen ──────────────────────────────────────────────────
-  if (isComplete && finalResult) {
+  // Briefing (both modes)
+  if (phase === 'briefing') {
+    return (
+      <ExamBriefing
+        studentName={studentName}
+        bookName={briefingInfo?.bookName ?? null}
+        bookNameEnd={briefingInfo?.bookNameEnd ?? null}
+        lessonStart={briefingInfo?.lessonStart ?? null}
+        lessonEnd={briefingInfo?.lessonEnd ?? null}
+        questionCount={flatQuestions.length || questionCount}
+        totalTimeSeconds={totalTimeSeconds}
+        timeMode={timeMode}
+        perQuestionTime={perQuestionTime}
+        onStart={handleStartExam}
+      />
+    );
+  }
+
+  // Submitting (exam mode batch submit)
+  if (phase === 'submitting') {
+    return (
+      <div className="min-h-screen bg-bg-cream flex flex-col items-center justify-center gap-4">
+        <Loader2 className="w-8 h-8 text-accent-indigo animate-spin" />
+        <p className="font-display text-sm text-text-secondary">채점 중...</p>
+      </div>
+    );
+  }
+
+  // Complete (both modes)
+  if ((phase === 'complete' || isComplete) && finalResult) {
     const accuracy = Math.round(finalResult.accuracy * 100);
     const isLevelup = engineType === 'levelup';
 
@@ -232,7 +326,6 @@ export function UnifiedTestPage() {
           <h2 className="font-display text-2xl font-bold text-text-primary">테스트 완료!</h2>
         </div>
 
-        {/* Level-Up: rank badge */}
         {isLevelup && finalResult.finalLevel && (
           <div
             className="flex items-center gap-2 rounded-full px-5 py-2.5"
@@ -246,7 +339,6 @@ export function UnifiedTestPage() {
           </div>
         )}
 
-        {/* Stats */}
         <div className="flex gap-6 text-center">
           <div>
             <p className="font-display text-2xl font-bold text-accent-indigo">{accuracy}%</p>
@@ -289,8 +381,8 @@ export function UnifiedTestPage() {
     );
   }
 
-  // ── Loading between fetches ────────────────────────────────────────────
-  if (isLoading || !currentQuestion) {
+  // Loading between phases
+  if (isLoading || !currentQuestion || phase !== 'testing') {
     return (
       <div className="min-h-screen bg-bg-cream flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-accent-indigo animate-spin" />
@@ -298,34 +390,24 @@ export function UnifiedTestPage() {
     );
   }
 
-  // ── Choice button states ───────────────────────────────────────────────
-  const getChoiceState = (choice: string) => {
-    if (!answerResult) {
-      return choice === selectedAnswer ? 'selected' : 'default';
-    }
-    if (choice === answerResult.correct_answer) return 'correct';
-    if (choice === selectedAnswer) return 'wrong';
-    return 'disabled';
-  };
+  // ══════════════════════════════════════════════════════════════════════
+  // ── Testing Phase ──────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════
 
-  // ── Question card rendering ────────────────────────────────────────────
+  const questionType = currentQuestion.question_type || 'en_to_ko';
+  const isTyping = isTypingQuestion(questionType);
+  const isListen = isListenQuestion(questionType);
   const isSentence = currentQuestion.context_mode === 'sentence' && currentQuestion.sentence_blank;
+  const totalQ = flatQuestions.length || questionCount;
 
+  // Question card renderer (shared between modes)
   const renderQuestionCard = () => {
+    // Per-question mode: use ListeningCard for listen questions (hides word, shows headphones)
+    if (timeMode === 'per_question' && isListen && !isSentence) {
+      return <ListeningCard english={currentQuestion.word.english} />;
+    }
+
     if (isSentence) {
-      if (isListen) {
-        return (
-          <ListenCard
-            word={currentQuestion.word.english}
-            stage={currentQuestion.stage}
-            korean={currentQuestion.word.korean || undefined}
-            sentenceKo={currentQuestion.word.example_ko}
-            contextMode="sentence"
-            sentenceBlank={currentQuestion.sentence_blank}
-            sentenceEn={currentQuestion.word.example_en}
-          />
-        );
-      }
       return (
         <SentenceBlankCard
           sentenceBlank={currentQuestion.sentence_blank!}
@@ -354,17 +436,169 @@ export function UnifiedTestPage() {
       case 'listen_en':
       case 'listen_ko':
       case 'listen_type':
-        return <ListenCard word={currentQuestion.word.english} stage={currentQuestion.stage} />;
+        // In exam mode, listen questions show the word as text
+        return <WordCard word={currentQuestion.word.english} />;
       default:
         return <WordCard word={currentQuestion.word.english} />;
     }
   };
 
-  // ── Main render ────────────────────────────────────────────────────────
+  // ── EXAM MODE (total time) ────────────────────────────────────────
+  if (timeMode === 'total') {
+    const selectedChoice = localAnswers[currentQuestionIndex] ?? null;
+    const typedValue = localTypedAnswers[currentQuestionIndex] ?? '';
+
+    return (
+      <div className="min-h-screen bg-bg-cream flex flex-col">
+        {/* Header */}
+        <div
+          className="flex items-center justify-between h-14 px-4 shrink-0"
+          style={{ borderBottom: '1px solid #E8E8E6', background: '#FFFFFF' }}
+        >
+          <button
+            onClick={handleExit}
+            className="flex items-center gap-1.5 h-10 px-3 rounded-xl transition-colors"
+            style={{ color: '#6D6C6A' }}
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="font-display text-sm font-medium">나가기</span>
+          </button>
+
+          {totalTimeSeconds > 0 && (
+            <TotalTimerDisplay
+              secondsLeft={totalTimer.secondsLeft}
+              totalSeconds={totalTimeSeconds}
+            />
+          )}
+
+          <button
+            onClick={() => setShowSubmitDialog(true)}
+            className="h-10 px-4 rounded-xl font-display text-sm font-bold text-white transition-opacity active:opacity-80"
+            style={{
+              background: 'linear-gradient(90deg, #4F46E5, #7C3AED)',
+              boxShadow: '0 2px 8px #4F46E530',
+            }}
+          >
+            제출하기
+          </button>
+        </div>
+
+        {/* Question Navigator */}
+        <div style={{ borderBottom: '1px solid #E8E8E6', background: '#FFFFFF' }}>
+          <QuestionNavigator
+            totalQuestions={totalQ}
+            currentIndex={currentQuestionIndex}
+            answeredIndexes={answeredIndexes}
+            onNavigate={store.goToQuestion}
+          />
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 flex flex-col justify-center items-center gap-5 px-5 py-6 md:px-8">
+          <div className="w-full md:w-[640px]">
+            <p className="font-display text-sm font-semibold" style={{ color: '#9C9B99' }}>
+              문제 {currentQuestionIndex + 1} / {totalQ}
+            </p>
+          </div>
+
+          <div className="w-full md:w-[640px]">{renderQuestionCard()}</div>
+
+          <div className="w-full md:w-[640px]">
+            {isTyping ? (
+              <TypingInput
+                value={typedValue}
+                onChange={(text) => store.setLocalTypedAnswer(currentQuestionIndex, text)}
+                onSubmit={store.goNext}
+                disabled={false}
+                isListenMode={isListen}
+              />
+            ) : (
+              <div className="flex flex-col gap-3 w-full">
+                {currentQuestion.choices?.map((choice, i) => (
+                  <ChoiceButton
+                    key={choice}
+                    index={i}
+                    text={choice}
+                    state={selectedChoice === choice ? 'selected' : 'default'}
+                    onClick={() => store.setLocalAnswer(currentQuestionIndex, choice)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom navigation */}
+        <div
+          className="shrink-0 flex items-center justify-between px-5 py-4 gap-3"
+          style={{ borderTop: '1px solid #E8E8E6', background: '#FFFFFF' }}
+        >
+          <button
+            onClick={store.goPrev}
+            disabled={currentQuestionIndex === 0}
+            className="flex items-center gap-1.5 h-12 px-5 rounded-2xl font-display text-[15px] font-semibold transition-all"
+            style={{
+              background: currentQuestionIndex === 0 ? '#F0EFED' : '#EDECEA',
+              color: currentQuestionIndex === 0 ? '#C5C4C2' : '#3D3D3C',
+            }}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            이전
+          </button>
+
+          <button
+            onClick={store.goNext}
+            disabled={currentQuestionIndex === totalQ - 1}
+            className="flex items-center gap-1.5 h-12 px-5 rounded-2xl font-display text-[15px] font-semibold transition-all"
+            style={{
+              background: currentQuestionIndex === totalQ - 1 ? '#F0EFED' : '#EEF2FF',
+              color: currentQuestionIndex === totalQ - 1 ? '#C5C4C2' : '#4F46E5',
+            }}
+          >
+            다음
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Submit confirmation dialog */}
+        <SubmitConfirmDialog
+          isOpen={showSubmitDialog}
+          totalQuestions={totalQ}
+          answeredCount={answeredIndexes.size}
+          onConfirm={handleSubmitConfirm}
+          onCancel={() => setShowSubmitDialog(false)}
+        />
+
+        {/* Error toast */}
+        {error && (
+          <div
+            className="fixed bottom-20 left-1/2 -translate-x-1/2 px-5 py-3 rounded-2xl font-display text-sm text-white"
+            style={{ background: '#EF4444', zIndex: 100 }}
+          >
+            {error}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── PER-QUESTION MODE ──────────────────────────────────────────────
+  const isLevelup = engineType === 'levelup';
+
+  const getPerQChoiceState = (choice: string): 'default' | 'selected' | 'correct' | 'wrong' | 'disabled' => {
+    if (!answerResult) {
+      return choice === selectedAnswer ? 'selected' : 'default';
+    }
+    // Feedback showing
+    if (choice === answerResult.correct_answer) return 'correct';
+    if (choice === selectedAnswer && !answerResult.is_correct) return 'wrong';
+    return 'disabled';
+  };
+
   return (
     <div className="min-h-screen bg-bg-cream flex flex-col">
       {/* Header */}
-      {engineType === 'levelup' ? (
+      {isLevelup ? (
         <MasteryHeader
           level={levelupProgress.currentBook}
           currentIndex={levelupProgress.totalAnswered}
@@ -378,44 +612,40 @@ export function UnifiedTestPage() {
           onExit={handleExit}
         />
       ) : (
-        <LegacyHeader
-          totalAnswered={legacyProgress.totalAnswered}
-          totalQuestions={legacyProgress.totalQuestions}
-          combo={legacyProgress.combo}
-          onExit={handleExit}
-        />
+        <div
+          className="flex items-center justify-between h-14 px-5"
+          style={{ borderBottom: '1px solid #E8E8E6' }}
+        >
+          <button
+            onClick={handleExit}
+            className="w-10 h-10 rounded-full flex items-center justify-center"
+          >
+            <ArrowLeft className="w-[22px] h-[22px] text-text-primary" />
+          </button>
+          <span className="font-display text-[15px] font-semibold text-text-secondary">
+            {store.totalAnswered + 1} / {totalQ}
+          </span>
+        </div>
       )}
 
-      {/* Progress Bar */}
-      <GradientProgressBar
-        current={totalAnswered + 1}
-        total={questionCount}
-      />
+      {/* Per-question timer */}
+      <div className="px-5 pt-3 md:px-8">
+        <TimerBar
+          secondsLeft={perQTimer.secondsLeft}
+          fraction={perQTimer.fraction}
+          urgency={perQTimer.urgency}
+        />
+      </div>
 
-      {/* Content Area */}
-      <div className="flex-1 flex flex-col justify-center items-center gap-6 px-5 py-6 md:px-8 md:gap-7">
-        {/* Timer */}
-        {!answerResult && (
-          <div className="w-full md:w-[640px]">
-            <TimerBar
-              secondsLeft={timer.secondsLeft}
-              fraction={timer.fraction}
-              urgency={timer.urgency}
-            />
-          </div>
-        )}
+      {/* Content */}
+      <div className="flex-1 flex flex-col justify-center items-center gap-5 px-5 py-6 md:px-8">
+        <div className="w-full md:w-[640px]">{renderQuestionCard()}</div>
 
-        {/* Question card */}
-        <div className="w-full md:w-[640px]">
-          {renderQuestionCard()}
-        </div>
-
-        {/* Answer area */}
         <div className="w-full md:w-[640px]">
           {isTyping ? (
             <TypingInput
               value={typedAnswer}
-              onChange={store.setTypedAnswer}
+              onChange={(text) => store.setTypedAnswer(text)}
               onSubmit={handleTypingSubmit}
               disabled={!!answerResult}
               isListenMode={isListen}
@@ -427,74 +657,34 @@ export function UnifiedTestPage() {
                   key={choice}
                   index={i}
                   text={choice}
-                  state={getChoiceState(choice) as any}
-                  onClick={() => handleChoiceClick(choice)}
+                  state={getPerQChoiceState(choice)}
+                  onClick={() => handlePerQuestionChoice(choice)}
                 />
               ))}
             </div>
           )}
         </div>
-      </div>
 
-      {/* Footer: feedback banner */}
-      <div className="min-h-[70px] px-5 md:px-8 flex items-center">
+        {/* Feedback banner */}
         {answerResult && (
-          <div className="w-full md:w-[640px] md:mx-auto">
+          <div className="w-full md:w-[640px]">
             <FeedbackBanner
               isCorrect={answerResult.is_correct}
               correctAnswer={answerResult.correct_answer}
             />
-            {answerResult.almost_correct && (
-              <div className="flex items-center gap-2.5 rounded-2xl bg-amber-50 border border-amber-200 px-5 py-3.5 w-full mt-2">
-                <span className="font-display text-sm font-semibold text-amber-700">
-                  거의 맞았어요! 정답: &lsquo;{answerResult.correct_answer}&rsquo;
-                </span>
-              </div>
-            )}
           </div>
         )}
       </div>
-    </div>
-  );
-}
 
-// ── Legacy Header (simple progress display) ──────────────────────────────────
-
-function LegacyHeader({
-  totalAnswered,
-  totalQuestions,
-  combo,
-  onExit,
-}: {
-  totalAnswered: number;
-  totalQuestions: number;
-  combo: number;
-  onExit: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between h-14 px-5 md:h-[60px] md:px-8 lg:h-16 lg:px-12 w-full">
-      {/* Left: back button */}
-      <button
-        onClick={onExit}
-        className="w-10 h-10 rounded-full flex items-center justify-center"
-      >
-        <ArrowLeft className="w-[22px] h-[22px] text-text-primary" />
-      </button>
-
-      {/* Center: progress + combo */}
-      <div className="flex items-center gap-3">
-        <span className="font-display text-[15px] font-bold text-text-primary">
-          {totalAnswered + 1} / {totalQuestions}
-        </span>
-        {combo >= 2 && (
-          <span className="font-display text-xs font-bold text-amber-500">
-            {combo} combo
-          </span>
-        )}
-      </div>
-
-      {/* Right: spacer for alignment */}
-      <div className="w-10 h-10" />
+      {/* Error toast */}
+      {error && (
+        <div
+          className="fixed bottom-20 left-1/2 -translate-x-1/2 px-5 py-3 rounded-2xl font-display text-sm text-white"
+          style={{ background: '#EF4444', zIndex: 100 }}
+        >
+          {error}
+        </div>
+      )}
     </div>
   );
 }

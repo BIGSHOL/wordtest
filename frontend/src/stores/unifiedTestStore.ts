@@ -1,8 +1,10 @@
 /**
- * Unified Test Store - handles both Level-Up (adaptive) and Legacy (fixed) engines.
+ * Unified Test Store - dual mode support.
  *
- * Level-Up: XP-based adaptive difficulty within teacher's book range.
- * Legacy: Fixed difficulty, all questions served in easy→hard order.
+ * time_mode = 'per_question': per-question timer, immediate feedback, auto-advance
+ * time_mode = 'total': exam mode — briefing, free navigation, batch submit
+ *
+ * Both modes: idle → briefing → testing → (submitting) → complete
  */
 import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
@@ -16,14 +18,10 @@ import {
   type AnswerResult,
   type StartLevelupResponse,
   type StartLegacyResponse,
+  type BatchAnswerItem,
 } from '../services/unifiedTest';
 
-const DEFAULT_QUESTION_COUNT = 50;
-
-/** Track ongoing prefetches to avoid duplicate requests */
-const _prefetchingLevels = new Set<number>();
-
-// ── XP Configuration (reused from masteryStore) ─────────────────────────────
+// ── XP (per-question mode, levelup engine) ──────────────────────────────────
 
 function getLessonXp(book: number): number {
   return 4 + book;
@@ -45,7 +43,6 @@ function computeXpChange(params: {
   consecutiveWrong: number;
 }): XpBreakdown {
   const { isCorrect, questionLevel, currentBook, timeTaken, combo, consecutiveWrong } = params;
-
   if (isCorrect) {
     const base = questionLevel < currentBook
       ? Math.max(4, currentBook)
@@ -67,11 +64,18 @@ function computeXpChange(params: {
   }
 }
 
+/** Track ongoing prefetches to avoid duplicate requests */
+const _prefetchingLevels = new Set<number>();
+
 // ── Store Interface ─────────────────────────────────────────────────────────
 
 export interface UnifiedTestStore {
-  // Engine mode
+  // Mode
   engineType: 'levelup' | 'legacy' | null;
+  timeMode: 'per_question' | 'total';
+
+  // Phase: idle → briefing → testing → submitting → complete
+  phase: 'idle' | 'briefing' | 'testing' | 'submitting' | 'complete';
 
   // Session
   sessionId: string | null;
@@ -79,6 +83,23 @@ export interface UnifiedTestStore {
   studentName: string;
   questionCount: number;
   perQuestionTime: number;
+  totalTimeSeconds: number;
+
+  // Briefing info
+  briefingInfo: {
+    bookName: string | null;
+    bookNameEnd: string | null;
+    lessonStart: string | null;
+    lessonEnd: string | null;
+  } | null;
+
+  // Flat question list (both modes use this for navigation)
+  flatQuestions: UnifiedQuestion[];
+  currentQuestionIndex: number;
+
+  // Local answers (exam mode: stored until batch submit)
+  localAnswers: Record<number, string>;
+  localTypedAnswers: Record<number, string>;
 
   // Level-Up specific
   levelPools: Record<number, UnifiedQuestion[]>;
@@ -94,22 +115,22 @@ export interface UnifiedTestStore {
   questions: UnifiedQuestion[];
   currentIndex: number;
 
+  // Per-question mode answer state
+  selectedAnswer: string | null;
+  typedAnswer: string;
+  answerResult: AnswerResult | null;
+  feedbackQuestion: UnifiedQuestion | null;
+  consecutiveWrong: number;
+  isSubmitting: boolean;
+
   // Shared progress
   totalAnswered: number;
   correctCount: number;
   combo: number;
   bestCombo: number;
-  consecutiveWrong: number;
-
-  // Answer state
-  selectedAnswer: string | null;
-  typedAnswer: string;
-  answerResult: AnswerResult | null;
-  feedbackQuestion: UnifiedQuestion | null;
 
   // UI state
   isLoading: boolean;
-  isSubmitting: boolean;
   error: string | null;
   isComplete: boolean;
   finalResult: {
@@ -120,43 +141,59 @@ export interface UnifiedTestStore {
     bestCombo?: number;
   } | null;
 
-  // Actions
+  // Actions — shared
   startLevelup: (code: string, allowRestart?: boolean) => Promise<StartLevelupResponse>;
   startLegacy: (code: string, allowRestart?: boolean) => Promise<StartLegacyResponse>;
+  startExam: () => void;
+  goToQuestion: (index: number) => void;
+  goNext: () => void;
+  goPrev: () => void;
+  setLocalAnswer: (index: number, answer: string) => void;
+  setLocalTypedAnswer: (index: number, text: string) => void;
+  reset: () => void;
+
+  // Actions — exam mode (total time)
+  submitAllAnswers: () => Promise<void>;
+
+  // Actions — per-question mode
   selectAnswer: (answer: string) => void;
   setTypedAnswer: (text: string) => void;
   submitAnswer: (timeTaken: number, isTimeout?: boolean) => Promise<AnswerResult | null>;
   nextQuestion: () => void;
   complete: () => Promise<void>;
-  reset: () => void;
 }
 
 // ── Helper: get current question ────────────────────────────────────────────
 
 export function useCurrentQuestion(): UnifiedQuestion | null {
   return useUnifiedTestStore(state => {
-    if (state.feedbackQuestion) return state.feedbackQuestion;
-    if (state.engineType === 'levelup') {
-      const pool = state.levelPools[state.currentBook];
-      const idx = state.poolIndex[state.currentBook] ?? 0;
-      return pool?.[idx] ?? null;
+    if (state.timeMode === 'per_question' && state.feedbackQuestion) {
+      return state.feedbackQuestion;
     }
-    if (state.engineType === 'legacy') {
-      return state.questions[state.currentIndex] ?? null;
-    }
-    return null;
+    return state.flatQuestions[state.currentQuestionIndex] ?? null;
   });
 }
 
-// ── Store ────────────────────────────────────────────────────────────────────
+// ── Initial State ───────────────────────────────────────────────────────────
 
 const initialState = {
   engineType: null as 'levelup' | 'legacy' | null,
+  timeMode: 'per_question' as 'per_question' | 'total',
+  phase: 'idle' as UnifiedTestStore['phase'],
   sessionId: null as string | null,
   assignmentId: null as string | null,
   studentName: '',
-  questionCount: DEFAULT_QUESTION_COUNT,
+  questionCount: 0,
   perQuestionTime: 10,
+  totalTimeSeconds: 0,
+
+  briefingInfo: null as UnifiedTestStore['briefingInfo'],
+
+  flatQuestions: [] as UnifiedQuestion[],
+  currentQuestionIndex: 0,
+
+  localAnswers: {} as Record<number, string>,
+  localTypedAnswers: {} as Record<number, string>,
 
   levelPools: {} as Record<number, UnifiedQuestion[]>,
   poolIndex: {} as Record<number, number>,
@@ -170,23 +207,25 @@ const initialState = {
   questions: [] as UnifiedQuestion[],
   currentIndex: 0,
 
-  totalAnswered: 0,
-  correctCount: 0,
-  combo: 0,
-  bestCombo: 0,
-  consecutiveWrong: 0,
-
   selectedAnswer: null as string | null,
   typedAnswer: '',
   answerResult: null as AnswerResult | null,
   feedbackQuestion: null as UnifiedQuestion | null,
+  consecutiveWrong: 0,
+  isSubmitting: false,
+
+  totalAnswered: 0,
+  correctCount: 0,
+  combo: 0,
+  bestCombo: 0,
 
   isLoading: false,
-  isSubmitting: false,
   error: null as string | null,
   isComplete: false,
   finalResult: null as UnifiedTestStore['finalResult'],
 };
+
+// ── Store ───────────────────────────────────────────────────────────────────
 
 export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
   ...initialState,
@@ -198,7 +237,6 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
     try {
       const response = await unifiedTestService.startLevelup(code, allowRestart);
 
-      // Set auth token for unauthenticated student access
       if (response.access_token) {
         useAuthStore.getState().setTokenDirect(response.access_token, {
           id: response.student_id,
@@ -215,26 +253,45 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
       const indexes: Record<number, number> = {};
       for (const q of response.questions) {
         const level = q.word.level;
-        if (!pools[level]) {
-          pools[level] = [];
-          indexes[level] = 0;
-        }
+        if (!pools[level]) { pools[level] = []; indexes[level] = 0; }
         pools[level].push(q);
       }
 
+      // Flatten by level ascending
+      const sortedLevels = [...response.available_levels].sort((a, b) => a - b);
+      const flat: UnifiedQuestion[] = [];
+      for (const level of sortedLevels) {
+        if (pools[level]) flat.push(...pools[level]);
+      }
+
+      const tm = response.time_mode || 'per_question';
+
       set({
         engineType: 'levelup',
+        timeMode: tm,
+        phase: 'briefing',
         sessionId: response.session_id,
         assignmentId: response.assignment_id,
         studentName: response.student_name,
         questionCount: response.question_count,
         perQuestionTime: response.per_question_time,
+        totalTimeSeconds: response.total_time_seconds,
         currentBook: response.current_level,
         availableLevels: response.available_levels,
         levelInfo: response.level_info,
         levelPools: pools,
         poolIndex: indexes,
+        flatQuestions: flat,
+        currentQuestionIndex: 0,
+        localAnswers: {},
+        localTypedAnswers: {},
         xp: 0,
+        briefingInfo: {
+          bookName: response.book_name ?? null,
+          bookNameEnd: response.book_name_end ?? null,
+          lessonStart: response.lesson_range_start ?? null,
+          lessonEnd: response.lesson_range_end ?? null,
+        },
         isLoading: false,
       });
 
@@ -263,15 +320,30 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
         } as User);
       }
 
+      const tm = response.time_mode || 'per_question';
+
       set({
         engineType: 'legacy',
+        timeMode: tm,
+        phase: 'briefing',
         sessionId: response.session_id,
         assignmentId: response.assignment_id,
         studentName: response.student_name,
         questionCount: response.question_count,
         perQuestionTime: response.per_question_time,
+        totalTimeSeconds: response.total_time_seconds,
         questions: response.questions,
+        flatQuestions: response.questions,
+        currentQuestionIndex: 0,
         currentIndex: 0,
+        localAnswers: {},
+        localTypedAnswers: {},
+        briefingInfo: {
+          bookName: response.book_name ?? null,
+          bookNameEnd: response.book_name_end ?? null,
+          lessonStart: response.lesson_range_start ?? null,
+          lessonEnd: response.lesson_range_end ?? null,
+        },
         isLoading: false,
       });
 
@@ -282,30 +354,105 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
     }
   },
 
-  // ── Answer Selection ────────────────────────────────────────────────
+  // ── Shared Actions ─────────────────────────────────────────────────
+
+  startExam: () => set({ phase: 'testing' }),
+
+  goToQuestion: (index) => {
+    const { flatQuestions } = get();
+    if (index >= 0 && index < flatQuestions.length) {
+      set({ currentQuestionIndex: index });
+    }
+  },
+
+  goNext: () => {
+    const { currentQuestionIndex, flatQuestions } = get();
+    if (currentQuestionIndex < flatQuestions.length - 1) {
+      set({ currentQuestionIndex: currentQuestionIndex + 1 });
+    }
+  },
+
+  goPrev: () => {
+    const { currentQuestionIndex } = get();
+    if (currentQuestionIndex > 0) {
+      set({ currentQuestionIndex: currentQuestionIndex - 1 });
+    }
+  },
+
+  setLocalAnswer: (index, answer) => {
+    set(state => ({ localAnswers: { ...state.localAnswers, [index]: answer } }));
+  },
+
+  setLocalTypedAnswer: (index, text) => {
+    set(state => ({ localTypedAnswers: { ...state.localTypedAnswers, [index]: text } }));
+  },
+
+  reset: () => {
+    _prefetchingLevels.clear();
+    set(initialState);
+  },
+
+  // ══════════════════════════════════════════════════════════════════════
+  // ── Exam Mode (total time) ────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════
+
+  submitAllAnswers: async () => {
+    const state = get();
+    if (!state.sessionId || state.phase !== 'testing' || state.timeMode !== 'total') return;
+    set({ phase: 'submitting' });
+
+    try {
+      const answers: BatchAnswerItem[] = state.flatQuestions.map((q, i) => ({
+        word_mastery_id: q.word_mastery_id,
+        selected_answer: q.choices
+          ? (state.localAnswers[i] || '')
+          : (state.localTypedAnswers[i] || ''),
+        question_type: q.question_type,
+      }));
+
+      if (state.engineType === 'levelup') {
+        const result = await unifiedTestService.submitLevelupBatch(
+          state.sessionId, answers, state.availableLevels, state.availableLevels[0] || 1,
+        );
+        set({
+          phase: 'complete', isComplete: true,
+          finalResult: {
+            accuracy: result.accuracy, totalAnswered: result.total_answered,
+            correctCount: result.correct_count, finalLevel: result.final_level,
+            bestCombo: result.best_combo,
+          },
+        });
+      } else {
+        const result = await unifiedTestService.submitLegacyBatch(state.sessionId, answers);
+        set({
+          phase: 'complete', isComplete: true,
+          finalResult: {
+            accuracy: result.accuracy, totalAnswered: result.total_answered,
+            correctCount: result.correct_count,
+          },
+        });
+      }
+    } catch (e) {
+      set({ phase: 'testing', error: getErrorMessage(e, '제출 중 오류가 발생했습니다') });
+    }
+  },
+
+  // ══════════════════════════════════════════════════════════════════════
+  // ── Per-Question Mode ─────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════
 
   selectAnswer: (answer) => set({ selectedAnswer: answer }),
   setTypedAnswer: (text) => set({ typedAnswer: text }),
 
-  // ── Submit Answer ───────────────────────────────────────────────────
-
   submitAnswer: async (timeTaken, isTimeout = false) => {
     const state = get();
+    if (state.timeMode !== 'per_question') return null;
     if (state.isSubmitting || !state.sessionId) return null;
 
-    const question = state.feedbackQuestion
-      ? null  // Already submitted, shouldn't happen
-      : state.engineType === 'levelup'
-        ? state.levelPools[state.currentBook]?.[state.poolIndex[state.currentBook] ?? 0]
-        : state.questions[state.currentIndex];
-
+    const question = state.flatQuestions[state.currentQuestionIndex];
     if (!question) return null;
 
-    const selectedAnswer = question.choices
-      ? state.selectedAnswer
-      : state.typedAnswer;
-
-    // Allow timeout submits even without an answer selected
+    const selectedAnswer = question.choices ? state.selectedAnswer : state.typedAnswer;
     if (!selectedAnswer && !isTimeout) return null;
 
     set({ isSubmitting: true });
@@ -328,7 +475,7 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
       const newConsecutiveWrong = result.is_correct ? 0 : state.consecutiveWrong + 1;
       const newTotalAnswered = state.totalAnswered + 1;
 
-      // Level-Up: compute XP change and handle level transitions
+      // Level-Up: XP
       let newXp = state.xp;
       let newBook = state.currentBook;
       let xpChange: XpBreakdown | null = null;
@@ -344,30 +491,23 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
           consecutiveWrong: newConsecutiveWrong,
         });
         newXp = state.xp + xpChange.total;
-
         const lessonXp = getLessonXp(state.currentBook);
 
-        // Level up
         if (newXp >= lessonXp) {
           const nextLevels = state.availableLevels.filter(l => l > state.currentBook);
           if (nextLevels.length > 0) {
-            newBook = nextLevels[0];
-            newXp = 0;
-            levelChanged = 'up';
-            // Prefetch questions for new level
+            newBook = nextLevels[0]; newXp = 0; levelChanged = 'up';
             _prefetchLevel(state.sessionId!, newBook);
           }
-        }
-        // Level down
-        else if (newXp < 0) {
+        } else if (newXp < 0) {
           const prevLevels = state.availableLevels.filter(l => l < state.currentBook);
           if (prevLevels.length > 0) {
             newBook = prevLevels[prevLevels.length - 1];
-            newXp = Math.floor(getLessonXp(newBook) / 2); // Start at mid-XP
+            newXp = Math.floor(getLessonXp(newBook) / 2);
             levelChanged = 'down';
             _prefetchLevel(state.sessionId!, newBook);
           } else {
-            newXp = 0; // Can't go below level 1
+            newXp = 0;
           }
         }
       }
@@ -394,77 +534,49 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
     }
   },
 
-  // ── Next Question ───────────────────────────────────────────────────
-
   nextQuestion: () => {
     const state = get();
+    if (state.timeMode !== 'per_question') return;
 
-    // Check if test is complete
     if (state.totalAnswered >= state.questionCount) {
-      // Auto-complete
       get().complete();
       return;
     }
 
-    if (state.engineType === 'levelup') {
-      const currentPool = state.levelPools[state.currentBook] ?? [];
-      const currentIdx = (state.poolIndex[state.currentBook] ?? 0) + 1;
-
-      // If pool exhausted, try to prefetch
-      if (currentIdx >= currentPool.length) {
-        _prefetchLevel(state.sessionId!, state.currentBook);
-      }
-
-      set({
-        poolIndex: { ...state.poolIndex, [state.currentBook]: currentIdx },
-        selectedAnswer: null,
-        typedAnswer: '',
-        answerResult: null,
-        feedbackQuestion: null,
-        levelChanged: null,
-      });
-    } else {
-      // Legacy: simply advance index
-      set({
-        currentIndex: state.currentIndex + 1,
-        selectedAnswer: null,
-        typedAnswer: '',
-        answerResult: null,
-        feedbackQuestion: null,
-      });
-    }
+    // Per-question mode uses currentQuestionIndex
+    set({
+      currentQuestionIndex: state.currentQuestionIndex + 1,
+      selectedAnswer: null,
+      typedAnswer: '',
+      answerResult: null,
+      feedbackQuestion: null,
+      levelChanged: null,
+    });
   },
-
-  // ── Complete ────────────────────────────────────────────────────────
 
   complete: async () => {
     const state = get();
-    if (!state.sessionId) return;
+    if (!state.sessionId || state.timeMode !== 'per_question') return;
 
     try {
       if (state.engineType === 'levelup') {
         const result = await unifiedTestService.completeLevelup(
-          state.sessionId,
-          state.currentBook,
-          state.bestCombo,
+          state.sessionId, state.currentBook, state.bestCombo,
         );
         set({
-          isComplete: true,
+          phase: 'complete', isComplete: true,
           finalResult: {
-            accuracy: result.accuracy,
-            totalAnswered: result.total_answered,
-            correctCount: result.correct_count,
-            finalLevel: result.final_level,
+            accuracy: result.accuracy, totalAnswered: result.total_answered,
+            correctCount: result.correct_count, finalLevel: result.final_level,
             bestCombo: result.best_combo,
           },
         });
       } else {
         const result = await unifiedTestService.completeLegacy(state.sessionId);
         set({
-          isComplete: true,
+          phase: 'complete', isComplete: true,
           finalResult: {
-            accuracy: result.accuracy,
-            totalAnswered: result.total_answered,
+            accuracy: result.accuracy, totalAnswered: result.total_answered,
             correctCount: result.correct_count,
           },
         });
@@ -473,39 +585,25 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
       set({ error: getErrorMessage(e, '오류가 발생했습니다') });
     }
   },
-
-  // ── Reset ───────────────────────────────────────────────────────────
-
-  reset: () => {
-    _prefetchingLevels.clear();
-    set(initialState);
-  },
 }));
 
-// ── Prefetch Helper ─────────────────────────────────────────────────────────
+// ── Prefetch Helper (per-question levelup) ──────────────────────────────────
 
 async function _prefetchLevel(sessionId: string, level: number) {
   if (_prefetchingLevels.has(level)) return;
   _prefetchingLevels.add(level);
-
   try {
     const response = await unifiedTestService.fetchLevelQuestions(sessionId, level);
     const state = useUnifiedTestStore.getState();
     const existingPool = state.levelPools[level] ?? [];
     const existingIds = new Set(existingPool.map(q => q.word_mastery_id));
     const newQuestions = response.questions.filter(q => !existingIds.has(q.word_mastery_id));
-
     if (newQuestions.length > 0) {
       useUnifiedTestStore.setState({
-        levelPools: {
-          ...state.levelPools,
-          [level]: [...existingPool, ...newQuestions],
-        },
+        levelPools: { ...state.levelPools, [level]: [...existingPool, ...newQuestions] },
       });
     }
-  } catch {
-    // Silent fail for prefetch
-  } finally {
+  } catch { /* silent */ } finally {
     _prefetchingLevels.delete(level);
   }
 }
@@ -519,7 +617,7 @@ export function useLevelupProgress() {
     lessonXp: getLessonXp(state.currentBook),
     rank: wordLevelToRank(state.currentBook),
     totalAnswered: state.totalAnswered,
-    questionCount: state.questionCount,
+    questionCount: state.flatQuestions.length || state.questionCount,
     combo: state.combo,
     bestCombo: state.bestCombo,
     correctCount: state.correctCount,
@@ -530,8 +628,8 @@ export function useLevelupProgress() {
 
 export function useLegacyProgress() {
   return useUnifiedTestStore(useShallow(state => ({
-    currentIndex: state.currentIndex,
-    totalQuestions: state.questions.length,
+    currentIndex: state.currentQuestionIndex,
+    totalQuestions: state.flatQuestions.length,
     totalAnswered: state.totalAnswered,
     correctCount: state.correctCount,
     combo: state.combo,

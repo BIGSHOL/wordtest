@@ -21,6 +21,7 @@ from app.models.learning_answer import LearningAnswer
 from app.models.word_mastery import WordMastery
 from app.models.auth_token import AuthToken
 from app.models.tts_cache import TtsCache
+from app.models.word_example import WordExample
 
 
 # ── DB ────────────────────────────────────────────────────────────────────────

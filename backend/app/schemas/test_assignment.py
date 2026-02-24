@@ -14,6 +14,7 @@ class AssignTestRequest(BaseModel):
     book_name_end: Optional[str] = None
     lesson_range_start: Optional[str] = None
     lesson_range_end: Optional[str] = None
+    total_time_override_seconds: Optional[int] = None
 
 
 class TestAssignmentResponse(BaseModel):

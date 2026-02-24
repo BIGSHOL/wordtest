@@ -134,7 +134,7 @@ async def get_words_for_config(db: AsyncSession, config: TestConfig) -> list[Wor
 
     Supports cross-book ranges when book_name != book_name_end.
     """
-    query = select(Word).where(
+    query = select(Word).options(selectinload(Word.examples)).where(
         Word.level >= config.level_range_min,
         Word.level <= config.level_range_max,
         Word.is_excluded == False,
@@ -576,14 +576,18 @@ def generate_questions_for_words(
         spec = engine.generate(word, pool)
         mastery = mastery_map.get(word.id)
 
+        # Use engine-selected example if available, else fallback to word columns
+        q_example_en = spec.sentence_en or word.example_en
+        q_example_ko = spec.sentence_ko or word.example_ko
+
         questions.append({
             "word_mastery_id": mastery.id if mastery else "",
             "word": {
                 "id": word.id,
                 "english": word.english,
                 "korean": word.korean,
-                "example_en": word.example_en,
-                "example_ko": word.example_ko,
+                "example_en": q_example_en,
+                "example_ko": q_example_ko,
                 "level": word.level,
                 "lesson": word.lesson,
                 "part_of_speech": word.part_of_speech,
@@ -626,3 +630,96 @@ def is_typing_question(question_type: str | None) -> bool:
         return False
     canonical = resolve_name(question_type)
     return canonical in ("listen_type", "ko_type")
+
+
+# ── Batch Answer Processing ───────────────────────────────────────────────────
+
+async def process_batch_answers(
+    db: AsyncSession,
+    session_id: str,
+    answers: list[dict],  # each has word_mastery_id, selected_answer, question_type
+) -> list[dict]:
+    """Process all answers in a batch. Returns list of result dicts."""
+    session_result = await db.execute(
+        select(LearningSession).where(LearningSession.id == session_id)
+    )
+    session = session_result.scalar_one_or_none()
+    if not session:
+        raise ValueError("Session not found")
+
+    # Gather all mastery IDs
+    mastery_ids = [a["word_mastery_id"] for a in answers]
+    mastery_result = await db.execute(
+        select(WordMastery).where(WordMastery.id.in_(mastery_ids))
+    )
+    mastery_map = {m.id: m for m in mastery_result.scalars().all()}
+
+    # Gather all word IDs
+    word_ids = [m.word_id for m in mastery_map.values()]
+    word_result = await db.execute(
+        select(Word).where(Word.id.in_(word_ids))
+    )
+    word_map = {w.id: w for w in word_result.scalars().all()}
+
+    results = []
+    correct_count = 0
+
+    for ans in answers:
+        mastery = mastery_map.get(ans["word_mastery_id"])
+        if not mastery:
+            results.append({"is_correct": False, "correct_answer": ""})
+            continue
+
+        word = word_map.get(mastery.word_id)
+        if not word:
+            results.append({"is_correct": False, "correct_answer": ""})
+            continue
+
+        question_type = ans.get("question_type")
+        selected = ans["selected_answer"]
+        correct = determine_correct_answer(word, question_type)
+
+        is_correct = False
+        if not selected:  # unanswered = wrong
+            is_correct = False
+        elif is_typing_question(question_type):
+            is_correct, _ = check_typing_answer(selected, correct)
+        else:
+            is_correct = selected.strip() == correct.strip()
+
+        # Update mastery
+        mastery.total_attempts += 1
+        mastery.last_practiced_at = now_kst()
+        if is_correct:
+            mastery.total_correct += 1
+            correct_count += 1
+
+        # Resolve canonical question type
+        canonical_qt = resolve_name(question_type) if question_type else "en_to_ko"
+
+        # Create LearningAnswer
+        learning_answer = LearningAnswer(
+            id=str(uuid.uuid4()),
+            session_id=session_id,
+            word_mastery_id=ans["word_mastery_id"],
+            word_id=mastery.word_id,
+            stage=1,
+            is_correct=is_correct,
+            selected_answer=selected,
+            correct_answer=correct,
+            time_taken_sec=None,  # no per-question timing in exam mode
+            question_type=canonical_qt,
+        )
+        db.add(learning_answer)
+
+        results.append({
+            "is_correct": is_correct,
+            "correct_answer": correct,
+            "word_level": word.level,
+        })
+
+    # Update session counters
+    session.words_practiced = len(answers)
+    session.words_advanced = correct_count
+
+    return results

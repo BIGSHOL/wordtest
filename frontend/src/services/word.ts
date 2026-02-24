@@ -3,6 +3,13 @@
  */
 import api from './api';
 
+export interface WordExample {
+  id: string;
+  example_en: string;
+  example_ko: string;
+  order_index: number;
+}
+
 export interface Word {
   id: string;
   english: string;
@@ -14,6 +21,7 @@ export interface Word {
   part_of_speech: string | null;
   example_en: string | null;
   example_ko: string | null;
+  examples: WordExample[];
   created_at: string;
 }
 

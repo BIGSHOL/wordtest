@@ -168,6 +168,7 @@ export function RegisterPage() {
                   name="name"
                   type="text"
                   autoComplete="name"
+                  required
                   value={formData.name}
                   onChange={handleChange}
                   className="h-12 px-3.5 rounded-lg border border-[#E5E4E1] bg-white text-sm text-[#1A1918] placeholder-[#9C9B99] focus:outline-none focus:border-[#2D9CAE] focus:ring-1 focus:ring-[#2D9CAE] transition-colors"

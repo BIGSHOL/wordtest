@@ -3,6 +3,7 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from app.db.session import get_db
 from app.schemas.word import (
     CreateWordRequest,
@@ -61,6 +62,7 @@ async def list_words(
     total = total_result.scalar() or 0
 
     # Get paginated results
+    query = query.options(selectinload(Word.examples))
     query = query.offset(skip).limit(limit).order_by(Word.level, Word.english)
     result = await db.execute(query)
     words = result.scalars().all()
@@ -196,7 +198,9 @@ async def engine_audit(
     teacher: CurrentTeacher,
 ):
     """Return engine compatibility audit report based on stored compatible_engines."""
-    result = await db.execute(select(Word).where(Word.is_excluded == False))
+    result = await db.execute(
+        select(Word).options(selectinload(Word.examples)).where(Word.is_excluded == False)
+    )
     words = result.scalars().all()
 
     total = len(words)
@@ -222,7 +226,8 @@ async def engine_audit(
             issues = []
             if not w.korean:
                 issues.append("korean 누락")
-            if not w.example_en:
+            has_example = bool(w.examples) or bool(w.example_en)
+            if not has_example:
                 issues.append("example_en 누락")
             issue = ", ".join(issues) if issues else f"엔진 {len(engines)}개만 호환"
 

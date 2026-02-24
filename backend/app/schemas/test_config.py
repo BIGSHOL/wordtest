@@ -18,6 +18,7 @@ class TestConfigResponse(BaseModel):
     level_range_min: int
     level_range_max: int
     per_question_time_seconds: Optional[int] = None
+    total_time_override_seconds: Optional[int] = None
     question_types: Optional[str] = None
     lesson_range_start: Optional[str] = None
     lesson_range_end: Optional[str] = None
@@ -35,6 +36,7 @@ class CreateTestConfigRequest(BaseModel):
     level_range_min: int = 1
     level_range_max: int = 15
     per_question_time_seconds: Optional[int] = None
+    total_time_override_seconds: Optional[int] = None
     question_types: Optional[str] = None
     lesson_range_start: Optional[str] = None
     lesson_range_end: Optional[str] = None
@@ -50,6 +52,7 @@ class UpdateTestConfigRequest(BaseModel):
     level_range_min: Optional[int] = None
     level_range_max: Optional[int] = None
     per_question_time_seconds: Optional[int] = None
+    total_time_override_seconds: Optional[int] = None
     question_types: Optional[str] = None
     lesson_range_start: Optional[str] = None
     lesson_range_end: Optional[str] = None

@@ -13,6 +13,7 @@ export interface AssignTestRequest {
   book_name_end?: string;
   lesson_range_start?: string;
   lesson_range_end?: string;
+  total_time_override_seconds?: number;
 }
 
 export interface TestAssignmentItem {

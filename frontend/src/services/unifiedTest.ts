@@ -53,7 +53,13 @@ export interface StartLevelupResponse {
   level_info: Record<number, number>;
   available_levels: number[];
   per_question_time: number;
+  total_time_seconds: number;
+  time_mode: 'per_question' | 'total';
   access_token: string;
+  book_name: string | null;
+  book_name_end: string | null;
+  lesson_range_start: string | null;
+  lesson_range_end: string | null;
 }
 
 export interface LevelupBatchResponse {
@@ -81,10 +87,38 @@ export interface StartLegacyResponse {
   student_id: string;
   engine_type: 'legacy';
   per_question_time: number;
+  total_time_seconds: number;
+  time_mode: 'per_question' | 'total';
   access_token: string;
+  book_name: string | null;
+  book_name_end: string | null;
+  lesson_range_start: string | null;
+  lesson_range_end: string | null;
 }
 
 export interface CompleteLegacyResponse {
+  accuracy: number;
+  total_answered: number;
+  correct_count: number;
+}
+
+// ── Exam Mode Batch Types ────────────────────────────────────────────────────
+
+export interface BatchAnswerItem {
+  word_mastery_id: string;
+  selected_answer: string;
+  question_type?: string;
+}
+
+export interface LevelupBatchSubmitResult {
+  final_level: number;
+  accuracy: number;
+  total_answered: number;
+  correct_count: number;
+  best_combo: number;
+}
+
+export interface LegacyBatchSubmitResult {
   accuracy: number;
   total_answered: number;
   correct_count: number;
@@ -189,6 +223,30 @@ export const unifiedTestService = {
     const response = await api.post<CompleteLegacyResponse>(
       '/api/v1/legacy/complete',
       { session_id: sessionId },
+    );
+    return response.data;
+  },
+
+  async submitLevelupBatch(
+    sessionId: string,
+    answers: BatchAnswerItem[],
+    availableLevels: number[],
+    startingLevel: number,
+  ): Promise<LevelupBatchSubmitResult> {
+    const response = await api.post<LevelupBatchSubmitResult>(
+      `/api/v1/levelup/${sessionId}/submit-batch`,
+      { answers, available_levels: availableLevels, starting_level: startingLevel },
+    );
+    return response.data;
+  },
+
+  async submitLegacyBatch(
+    sessionId: string,
+    answers: BatchAnswerItem[],
+  ): Promise<LegacyBatchSubmitResult> {
+    const response = await api.post<LegacyBatchSubmitResult>(
+      `/api/v1/legacy/${sessionId}/submit-batch`,
+      { answers },
     );
     return response.data;
   },

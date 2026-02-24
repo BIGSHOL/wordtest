@@ -4,6 +4,15 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 
+class WordExampleResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    example_en: str
+    example_ko: str
+    order_index: int
+
+
 class WordResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -17,6 +26,7 @@ class WordResponse(BaseModel):
     part_of_speech: Optional[str] = None
     example_en: Optional[str] = None
     example_ko: Optional[str] = None
+    examples: list[WordExampleResponse] = []
     compatible_engines: Optional[str] = None
     created_at: Optional[datetime] = None
 

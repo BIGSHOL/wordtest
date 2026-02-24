@@ -76,6 +76,7 @@ async def start_session(
     question_types = _parse_question_types(config.question_types)
     timer_seconds = config.per_question_time_seconds or 10
     question_count = config.question_count or 20
+    total_time = config.total_time_override_seconds or question_count * timer_seconds
 
     # Filter to words compatible with selected question types (e.g. emoji-only)
     compatible = filter_compatible_words(filtered, question_types)
@@ -107,6 +108,12 @@ async def start_session(
         "student_id": assignment.student_id,
         "engine_type": "legacy",
         "per_question_time": timer_seconds,
+        "total_time_seconds": total_time,
+        "time_mode": "total" if config.total_time_override_seconds else "per_question",
+        "book_name": config.book_name,
+        "book_name_end": config.book_name_end or config.book_name,
+        "lesson_range_start": config.lesson_range_start,
+        "lesson_range_end": config.lesson_range_end,
     }
 
 
@@ -208,6 +215,40 @@ async def complete_session(
     total_count, correct_count, accuracy = await compute_accuracy(db, session_id)
 
     # Mark assignment completed
+    if session.assignment_id:
+        await mark_assignment_completed(db, session.assignment_id)
+
+    await db.commit()
+
+    return {
+        "accuracy": accuracy,
+        "total_answered": total_count,
+        "correct_count": correct_count,
+    }
+
+
+async def submit_batch_and_complete(
+    db: AsyncSession,
+    session_id: str,
+    answers: list[dict],
+) -> dict:
+    """Submit all answers in batch and complete the session."""
+    from app.services.test_common import process_batch_answers
+
+    await process_batch_answers(db, session_id, answers)
+
+    # Complete session
+    session_result = await db.execute(
+        select(LearningSession).where(LearningSession.id == session_id)
+    )
+    session = session_result.scalar_one_or_none()
+    if not session:
+        raise ValueError("Session not found")
+
+    session.completed_at = now_kst()
+
+    total_count, correct_count, accuracy = await compute_accuracy(db, session_id)
+
     if session.assignment_id:
         await mark_assignment_completed(db, session.assignment_id)
 

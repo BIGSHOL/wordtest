@@ -31,11 +31,16 @@ export function TestSettingsPage() {
 
   // Config
   const [config, setConfig] = useState<TestConfigState>({
-    engine: 'levelup',
+    timeMode: 'per_question',
+    perQuestionTime: 10,
+    totalTime: 300,
+    customTotalTime: '',
     questionCount: 20,
     customQuestionCount: '',
-    perQuestionTime: 10,
+    questionSelectionMode: 'engine',
     questionTypes: ['en_to_ko', 'ko_to_en'],
+    skillAreas: [],
+    engine: 'levelup',
     bookStart: '',
     bookEnd: '',
     lessonStart: '',
@@ -79,8 +84,9 @@ export function TestSettingsPage() {
     fetchCounts();
   }, [config.bookStart, config.bookEnd, config.lessonStart, config.lessonEnd]);
 
-  // Auto-deselect question types that become disabled when range changes
+  // Auto-deselect question types that become disabled when range changes (engine mode only)
   useEffect(() => {
+    if (config.questionSelectionMode !== 'engine') return;
     if (Object.keys(compatibleCounts).length === 0) return;
     const stillValid = config.questionTypes.filter(
       t => (compatibleCounts[t] ?? 0) >= 4
@@ -180,12 +186,28 @@ export function TestSettingsPage() {
   const handleAssign = async () => {
     if (selectedIds.size === 0) return;
     if (!config.bookStart || !config.bookEnd || !config.lessonStart || !config.lessonEnd) return;
-    if (config.questionTypes.length === 0) return;
+
+    // Validate question types based on selection mode
+    if (config.questionSelectionMode === 'engine' && config.questionTypes.length === 0) return;
+    if (config.questionSelectionMode === 'skill' && config.skillAreas.length === 0) return;
 
     const questionCount = config.questionCount === -1
       ? parseInt(config.customQuestionCount) || 0
       : config.questionCount;
     if (questionCount <= 0) return;
+
+    // Derive per_question_time and total_time based on time mode
+    const isExamMode = config.timeMode === 'total';
+    const perQuestionTime = isExamMode
+      ? Math.max(1, Math.ceil(config.totalTime / questionCount))
+      : config.perQuestionTime;
+    const totalTimeOverride = isExamMode ? config.totalTime : undefined;
+
+    // For skill mode, send skill areas as question_types (prefixed)
+    // Backend will resolve these; for now fallback to en_to_ko,ko_to_en
+    const questionTypes = config.questionSelectionMode === 'engine'
+      ? config.questionTypes
+      : ['en_to_ko', 'ko_to_en']; // TODO: map skill areas to engines when backend ready
 
     setIsSubmitting(true);
     try {
@@ -193,12 +215,13 @@ export function TestSettingsPage() {
         student_ids: Array.from(selectedIds),
         engine: config.engine,
         question_count: questionCount,
-        per_question_time_seconds: config.perQuestionTime,
-        question_types: config.questionTypes,
+        per_question_time_seconds: perQuestionTime,
+        question_types: questionTypes,
         book_name: config.bookStart,
         book_name_end: config.bookEnd !== config.bookStart ? config.bookEnd : undefined,
         lesson_range_start: config.lessonStart,
         lesson_range_end: config.lessonEnd,
+        total_time_override_seconds: totalTimeOverride,
       });
       setSelectedIds(new Set());
       await refreshAssignments();
@@ -237,13 +260,17 @@ export function TestSettingsPage() {
     }
   };
 
+  const hasValidTypes = config.questionSelectionMode === 'engine'
+    ? config.questionTypes.length > 0
+    : config.skillAreas.length > 0;
+
   const canAssign =
     selectedIds.size > 0 &&
     !!config.bookStart &&
     !!config.bookEnd &&
     !!config.lessonStart &&
     !!config.lessonEnd &&
-    config.questionTypes.length > 0 &&
+    hasValidTypes &&
     (config.questionCount > 0 || (config.questionCount === -1 && parseInt(config.customQuestionCount) > 0));
 
   return (

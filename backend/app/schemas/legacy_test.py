@@ -17,3 +17,13 @@ class LegacyAnswerRequest(BaseModel):
 
 class CompleteLegacyRequest(BaseModel):
     session_id: str
+
+
+class BatchAnswerItem(BaseModel):
+    word_mastery_id: str
+    selected_answer: str
+    question_type: Optional[str] = None
+
+
+class LegacyBatchSubmitRequest(BaseModel):
+    answers: list[BatchAnswerItem]
