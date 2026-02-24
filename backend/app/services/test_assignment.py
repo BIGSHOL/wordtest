@@ -1,4 +1,5 @@
 """Test assignment service."""
+import json
 from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -83,6 +84,7 @@ async def assign_test(
         per_question_time_seconds=data.per_question_time_seconds,
         total_time_override_seconds=data.total_time_override_seconds,
         question_types=question_types_str,
+        question_type_counts=json.dumps(data.question_type_counts) if data.question_type_counts else None,
         lesson_range_start=data.lesson_range_start,
         lesson_range_end=data.lesson_range_end,
     )

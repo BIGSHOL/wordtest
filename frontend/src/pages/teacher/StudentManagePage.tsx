@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import type { User } from '../../types/auth';
 import { studentService } from '../../services/student';
 import { getLevelRank } from '../../types/rank';
-import { Search, UserPlus, Pencil, Trash2, FileText } from 'lucide-react';
+import { Search, UserPlus, Pencil, Trash2, FileText, X } from 'lucide-react';
 
 // Helper function moved outside component to prevent recreation on every render
 function formatDate(dateString: string) {
@@ -16,17 +16,34 @@ function formatDate(dateString: string) {
   return date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
 }
 
+const GRADE_OPTIONS = [
+  '초1', '초2', '초3', '초4', '초5', '초6',
+  '중1', '중2', '중3',
+  '고1', '고2', '고3',
+];
+
+const EMPTY_NEW_STUDENT = {
+  username: '',
+  password: '',
+  passwordConfirm: '',
+  name: '',
+  school_name: '',
+  grade: '',
+  phone_number: '',
+};
+
 export function StudentManagePage() {
   const navigate = useNavigate();
   const [students, setStudents] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [modalError, setModalError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  const [newStudent, setNewStudent] = useState({ username: '', password: '', name: '' });
+  const [newStudent, setNewStudent] = useState(EMPTY_NEW_STUDENT);
   const [editData, setEditData] = useState({ name: '', password: '' });
 
   // useMemo instead of useEffect + setState to prevent double rendering
@@ -58,18 +75,41 @@ export function StudentManagePage() {
     }
   };
 
+  const passwordMismatch =
+    newStudent.passwordConfirm !== '' && newStudent.password !== newStudent.passwordConfirm;
+
+  const canSubmitNew =
+    newStudent.username.trim() !== '' &&
+    newStudent.password.trim() !== '' &&
+    newStudent.name.trim() !== '' &&
+    newStudent.password === newStudent.passwordConfirm;
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    if (!canSubmitNew) return;
+    setModalError('');
     try {
-      await studentService.createStudent(newStudent);
-      setNewStudent({ username: '', password: '', name: '' });
-      setShowAddForm(false);
+      await studentService.createStudent({
+        username: newStudent.username,
+        password: newStudent.password,
+        name: newStudent.name,
+        school_name: newStudent.school_name || undefined,
+        grade: newStudent.grade || undefined,
+        phone_number: newStudent.phone_number || undefined,
+      });
+      setNewStudent(EMPTY_NEW_STUDENT);
+      setShowAddModal(false);
       await loadStudents();
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { detail?: string } } };
-      setError(error.response?.data?.detail || '학생 추가에 실패했습니다.');
+      const errObj = err as { response?: { data?: { detail?: string } } };
+      setModalError(errObj.response?.data?.detail || '학생 추가에 실패했습니다.');
     }
+  };
+
+  const handleCloseModal = () => {
+    setShowAddModal(false);
+    setNewStudent(EMPTY_NEW_STUDENT);
+    setModalError('');
   };
 
   const handleUpdate = async (id: string) => {
@@ -124,7 +164,7 @@ export function StudentManagePage() {
             </div>
             {/* Add Student Button */}
             <button
-              onClick={() => setShowAddForm(!showAddForm)}
+              onClick={() => setShowAddModal(true)}
               className="flex items-center gap-2 px-4 py-2 text-white rounded-lg text-sm font-medium transition-all hover:opacity-90"
               style={{
                 background: 'linear-gradient(135deg, #2D9CAE 0%, #3DBDC8 100%)',
@@ -140,54 +180,6 @@ export function StudentManagePage() {
           <div className="bg-feedback-error/10 text-feedback-error px-4 py-3 rounded-lg text-sm">
             {error}
           </div>
-        )}
-
-        {/* Add Form */}
-        {showAddForm && (
-          <form onSubmit={handleAdd} className="bg-surface border border-border-subtle rounded-xl p-5 space-y-4">
-            <h2 className="text-lg font-semibold text-text-primary">새 학생 등록</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <input
-                type="text"
-                placeholder="아이디"
-                value={newStudent.username}
-                onChange={(e) => setNewStudent({ ...newStudent, username: e.target.value })}
-                required
-                className="px-3 py-2 border border-border-subtle rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
-              <input
-                type="password"
-                placeholder="비밀번호"
-                value={newStudent.password}
-                onChange={(e) => setNewStudent({ ...newStudent, password: e.target.value })}
-                required
-                className="px-3 py-2 border border-border-subtle rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
-              <input
-                type="text"
-                placeholder="이름"
-                value={newStudent.name}
-                onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
-                required
-                className="px-3 py-2 border border-border-subtle rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-              />
-            </div>
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                className="px-4 py-2 bg-teal text-white rounded-lg hover:bg-teal/90 text-sm font-medium"
-              >
-                등록
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAddForm(false)}
-                className="px-4 py-2 bg-bg-muted text-text-secondary rounded-lg hover:bg-bg-muted/80 text-sm font-medium"
-              >
-                취소
-              </button>
-            </div>
-          </form>
         )}
 
         {/* Student Table Card */}
@@ -377,6 +369,198 @@ export function StudentManagePage() {
                   취소
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Student Modal */}
+        {showAddModal && (
+          <div
+            className="fixed inset-0 flex items-center justify-center z-50"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) handleCloseModal(); }}
+          >
+            <div
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+              style={{ border: '1px solid #E8E8E6' }}
+            >
+              {/* Modal header */}
+              <div
+                className="flex items-center justify-between px-6 py-4"
+                style={{ borderBottom: '1px solid #E8E8E6', backgroundColor: '#FAFAF9' }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#2D9CAE' }} />
+                  <h2 className="text-[16px] font-bold text-text-primary">학생 추가</h2>
+                </div>
+                <button
+                  onClick={handleCloseModal}
+                  className="p-1.5 rounded-lg text-text-tertiary hover:bg-bg-muted transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal form */}
+              <form onSubmit={handleAdd}>
+                <div className="px-6 py-5 space-y-4">
+                  {modalError && (
+                    <div
+                      className="px-4 py-3 rounded-lg text-sm font-medium"
+                      style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}
+                    >
+                      {modalError}
+                    </div>
+                  )}
+
+                  {/* 이름 */}
+                  <div>
+                    <label className="block text-[12px] font-semibold text-text-secondary mb-1.5">
+                      이름 <span style={{ color: '#EF4444' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="학생 이름"
+                      value={newStudent.name}
+                      onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
+                      required
+                      className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal bg-white"
+                      style={{ border: '1px solid #E8E8E6' }}
+                    />
+                  </div>
+
+                  {/* 아이디 */}
+                  <div>
+                    <label className="block text-[12px] font-semibold text-text-secondary mb-1.5">
+                      아이디 <span style={{ color: '#EF4444' }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="로그인 아이디"
+                      value={newStudent.username}
+                      onChange={(e) => setNewStudent({ ...newStudent, username: e.target.value })}
+                      required
+                      className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal bg-white"
+                      style={{ border: '1px solid #E8E8E6' }}
+                    />
+                  </div>
+
+                  {/* 비밀번호 */}
+                  <div>
+                    <label className="block text-[12px] font-semibold text-text-secondary mb-1.5">
+                      비밀번호 <span style={{ color: '#EF4444' }}>*</span>
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="비밀번호"
+                      value={newStudent.password}
+                      onChange={(e) => setNewStudent({ ...newStudent, password: e.target.value })}
+                      required
+                      className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal bg-white"
+                      style={{ border: '1px solid #E8E8E6' }}
+                    />
+                  </div>
+
+                  {/* 비밀번호 확인 */}
+                  <div>
+                    <label className="block text-[12px] font-semibold text-text-secondary mb-1.5">
+                      비밀번호 확인 <span style={{ color: '#EF4444' }}>*</span>
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="비밀번호 재입력"
+                      value={newStudent.passwordConfirm}
+                      onChange={(e) => setNewStudent({ ...newStudent, passwordConfirm: e.target.value })}
+                      required
+                      className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal bg-white"
+                      style={{
+                        border: passwordMismatch ? '1px solid #EF4444' : '1px solid #E8E8E6',
+                      }}
+                    />
+                    {passwordMismatch && (
+                      <p className="mt-1 text-[11px] font-medium" style={{ color: '#EF4444' }}>
+                        비밀번호가 일치하지 않습니다
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Divider */}
+                  <div style={{ borderTop: '1px solid #F0F0EE' }} />
+
+                  {/* 학교 */}
+                  <div>
+                    <label className="block text-[12px] font-semibold text-text-secondary mb-1.5">
+                      학교 <span className="font-normal text-text-tertiary">(선택)</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="학교 이름"
+                      value={newStudent.school_name}
+                      onChange={(e) => setNewStudent({ ...newStudent, school_name: e.target.value })}
+                      className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal bg-white"
+                      style={{ border: '1px solid #E8E8E6' }}
+                    />
+                  </div>
+
+                  {/* 학년 */}
+                  <div>
+                    <label className="block text-[12px] font-semibold text-text-secondary mb-1.5">
+                      학년 <span className="font-normal text-text-tertiary">(선택)</span>
+                    </label>
+                    <select
+                      value={newStudent.grade}
+                      onChange={(e) => setNewStudent({ ...newStudent, grade: e.target.value })}
+                      className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal bg-white"
+                      style={{ border: '1px solid #E8E8E6' }}
+                    >
+                      <option value="">학년 선택</option>
+                      {GRADE_OPTIONS.map((g) => (
+                        <option key={g} value={g}>{g}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 연락처 */}
+                  <div>
+                    <label className="block text-[12px] font-semibold text-text-secondary mb-1.5">
+                      연락처 <span className="font-normal text-text-tertiary">(선택)</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="010-0000-0000"
+                      value={newStudent.phone_number}
+                      onChange={(e) => setNewStudent({ ...newStudent, phone_number: e.target.value })}
+                      className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal bg-white"
+                      style={{ border: '1px solid #E8E8E6' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Modal footer */}
+                <div
+                  className="flex items-center justify-end gap-3 px-6 py-4"
+                  style={{ borderTop: '1px solid #E8E8E6', backgroundColor: '#FAFAF9' }}
+                >
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="px-5 py-2.5 rounded-lg text-[13px] font-semibold text-text-secondary transition-colors hover:bg-bg-muted"
+                    style={{ border: '1px solid #E8E8E6' }}
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!canSubmitNew}
+                    className="px-5 py-2.5 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{
+                      background: 'linear-gradient(135deg, #2D9CAE 0%, #3DBDC8 100%)',
+                    }}
+                  >
+                    등록하기
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

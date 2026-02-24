@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import String, Integer, Boolean, Index
+from sqlalchemy import String, Integer, Boolean, Text, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -30,6 +30,12 @@ class Word(Base):
     example_ko: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     is_excluded: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     compatible_engines: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    area1_meaning: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    area2_association: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    area3_pronunciation: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    area4_inference: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    area5_spelling: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    area6_context: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         TZDateTime(), default=now_kst, nullable=False
     )

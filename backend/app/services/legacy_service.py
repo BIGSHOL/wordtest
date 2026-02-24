@@ -4,6 +4,7 @@ Teacher selects the book/lesson range. Questions are generated from that
 exact range with no adaptive difficulty adjustment. Ordered easy → hard.
 Simple accuracy scoring at the end.
 """
+import json
 import uuid
 import random
 
@@ -78,6 +79,14 @@ async def start_session(
     question_count = config.question_count or 20
     total_time = config.total_time_override_seconds or question_count * timer_seconds
 
+    # Parse question_type_counts if available
+    question_type_counts = None
+    if config.question_type_counts:
+        try:
+            question_type_counts = json.loads(config.question_type_counts)
+        except (json.JSONDecodeError, ValueError):
+            question_type_counts = None
+
     # Filter to words compatible with selected question types (e.g. emoji-only)
     compatible = filter_compatible_words(filtered, question_types)
     if len(compatible) < 4:
@@ -94,6 +103,7 @@ async def start_session(
         question_types=question_types,
         timer_seconds=timer_seconds,
         masteries=masteries,
+        question_type_counts=question_type_counts,
     )
 
     await db.commit()

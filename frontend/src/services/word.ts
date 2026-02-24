@@ -22,6 +22,13 @@ export interface Word {
   example_en: string | null;
   example_ko: string | null;
   examples: WordExample[];
+  compatible_engines: string | null;
+  area1_meaning: string | null;
+  area2_association: string | null;
+  area3_pronunciation: string | null;
+  area4_inference: string | null;
+  area5_spelling: string | null;
+  area6_context: string | null;
   created_at: string;
 }
 

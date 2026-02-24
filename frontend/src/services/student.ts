@@ -8,6 +8,9 @@ export interface CreateStudentRequest {
   username: string;
   password: string;
   name: string;
+  school_name?: string;
+  grade?: string;
+  phone_number?: string;
 }
 
 export interface UpdateStudentRequest {

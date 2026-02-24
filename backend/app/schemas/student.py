@@ -8,6 +8,8 @@ class CreateStudentRequest(BaseModel):
     password: str
     name: str
     phone_number: Optional[str] = None
+    school_name: Optional[str] = None
+    grade: Optional[str] = None
 
 
 class UpdateStudentRequest(BaseModel):

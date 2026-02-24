@@ -530,6 +530,7 @@ def generate_questions_for_words(
     question_types: list[str],
     timer_seconds: int,
     masteries: list[WordMastery] | None = None,
+    question_type_counts: dict[str, int] | None = None,
 ) -> list[dict]:
     """Generate questions using the modular engine system.
 
@@ -539,6 +540,8 @@ def generate_questions_for_words(
         question_types: Canonical engine names, e.g. ["en_to_ko", "ko_to_en"].
         timer_seconds: Timer per question.
         masteries: Optional mastery records (for word_mastery_id mapping).
+        question_type_counts: Optional dict mapping question type to desired count.
+            If provided, allocates questions by count per type instead of round-robin.
 
     Returns list of question dicts ready for API response.
     """
@@ -550,12 +553,9 @@ def generate_questions_for_words(
     if masteries:
         mastery_map = {m.word_id: m for m in masteries}
 
-    questions: list[dict] = []
-    for i, word in enumerate(words):
-        qtype = question_types[i % len(question_types)]
+    def _build_question(word: Word, qtype: str) -> dict | None:
+        """Build a single question dict for a word and question type, with fallback."""
         engine = get_engine(qtype)
-
-        # Fallback: try other selected types first, then en_to_ko as last resort
         if not engine.can_generate(word):
             found = False
             for alt in question_types:
@@ -563,24 +563,24 @@ def generate_questions_for_words(
                     continue
                 alt_engine = get_engine(alt)
                 if alt_engine.can_generate(word):
-                    qtype, engine = alt, alt_engine
+                    qtype_used = alt
+                    engine = alt_engine
                     found = True
                     break
             if not found:
-                # Last resort: en_to_ko (should rarely happen with filter_compatible_words)
-                qtype = "en_to_ko"
-                engine = get_engine(qtype)
+                qtype_used = "en_to_ko"
+                engine = get_engine(qtype_used)
                 if not engine.can_generate(word):
-                    continue
+                    return None
+        else:
+            qtype_used = qtype
 
         spec = engine.generate(word, pool)
         mastery = mastery_map.get(word.id)
-
-        # Use engine-selected example if available, else fallback to word columns
         q_example_en = spec.sentence_en or word.example_en
         q_example_ko = spec.sentence_ko or word.example_ko
 
-        questions.append({
+        return {
             "word_mastery_id": mastery.id if mastery else "",
             "word": {
                 "id": word.id,
@@ -600,7 +600,36 @@ def generate_questions_for_words(
             "context_mode": spec.context_mode or "word",
             "sentence_blank": spec.sentence_blank,
             "emoji": spec.emoji,
-        })
+        }
+
+    questions: list[dict] = []
+
+    if question_type_counts:
+        # Allocate questions by specified count per type
+        # Use a shuffled copy of words as the pool, cycling through for each type
+        word_pool = list(words)
+        word_index = 0
+        for qtype, count in question_type_counts.items():
+            generated = 0
+            start_index = word_index
+            pool_len = len(word_pool)
+            while generated < count and pool_len > 0:
+                word = word_pool[word_index % pool_len]
+                word_index += 1
+                q = _build_question(word, qtype)
+                if q is not None:
+                    questions.append(q)
+                    generated += 1
+                # Safety: stop if we've cycled through all words for this type
+                if word_index - start_index >= pool_len:
+                    break
+    else:
+        # Default round-robin logic
+        for i, word in enumerate(words):
+            qtype = question_types[i % len(question_types)]
+            q = _build_question(word, qtype)
+            if q is not None:
+                questions.append(q)
 
     return questions
 

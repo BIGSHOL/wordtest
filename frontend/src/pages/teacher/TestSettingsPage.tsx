@@ -45,6 +45,8 @@ export function TestSettingsPage() {
     bookEnd: '',
     lessonStart: '',
     lessonEnd: '',
+    distributionMode: 'equal',
+    manualCounts: {},
   });
 
   // Word count from API
@@ -156,6 +158,26 @@ export function TestSettingsPage() {
     loadLessons();
   }, [config.bookEnd, config.bookStart, lessonsStart]);
 
+  // Auto-set lessonStart (and lessonEnd when same book) when lessonsStart loads
+  useEffect(() => {
+    if (lessonsStart.length > 0 && !config.lessonStart) {
+      setConfig(prev => ({
+        ...prev,
+        lessonStart: lessonsStart[0].lesson,
+        ...(prev.bookStart === prev.bookEnd
+          ? { lessonEnd: lessonsStart[lessonsStart.length - 1].lesson }
+          : {}),
+      }));
+    }
+  }, [lessonsStart]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-set lessonEnd when lessonsEnd loads
+  useEffect(() => {
+    if (lessonsEnd.length > 0 && !config.lessonEnd) {
+      setConfig(prev => ({ ...prev, lessonEnd: lessonsEnd[lessonsEnd.length - 1].lesson }));
+    }
+  }, [lessonsEnd]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleToggle = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -209,20 +231,27 @@ export function TestSettingsPage() {
       ? config.questionTypes
       : ['en_to_ko', 'ko_to_en']; // TODO: map skill areas to engines when backend ready
 
+    const requestData = {
+      student_ids: Array.from(selectedIds),
+      engine: config.engine,
+      question_count: questionCount,
+      per_question_time_seconds: perQuestionTime,
+      question_types: questionTypes,
+      book_name: config.bookStart,
+      book_name_end: config.bookEnd !== config.bookStart ? config.bookEnd : undefined,
+      lesson_range_start: config.lessonStart,
+      lesson_range_end: config.lessonEnd,
+      total_time_override_seconds: totalTimeOverride,
+      question_type_counts: undefined as Record<string, number> | undefined,
+    };
+
+    if (config.distributionMode === 'manual') {
+      requestData.question_type_counts = config.manualCounts;
+    }
+
     setIsSubmitting(true);
     try {
-      await testAssignmentService.assignTest({
-        student_ids: Array.from(selectedIds),
-        engine: config.engine,
-        question_count: questionCount,
-        per_question_time_seconds: perQuestionTime,
-        question_types: questionTypes,
-        book_name: config.bookStart,
-        book_name_end: config.bookEnd !== config.bookStart ? config.bookEnd : undefined,
-        lesson_range_start: config.lessonStart,
-        lesson_range_end: config.lessonEnd,
-        total_time_override_seconds: totalTimeOverride,
-      });
+      await testAssignmentService.assignTest(requestData);
       setSelectedIds(new Set());
       await refreshAssignments();
     } catch (error) {
@@ -277,24 +306,11 @@ export function TestSettingsPage() {
     <TeacherLayout>
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Top Bar */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-display font-bold text-text-primary">테스트 출제</h1>
-            <p className="text-[13px] text-text-secondary mt-1">
-              학생을 선택하고 테스트를 설정한 뒤 출제합니다
-            </p>
-          </div>
-          <button
-            onClick={handleAssign}
-            disabled={!canAssign || isSubmitting}
-            className="flex items-center justify-center rounded-[10px] text-sm font-semibold text-white transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
-            style={{
-              background: 'linear-gradient(135deg, #2D9CAE, #3DBDC8)',
-              padding: '10px 24px',
-            }}
-          >
-            {isSubmitting ? '출제 중...' : '테스트 출제하기'}
-          </button>
+        <div>
+          <h1 className="text-2xl font-display font-bold text-text-primary">테스트 출제</h1>
+          <p className="text-[13px] text-text-secondary mt-1">
+            학생을 선택하고 테스트를 설정한 뒤 출제합니다
+          </p>
         </div>
 
         {/* Two-column layout: Student selection + Config */}
@@ -320,6 +336,9 @@ export function TestSettingsPage() {
                 lessonsEnd={lessonsEnd}
                 wordCount={wordCount}
                 compatibleCounts={compatibleCounts}
+                canAssign={canAssign}
+                isSubmitting={isSubmitting}
+                onAssign={handleAssign}
               />
             </div>
           </div>

@@ -15,6 +15,7 @@ class AssignTestRequest(BaseModel):
     lesson_range_start: Optional[str] = None
     lesson_range_end: Optional[str] = None
     total_time_override_seconds: Optional[int] = None
+    question_type_counts: Optional[dict[str, int]] = None
 
 
 class TestAssignmentResponse(BaseModel):

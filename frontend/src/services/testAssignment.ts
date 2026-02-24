@@ -14,6 +14,7 @@ export interface AssignTestRequest {
   lesson_range_start?: string;
   lesson_range_end?: string;
   total_time_override_seconds?: number;
+  question_type_counts?: Record<string, number>;
 }
 
 export interface TestAssignmentItem {

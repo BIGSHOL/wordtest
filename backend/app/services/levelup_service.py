@@ -8,6 +8,7 @@ Difficulty adjusts based on correctness + speed:
 Word level (1-15) is the difficulty axis. Question types are orthogonal
 and selected by the teacher at test creation time.
 """
+import json
 import uuid
 import random
 from collections import defaultdict
@@ -85,6 +86,14 @@ async def start_session(
     timer_seconds = config.per_question_time_seconds or 10
     total_time = config.total_time_override_seconds or (config.question_count or 50) * timer_seconds
 
+    # Parse question_type_counts if available
+    question_type_counts = None
+    if config.question_type_counts:
+        try:
+            question_type_counts = json.loads(config.question_type_counts)
+        except (json.JSONDecodeError, ValueError):
+            question_type_counts = None
+
     # Filter to words compatible with selected question types (e.g. emoji-only)
     compatible = filter_compatible_words(filtered, question_types)
     if len(compatible) < 4:
@@ -114,6 +123,7 @@ async def start_session(
         per_level=SEGMENT_SIZE,
         question_types=question_types,
         timer_seconds=timer_seconds,
+        question_type_counts=question_type_counts,
     )
 
     # Level metadata for frontend
@@ -527,6 +537,7 @@ def _generate_multi_level_pool(
     per_level: int,
     question_types: list[str],
     timer_seconds: int,
+    question_type_counts: dict[str, int] | None = None,
 ) -> list[dict]:
     """Generate a multi-level question pool for initial serving."""
     all_questions: list[dict] = []
@@ -558,6 +569,7 @@ def _generate_multi_level_pool(
             question_types=question_types,
             timer_seconds=timer_seconds,
             masteries=batch_masteries,
+            question_type_counts=question_type_counts,
         )
         all_questions.extend(questions)
 

@@ -209,6 +209,9 @@ export function WordDatabasePage() {
   const [popoverWordId, setPopoverWordId] = useState<string | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
+  const [areaPopoverWordId, setAreaPopoverWordId] = useState<string | null>(null);
+  const areaPopoverRef = useRef<HTMLDivElement>(null);
+
   // Close popover on outside click
   useEffect(() => {
     if (!popoverWordId) return;
@@ -220,6 +223,18 @@ export function WordDatabasePage() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [popoverWordId]);
+
+  // Close area popover on outside click
+  useEffect(() => {
+    if (!areaPopoverWordId) return;
+    const handler = (e: MouseEvent) => {
+      if (areaPopoverRef.current && !areaPopoverRef.current.contains(e.target as Node)) {
+        setAreaPopoverWordId(null);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [areaPopoverWordId]);
 
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
@@ -475,6 +490,7 @@ export function WordDatabasePage() {
                       <th className="text-left px-3 whitespace-nowrap">품사</th>
                       <th className="text-left px-3 whitespace-nowrap">한국어 뜻</th>
                       <th className="text-left px-3">예문</th>
+                      <th className="text-center px-3 whitespace-nowrap">영역</th>
                       <th className="text-left px-3 whitespace-nowrap">레슨</th>
                       <th className="text-center px-3 whitespace-nowrap">관리</th>
                     </tr>
@@ -555,6 +571,54 @@ export function WordDatabasePage() {
                                             </button>
                                           </div>
                                           <div className="pl-5 text-text-secondary">{ex.example_ko}</div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </td>
+                          <td className="px-3 text-center">
+                            {(() => {
+                              const areas = [
+                                { key: 'area1_meaning', label: '의미파악력', value: word.area1_meaning },
+                                { key: 'area2_association', label: '단어연상력', value: word.area2_association },
+                                { key: 'area3_pronunciation', label: '발음청취력', value: word.area3_pronunciation },
+                                { key: 'area4_inference', label: '어휘추론력', value: word.area4_inference },
+                                { key: 'area5_spelling', label: '철자기억력', value: word.area5_spelling },
+                                { key: 'area6_context', label: '종합응용력', value: word.area6_context },
+                              ];
+                              const filledCount = areas.filter(a => a.value).length;
+                              if (filledCount === 0) return <span className="text-xs text-text-tertiary">-</span>;
+                              return (
+                                <div className="relative inline-block">
+                                  <button
+                                    onClick={() => setAreaPopoverWordId(areaPopoverWordId === word.id ? null : word.id)}
+                                    className="px-2 py-0.5 rounded-full text-[11px] font-bold transition-colors"
+                                    style={{
+                                      backgroundColor: filledCount === 6 ? '#EDE9FE' : '#F3E8FF',
+                                      color: filledCount === 6 ? '#7C3AED' : '#9333EA',
+                                    }}
+                                  >
+                                    {filledCount}/6
+                                  </button>
+                                  {areaPopoverWordId === word.id && (
+                                    <div
+                                      ref={areaPopoverRef}
+                                      className="absolute right-0 top-full mt-1 z-50 w-[340px] bg-white border border-border-subtle rounded-xl shadow-lg p-3 space-y-2 text-left"
+                                    >
+                                      <div className="text-xs font-semibold text-text-tertiary mb-1">
+                                        6영역 콘텐츠
+                                      </div>
+                                      {areas.map((area) => (
+                                        <div key={area.key} className="text-xs pb-2 border-b border-border-subtle last:border-0 last:pb-0">
+                                          <div className="font-semibold text-purple-600 mb-0.5">{area.label}</div>
+                                          {area.value ? (
+                                            <div className="text-text-secondary">{area.value}</div>
+                                          ) : (
+                                            <div className="text-text-tertiary italic">데이터 없음</div>
+                                          )}
                                         </div>
                                       ))}
                                     </div>

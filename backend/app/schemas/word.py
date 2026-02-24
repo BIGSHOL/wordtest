@@ -28,6 +28,12 @@ class WordResponse(BaseModel):
     example_ko: Optional[str] = None
     examples: list[WordExampleResponse] = []
     compatible_engines: Optional[str] = None
+    area1_meaning: Optional[str] = None
+    area2_association: Optional[str] = None
+    area3_pronunciation: Optional[str] = None
+    area4_inference: Optional[str] = None
+    area5_spelling: Optional[str] = None
+    area6_context: Optional[str] = None
     created_at: Optional[datetime] = None
 
 

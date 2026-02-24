@@ -17,6 +17,8 @@ async def create_student(
     name: str,
     teacher_id: str,
     phone_number: str | None = None,
+    school_name: str | None = None,
+    grade: str | None = None,
 ) -> User:
     student = User(
         username=username,
@@ -25,6 +27,8 @@ async def create_student(
         role="student",
         teacher_id=teacher_id,
         phone_number=phone_number,
+        school_name=school_name,
+        grade=grade,
     )
     db.add(student)
     await db.commit()

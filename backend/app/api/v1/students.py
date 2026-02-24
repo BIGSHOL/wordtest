@@ -43,6 +43,16 @@ async def create_student_endpoint(
             detail="Username already taken",
         )
 
+    # Check for duplicate name among same teacher's students
+    name_check = await db.execute(
+        select(User).where(User.teacher_id == teacher.id, User.name == student_in.name)
+    )
+    if name_check.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="같은 이름의 학생이 이미 존재합니다",
+        )
+
     student = await create_student(
         db,
         username=student_in.username,
@@ -50,6 +60,8 @@ async def create_student_endpoint(
         name=student_in.name,
         teacher_id=teacher.id,
         phone_number=student_in.phone_number,
+        school_name=student_in.school_name,
+        grade=student_in.grade,
     )
     return student
 
