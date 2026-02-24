@@ -526,38 +526,35 @@ export function UnifiedTestPage() {
               </div>
             )}
           </div>
-        </div>
 
-        {/* Bottom navigation */}
-        <div
-          className="shrink-0 flex items-center justify-between px-5 py-4 gap-3"
-          style={{ borderTop: '1px solid #E8E8E6', background: '#FFFFFF' }}
-        >
-          <button
-            onClick={store.goPrev}
-            disabled={currentQuestionIndex === 0}
-            className="flex items-center gap-1.5 h-12 px-5 rounded-2xl font-display text-[15px] font-semibold transition-all"
-            style={{
-              background: currentQuestionIndex === 0 ? '#F0EFED' : '#EDECEA',
-              color: currentQuestionIndex === 0 ? '#C5C4C2' : '#3D3D3C',
-            }}
-          >
-            <ChevronLeft className="w-4 h-4" />
-            이전
-          </button>
+          {/* Navigation buttons */}
+          <div className="w-full md:w-[640px] flex items-center justify-between pt-2">
+            <button
+              onClick={store.goPrev}
+              disabled={currentQuestionIndex === 0}
+              className="flex items-center gap-1 h-10 px-4 rounded-xl font-display text-sm font-semibold transition-all"
+              style={{
+                background: currentQuestionIndex === 0 ? '#F0EFED' : '#EDECEA',
+                color: currentQuestionIndex === 0 ? '#C5C4C2' : '#3D3D3C',
+              }}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              이전
+            </button>
 
-          <button
-            onClick={store.goNext}
-            disabled={currentQuestionIndex === totalQ - 1}
-            className="flex items-center gap-1.5 h-12 px-5 rounded-2xl font-display text-[15px] font-semibold transition-all"
-            style={{
-              background: currentQuestionIndex === totalQ - 1 ? '#F0EFED' : '#EEF2FF',
-              color: currentQuestionIndex === totalQ - 1 ? '#C5C4C2' : '#4F46E5',
-            }}
-          >
-            다음
-            <ChevronRight className="w-4 h-4" />
-          </button>
+            <button
+              onClick={store.goNext}
+              disabled={currentQuestionIndex === totalQ - 1}
+              className="flex items-center gap-1 h-10 px-4 rounded-xl font-display text-sm font-semibold transition-all"
+              style={{
+                background: currentQuestionIndex === totalQ - 1 ? '#F0EFED' : '#EEF2FF',
+                color: currentQuestionIndex === totalQ - 1 ? '#C5C4C2' : '#4F46E5',
+              }}
+            >
+              다음
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Submit confirmation dialog */}

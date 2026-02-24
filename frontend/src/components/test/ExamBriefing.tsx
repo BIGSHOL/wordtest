@@ -97,16 +97,16 @@ export const ExamBriefing = memo(function ExamBriefing({
           <InfoRow label="학생" value={studentName} />
           <InfoRow label="범위" value={rangeText} />
           <div
-            className="flex items-center justify-between"
+            className="flex items-start justify-between gap-3"
           >
             <span
-              className="font-display text-sm"
+              className="font-display text-sm shrink-0"
               style={{ color: '#9C9B99' }}
             >
               문항 / 시간
             </span>
             <span
-              className="font-display text-sm font-semibold"
+              className="font-display text-sm font-semibold text-right"
               style={{ color: '#3D3D3C' }}
             >
               {questionCount}문제 | {timeText}
@@ -179,15 +179,15 @@ export const ExamBriefing = memo(function ExamBriefing({
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-start justify-between gap-3">
       <span
-        className="font-display text-sm"
+        className="font-display text-sm shrink-0"
         style={{ color: '#9C9B99' }}
       >
         {label}
       </span>
       <span
-        className="font-display text-sm font-semibold"
+        className="font-display text-sm font-semibold text-right"
         style={{ color: '#3D3D3C' }}
       >
         {value}
