@@ -20,26 +20,16 @@ function formatDate(dateStr: string): string {
   return `${y}.${m}.${day}`;
 }
 
-const ENGINE_LABELS: Record<string, string> = {
-  xp_word: 'XP 워드',
-  xp_stage: 'XP 스테이지',
-  xp_listen: 'XP 리스닝',
-  legacy_word: '레거시 워드',
-  legacy_stage: '레거시 스테이지',
-  legacy_listen: '레거시 리스닝',
+const QTYPE_LABELS: Record<string, { label: string; bg: string; color: string }> = {
+  en_to_ko: { label: '영한', bg: '#DBEAFE', color: '#2563EB' },
+  ko_to_en: { label: '한영', bg: '#EDE9FE', color: '#7C3AED' },
+  listen_en: { label: '듣기영', bg: '#D1FAE5', color: '#059669' },
+  listen_ko: { label: '듣기한', bg: '#CCFBF1', color: '#0D9488' },
+  listen_type: { label: '듣기타', bg: '#FEF3C7', color: '#D97706' },
+  ko_type: { label: '한영타', bg: '#FEE2E2', color: '#DC2626' },
+  emoji: { label: '이모지', bg: '#FCE7F3', color: '#DB2777' },
+  sentence: { label: '예문', bg: '#E0E7FF', color: '#4F46E5' },
 };
-
-function formatEngineType(engineType?: string | null, questionTypes?: string | null): string {
-  if (engineType && ENGINE_LABELS[engineType]) return ENGINE_LABELS[engineType];
-  if (!questionTypes) return '-';
-  // Fallback: new mode values
-  const modeLabels: Record<string, string> = { word: '워드', stage: '스테이지', listen: '리스닝' };
-  const parts = questionTypes.split(',').map((t) => t.trim());
-  if (parts.length === 1 && modeLabels[parts[0]]) return modeLabels[parts[0]];
-  // Legacy fallback
-  const oldLabels: Record<string, string> = { word_meaning: '1', meaning_word: '2', sentence_blank: '3' };
-  return `유형${parts.map((t) => oldLabels[t] || t).join('+')}`;
-}
 
 export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewResult }: Props) {
   return (
@@ -106,8 +96,29 @@ export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewRe
                   <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
                     {item.per_question_time_seconds ?? '-'}초
                   </td>
-                  <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
-                    {formatEngineType(item.engine_type, item.question_types)}
+                  <td className="text-xs text-text-secondary px-2 max-w-[200px]">
+                    <div className="flex flex-wrap items-center gap-1">
+                      {item.question_types ? (
+                        item.question_types.split(',').map((type) => {
+                          const trimmedType = type.trim();
+                          const config = QTYPE_LABELS[trimmedType];
+                          if (config) {
+                            return (
+                              <span
+                                key={trimmedType}
+                                className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
+                                style={{ backgroundColor: config.bg, color: config.color }}
+                              >
+                                {config.label}
+                              </span>
+                            );
+                          }
+                          return <span key={trimmedType} className="text-[9px]">{trimmedType}</span>;
+                        })
+                      ) : (
+                        '-'
+                      )}
+                    </div>
                   </td>
                   <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
                     {item.lesson_range || '-'}

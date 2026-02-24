@@ -8,7 +8,7 @@
  * Page 4: 유형별 배분 (equal / manual) - only when 2+ types selected
  */
 import { useState } from 'react';
-import { Check, Info, Clock, Timer, Hash, Layers, ChevronLeft, ChevronRight, SplitSquareHorizontal } from 'lucide-react';
+import { Check, Info, Clock, Timer, Hash, Layers, ChevronLeft, ChevronRight, SplitSquareHorizontal, ChevronUp, ChevronDown } from 'lucide-react';
 import type { LessonInfo } from '../../services/word';
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -532,6 +532,14 @@ function PageTypes({
     }
   };
 
+  const moveType = (index: number, direction: 'up' | 'down') => {
+    const arr = [...config.questionTypes];
+    const swapIdx = direction === 'up' ? index - 1 : index + 1;
+    if (swapIdx < 0 || swapIdx >= arr.length) return;
+    [arr[index], arr[swapIdx]] = [arr[swapIdx], arr[index]];
+    update({ questionTypes: arr });
+  };
+
   const toggleSkillArea = (area: string) => {
     const current = config.skillAreas;
     if (current.includes(area)) {
@@ -650,6 +658,47 @@ function PageTypes({
               );
             })}
           </div>
+
+          {config.questionTypes.length >= 2 && config.questionSelectionMode === 'engine' && (
+            <div className="space-y-1.5">
+              <div className="text-[11px] font-semibold" style={{ color: '#6D6C6A' }}>
+                출제 순서
+              </div>
+              <div className="space-y-1">
+                {config.questionTypes.map((type, idx) => {
+                  const option = QUESTION_TYPE_OPTIONS.find(o => o.value === type);
+                  return (
+                    <div
+                      key={type}
+                      className="flex items-center gap-2 rounded-lg"
+                      style={{ padding: '6px 10px', backgroundColor: '#F8F8F6', border: '1px solid #E8E8E6' }}
+                    >
+                      <span className="text-[11px] font-bold" style={{ color: '#2D9CAE', width: 16 }}>
+                        {idx + 1}
+                      </span>
+                      <span className="text-[11px] font-medium flex-1" style={{ color: '#3D3D3C' }}>
+                        {option?.label || type}
+                      </span>
+                      <button
+                        onClick={() => moveType(idx, 'up')}
+                        disabled={idx === 0}
+                        className="p-0.5 rounded hover:bg-gray-200 transition-colors disabled:opacity-30"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5" style={{ color: '#6D6C6A' }} />
+                      </button>
+                      <button
+                        onClick={() => moveType(idx, 'down')}
+                        disabled={idx === config.questionTypes.length - 1}
+                        className="p-0.5 rounded hover:bg-gray-200 transition-colors disabled:opacity-30"
+                      >
+                        <ChevronDown className="w-3.5 h-3.5" style={{ color: '#6D6C6A' }} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {config.questionTypes.length === 0 && (
             <div
