@@ -261,7 +261,7 @@ async def engine_audit_refresh(
     teacher: CurrentTeacher,
 ):
     """Recompute compatible_engines for all words and update DB."""
-    result = await db.execute(select(Word))
+    result = await db.execute(select(Word).options(selectinload(Word.examples)))
     words = result.scalars().all()
 
     engine_names = list(ENGINES.keys())
