@@ -755,7 +755,7 @@ function PageDistribution({
   const handleSelectManual = () => {
     // Pre-populate manualCounts with equal distribution when switching to manual
     const prefilled: Record<string, number> = {};
-    selectedTypes.forEach((t, i) => {
+    selectedTypes.forEach((t) => {
       prefilled[t] = config.manualCounts[t] !== undefined
         ? config.manualCounts[t]
         : equalDist[t] ?? 0;
