@@ -72,7 +72,7 @@ function CollapsibleSection({
       >
         <h3 className="text-base font-semibold text-[#0D0D0D]">{title}</h3>
         <ChevronDown
-          className="w-5 h-5 text-[#7A7A7A] transition-transform duration-200 group-hover:text-[#0D0D0D]"
+          className="w-5 h-5 text-[#7A7A7A] transition-transform duration-200 group-hover:text-[#0D0D0D] print-hidden"
           style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
         />
       </button>
@@ -127,8 +127,8 @@ export function StudentReportPage() {
   return (
     <div className="min-h-screen bg-[#F8F8F6]">
       <div className="max-w-[900px] min-w-[860px] mx-auto space-y-6 py-6 px-4">
-        {/* Top bar */}
-        <div className="flex items-center justify-between">
+        {/* Top bar - hidden in print */}
+        <div className="flex items-center justify-between print-hidden">
           <h1 className="font-display text-lg font-bold text-[#0D0D0D]">
             레벨테스트 리포트
           </h1>
@@ -141,7 +141,7 @@ export function StudentReportPage() {
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl border border-[#E8E8E6] p-8 space-y-8">
+        <div className="bg-white rounded-2xl border border-[#E8E8E6] p-8 space-y-8 print-report-card">
           {/* 1. Header */}
           <div className="space-y-3">
             <div className="flex items-start justify-between">
@@ -298,20 +298,29 @@ export function StudentReportPage() {
                 </div>
               </CollapsibleSection>
 
+              <div className="h-px bg-[#E8E8E8]" />
+
               {/* 3. Level Chart */}
               <CollapsibleSection title="레벨 차트">
                 <LevelChartTable currentRank={level} />
               </CollapsibleSection>
 
+              <div className="h-px bg-[#E8E8E8]" />
+
               {/* 4. Metric Detail Section */}
-              <CollapsibleSection title="학습 역량 분석">
-                <MetricDetailSection details={report.metric_details} totalWordCount={report.total_word_count} />
-              </CollapsibleSection>
+              <div className="print-break-before">
+                <CollapsibleSection title="학습 역량 분석">
+                  <MetricDetailSection details={report.metric_details} totalWordCount={report.total_word_count} />
+                </CollapsibleSection>
+              </div>
             </>
           )}
 
           {/* 5. Word Mastery Summary Table */}
           {report.word_summaries.length > 0 && (
+            <>
+            <div className="h-px bg-[#E8E8E8]" />
+            <div className="print-break-before">
             <CollapsibleSection title="단어별 학습 결과">
               <div className="border border-[#E8E8E8] rounded overflow-hidden">
                 <table className="w-full text-sm">
@@ -353,10 +362,15 @@ export function StudentReportPage() {
                 </table>
               </div>
             </CollapsibleSection>
+            </div>
+            </>
           )}
 
           {/* 6. Wrong answers detail */}
           {realWrong.length > 0 && (
+            <>
+            <div className="h-px bg-[#E8E8E8]" />
+            <div className="print-break-before">
             <CollapsibleSection title="오답 분석">
               <div className="border border-[#E8E8E8] rounded overflow-hidden">
                 <table className="w-full text-sm">
@@ -383,6 +397,8 @@ export function StudentReportPage() {
                 </table>
               </div>
             </CollapsibleSection>
+            </div>
+            </>
           )}
         </div>
       </div>

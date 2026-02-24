@@ -55,7 +55,7 @@ function CollapsibleSection({
       >
         <h3 className="text-base font-semibold text-[#0D0D0D]">{title}</h3>
         <ChevronDown
-          className="w-5 h-5 text-[#7A7A7A] transition-transform duration-200 group-hover:text-[#0D0D0D]"
+          className="w-5 h-5 text-[#7A7A7A] transition-transform duration-200 group-hover:text-[#0D0D0D] print-hidden"
           style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
         />
       </button>
@@ -121,8 +121,8 @@ export function StudentResultPage() {
         </div>
       ) : (
         <div className="max-w-[900px] min-w-[860px] mx-auto space-y-6 py-6 px-4">
-          {/* Top bar */}
-          <div className="flex items-center justify-between">
+          {/* Top bar - hidden in print */}
+          <div className="flex items-center justify-between print-hidden">
             <div className="flex items-center gap-3">
               <Link
                 to="/students"
@@ -147,7 +147,7 @@ export function StudentResultPage() {
           </div>
 
           {report ? (
-            <div className="bg-white rounded-2xl border border-border-subtle p-8 space-y-8">
+            <div className="bg-white rounded-2xl border border-border-subtle p-8 space-y-8 print-report-card">
               {/* 1. Header with logo + student info table */}
               <div className="space-y-3">
                 <div className="flex items-start justify-between">
@@ -270,20 +270,29 @@ export function StudentResultPage() {
                 </div>
               </CollapsibleSection>
 
+              <div className="h-px bg-[#E8E8E8]" />
+
               {/* 3. Level Chart */}
               <CollapsibleSection title="레벨 차트">
                 <LevelChartTable currentRank={level} />
               </CollapsibleSection>
 
+              <div className="h-px bg-[#E8E8E8]" />
+
               {/* 4. Metric Detail Section */}
-              <CollapsibleSection title="학습 역량 분석">
-                <MetricDetailSection details={report.metric_details} />
-              </CollapsibleSection>
+              <div className="print-break-before">
+                <CollapsibleSection title="학습 역량 분석">
+                  <MetricDetailSection details={report.metric_details} />
+                </CollapsibleSection>
+              </div>
+
+              <div className="h-px bg-[#E8E8E8]" />
 
               {/* 5. Wrong answers analysis */}
               {(() => {
                 const wrongAnswers = report.answers.filter((a) => !a.is_correct);
                 return wrongAnswers.length > 0 && (
+                  <div className="print-break-before">
                   <CollapsibleSection title="오답 분석">
                     <div className="border border-[#E8E8E8] rounded overflow-hidden">
                       <table className="w-full text-sm">
@@ -312,6 +321,7 @@ export function StudentResultPage() {
                       </table>
                     </div>
                   </CollapsibleSection>
+                  </div>
                 );
               })()}
             </div>
@@ -325,9 +335,9 @@ export function StudentResultPage() {
             </div>
           )}
 
-          {/* Test history selector */}
+          {/* Test history selector - hidden in print */}
           {tests.length > 1 && (
-            <div className="rounded-2xl bg-white border border-border-subtle overflow-hidden">
+            <div className="rounded-2xl bg-white border border-border-subtle overflow-hidden print-hidden">
               <div className="px-5 py-4 border-b border-border-subtle">
                 <h3 className="font-display text-sm font-bold text-text-primary">
                   다른 테스트 결과 보기
