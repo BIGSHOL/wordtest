@@ -13,7 +13,7 @@ from app.services.test_common import format_rank_label
 from app.services.student import (
     get_student_by_username,
     create_student,
-    list_students_by_teacher,
+    list_all_students,
     get_student_by_id,
     update_student,
     delete_student,
@@ -27,6 +27,7 @@ class StudentWithLevelResponse(UserResponse):
     latest_rank: Optional[str] = None
     latest_sublevel: Optional[int] = None
     latest_rank_label: Optional[str] = None
+    teacher_name: Optional[str] = None
 
 
 @router.post("", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -43,9 +44,9 @@ async def create_student_endpoint(
             detail="Username already taken",
         )
 
-    # Check for duplicate name among same teacher's students
+    # Check for duplicate name among all students
     name_check = await db.execute(
-        select(User).where(User.teacher_id == teacher.id, User.name == student_in.name)
+        select(User).where(User.role == "student", User.name == student_in.name)
     )
     if name_check.scalar_one_or_none():
         raise HTTPException(
@@ -71,8 +72,8 @@ async def list_students_endpoint(
     teacher: CurrentTeacher,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """List all students belonging to the current teacher, with latest level info."""
-    students = await list_students_by_teacher(db, teacher.id)
+    """List all students (regardless of teacher), with latest level info."""
+    students = await list_all_students(db)
 
     # Fetch latest completed test session per student in one query
     student_ids = [s.id for s in students]
@@ -113,6 +114,16 @@ async def list_students_endpoint(
     for row in result.all():
         level_map[row[0]] = {"level": row[1], "rank": row[2], "sublevel": row[3]}
 
+    # Fetch teacher names for all students
+    teacher_ids = list({s.teacher_id for s in students if s.teacher_id})
+    teacher_name_map: dict[str, str] = {}
+    if teacher_ids:
+        teacher_result = await db.execute(
+            select(User.id, User.name).where(User.id.in_(teacher_ids))
+        )
+        for row in teacher_result.all():
+            teacher_name_map[row[0]] = row[1]
+
     responses = []
     for s in students:
         info = level_map.get(s.id, {})
@@ -136,6 +147,7 @@ async def list_students_endpoint(
                     format_rank_label(info["level"], info["sublevel"])
                     if info.get("level") and info.get("sublevel") else None
                 ),
+                teacher_name=teacher_name_map.get(s.teacher_id) if s.teacher_id else None,
             )
         )
     return responses
@@ -154,11 +166,6 @@ async def update_student_endpoint(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Student not found",
-        )
-    if student.teacher_id != teacher.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not your student",
         )
 
     updated = await update_student(
@@ -185,11 +192,6 @@ async def delete_student_endpoint(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Student not found",
-        )
-    if student.teacher_id != teacher.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not your student",
         )
 
     await delete_student(db, student)

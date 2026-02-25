@@ -92,6 +92,8 @@ const QUESTION_TYPE_OPTIONS = [
   { value: 'ko_type', label: '한영 타이핑', desc: '한국어 뜻 보고 영어 타이핑' },
   { value: 'emoji', label: '이모지', desc: '이모지 보고 영어 단어 고르기' },
   { value: 'sentence', label: '예문 빈칸', desc: '예문의 빈칸에 맞는 단어 고르기' },
+  { value: 'antonym_type', label: '반의어 타이핑', desc: '반의어를 영어로 타이핑' },
+  { value: 'antonym_choice', label: '반의어 고르기', desc: '반의어를 4지선다로 고르기' },
 ];
 
 const ENGINE_PRESETS = [

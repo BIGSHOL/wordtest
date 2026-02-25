@@ -43,6 +43,14 @@ async def list_students_by_teacher(db: AsyncSession, teacher_id: str) -> list[Us
     return list(result.scalars().all())
 
 
+async def list_all_students(db: AsyncSession) -> list[User]:
+    """Return all students regardless of teacher."""
+    result = await db.execute(
+        select(User).where(User.role == "student").order_by(User.name)
+    )
+    return list(result.scalars().all())
+
+
 async def get_student_by_id(db: AsyncSession, student_id: str) -> User | None:
     result = await db.execute(
         select(User).where(User.id == student_id, User.role == "student")

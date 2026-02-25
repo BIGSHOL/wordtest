@@ -194,6 +194,7 @@ async def assign_test(
         responses.append(
             TestAssignmentResponse(
                 id=a.id,
+                test_config_id=config.id,
                 student_id=a.student_id,
                 student_name=student.name if student else "",
                 student_school=student.school_name if student else None,
@@ -258,6 +259,7 @@ async def list_assignments_by_teacher(
         responses.append(
             TestAssignmentResponse(
                 id=assignment.id,
+                test_config_id=assignment.test_config_id,
                 student_id=assignment.student_id,
                 student_name=student.name,
                 student_school=student.school_name,

@@ -26,6 +26,8 @@ const QUESTION_TYPE_LABELS: Record<string, string> = {
   ko_type: '한글 타이핑',
   emoji: '이모지',
   sentence: '예문 빈칸',
+  antonym_type: '반의어 타이핑',
+  antonym_choice: '반의어 고르기',
 };
 
 const SKILL_AREA_LABELS: Record<string, string> = {

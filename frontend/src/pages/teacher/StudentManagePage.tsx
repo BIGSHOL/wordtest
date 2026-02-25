@@ -237,6 +237,9 @@ export function StudentManagePage() {
                     <th className="px-4 text-left text-xs font-semibold text-text-tertiary whitespace-nowrap" style={{ width: '120px' }}>
                       연락처
                     </th>
+                    <th className="px-4 text-left text-xs font-semibold text-text-tertiary whitespace-nowrap" style={{ width: '80px' }}>
+                      담당
+                    </th>
                     <th className="px-4 text-left text-xs font-semibold text-text-tertiary whitespace-nowrap" style={{ width: '110px' }}>
                       현재 레벨
                     </th>
@@ -269,6 +272,9 @@ export function StudentManagePage() {
                         </td>
                         <td className="px-4 text-sm text-text-secondary whitespace-nowrap">
                           {student.phone_number || '-'}
+                        </td>
+                        <td className="px-4 text-sm text-text-secondary whitespace-nowrap">
+                          {student.teacher_name || '-'}
                         </td>
                         <td className="px-4 whitespace-nowrap">
                           {rankInfo ? (

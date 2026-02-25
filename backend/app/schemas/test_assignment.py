@@ -23,6 +23,7 @@ class TestAssignmentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
+    test_config_id: str
     student_id: str
     student_name: str
     student_school: Optional[str] = None

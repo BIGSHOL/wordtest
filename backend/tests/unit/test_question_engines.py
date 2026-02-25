@@ -1,4 +1,4 @@
-"""Unit tests for the question engine registry and all 8 engines.
+"""Unit tests for the question engine registry and all 10 engines.
 
 Tests:
 - TestEngineRegistry: registry, get_engine, resolve_name, compute_compatible_engines
@@ -8,6 +8,7 @@ Tests:
 - TestEmoji: can_generate, generate
 - TestSentence: can_generate, generate, make_sentence_blank
 - TestListenEngines: listen_en, listen_ko, listen_type, ko_type
+- TestAntonymEngines: antonym_type, antonym_choice
 """
 import pytest
 from unittest.mock import MagicMock
@@ -81,9 +82,9 @@ def sample_pool(sample_words):
 class TestEngineRegistry:
     """Tests for engine registry, get_engine, resolve_name, compute_compatible_engines."""
 
-    def test_all_8_registered(self):
-        """ENGINES dict should contain exactly 8 engines."""
-        assert len(ENGINES) == 8
+    def test_all_10_registered(self):
+        """ENGINES dict should contain exactly 10 engines."""
+        assert len(ENGINES) == 10
         expected = {
             "en_to_ko",
             "ko_to_en",
@@ -93,6 +94,8 @@ class TestEngineRegistry:
             "listen_ko",
             "listen_type",
             "ko_type",
+            "antonym_type",
+            "antonym_choice",
         }
         assert set(ENGINES.keys()) == expected
 
@@ -126,6 +129,8 @@ class TestEngineRegistry:
         assert resolve_name("listen_and_type") == "listen_type"
         assert resolve_name("listen_to_meaning") == "listen_ko"
         assert resolve_name("meaning_and_type") == "ko_type"
+        assert resolve_name("antonym_and_type") == "antonym_type"
+        assert resolve_name("antonym_and_choice") == "antonym_choice"
 
         # Canonical → canonical (passthrough)
         assert resolve_name("en_to_ko") == "en_to_ko"
@@ -566,3 +571,71 @@ class TestListenEngines:
         assert spec.correct_answer == "dog"
         assert spec.choices is None
         assert spec.is_typing is True
+
+
+# ══════════════════════════════════════════════════════════════════════════
+# TestAntonymEngines
+# ══════════════════════════════════════════════════════════════════════════
+
+
+class TestAntonymEngines:
+    """Tests for antonym_type and antonym_choice engines."""
+
+    def test_antonym_type_can_generate_with_antonym(self):
+        """antonym_type can_generate should return True if word has antonym."""
+        engine = get_engine("antonym_type")
+        word = make_word("hot", "뜨거운")
+        word.antonym = "cold"
+        assert engine.can_generate(word) is True
+
+    def test_antonym_type_can_generate_without_antonym(self):
+        """antonym_type can_generate should return False if word has no antonym."""
+        engine = get_engine("antonym_type")
+        word = make_word("dog", "개")
+        word.antonym = None
+        assert engine.can_generate(word) is False
+
+    def test_antonym_type_generate(self, sample_pool):
+        """antonym_type should have is_typing=True, correct_answer=antonym, hint."""
+        engine = get_engine("antonym_type")
+        word = make_word("hot", "뜨거운")
+        word.antonym = "cold"
+        spec = engine.generate(word, sample_pool)
+
+        assert isinstance(spec, QuestionSpec)
+        assert spec.question_type == "antonym_type"
+        assert spec.word is word
+        assert spec.correct_answer == "cold"
+        assert spec.choices is None
+        assert spec.is_typing is True
+        assert spec.hint == "c___"
+
+    def test_antonym_choice_can_generate_with_antonym(self):
+        """antonym_choice can_generate should return True if word has antonym."""
+        engine = get_engine("antonym_choice")
+        word = make_word("hot", "뜨거운")
+        word.antonym = "cold"
+        assert engine.can_generate(word) is True
+
+    def test_antonym_choice_can_generate_without_antonym(self):
+        """antonym_choice can_generate should return False if word has no antonym."""
+        engine = get_engine("antonym_choice")
+        word = make_word("dog", "개")
+        word.antonym = None
+        assert engine.can_generate(word) is False
+
+    def test_antonym_choice_generate(self, sample_pool):
+        """antonym_choice should have 4 choices with correct_answer=antonym."""
+        engine = get_engine("antonym_choice")
+        word = make_word("hot", "뜨거운")
+        word.antonym = "cold"
+        spec = engine.generate(word, sample_pool)
+
+        assert isinstance(spec, QuestionSpec)
+        assert spec.question_type == "antonym_choice"
+        assert spec.word is word
+        assert spec.correct_answer == "cold"
+        assert spec.choices is not None
+        assert len(spec.choices) == 4
+        assert "cold" in spec.choices
+        assert spec.is_typing is False

@@ -20,6 +20,7 @@ export interface AssignTestRequest {
 
 export interface TestAssignmentItem {
   id: string;
+  test_config_id: string;
   student_id: string;
   student_name: string;
   student_school: string | null;

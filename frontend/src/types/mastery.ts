@@ -28,7 +28,8 @@ export type QuestionType =
 
 export function isTypingQuestion(type: string): boolean {
   return type === 'listen_and_type' || type === 'meaning_and_type'
-    || type === 'listen_type' || type === 'ko_type';
+    || type === 'listen_type' || type === 'ko_type'
+    || type === 'antonym_type' || type === 'antonym_and_type';
 }
 
 export function isListenQuestion(type: string): boolean {
@@ -41,7 +42,8 @@ export function isChoiceQuestion(type: string): boolean {
     || type === 'listen_to_meaning' || type === 'emoji_to_word'
     || type === 'en_to_ko' || type === 'ko_to_en'
     || type === 'listen_en' || type === 'listen_ko'
-    || type === 'emoji' || type === 'sentence';
+    || type === 'emoji' || type === 'sentence'
+    || type === 'antonym_choice' || type === 'antonym_and_choice';
 }
 
 /** Get timer for a question type */
@@ -57,6 +59,12 @@ export function getQuestionTimer(type: string): number {
     case 'listen_and_type':
     case 'meaning_and_type':
       return 15;
+    case 'antonym_type':
+    case 'antonym_and_type':
+      return 15;
+    case 'antonym_choice':
+    case 'antonym_and_choice':
+      return 8;
     default:
       return 5;
   }

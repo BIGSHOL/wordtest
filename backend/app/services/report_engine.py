@@ -144,6 +144,8 @@ ENGINE_LABELS: dict[str, str] = {
     "listen_ko": "리스닝K",
     "listen_type": "리스닝T",
     "ko_type": "한영T",
+    "antonym_type": "반의어T",
+    "antonym_choice": "반의어",
 }
 
 _ENGINE_CATEGORY: dict[str, str] = {
@@ -155,6 +157,8 @@ _ENGINE_CATEGORY: dict[str, str] = {
     "listen_ko": "리스닝",
     "listen_type": "리스닝",
     "ko_type": "타이핑",
+    "antonym_type": "타이핑",
+    "antonym_choice": "단어",
 }
 
 

@@ -28,6 +28,7 @@ import { TypingInput } from '../../components/mastery/TypingInput';
 import { SentenceBlankCard } from '../../components/mastery/SentenceBlankCard';
 import { EmojiCard } from '../../components/test/EmojiCard';
 import { ListeningCard } from '../../components/test/ListeningCard';
+import { AntonymCard } from '../../components/test/AntonymCard';
 import { FeedbackBanner } from '../../components/test/FeedbackBanner';
 import { MasteryHeader } from '../../components/mastery/MasteryHeader';
 import { ExamBriefing } from '../../components/test/ExamBriefing';
@@ -439,6 +440,11 @@ export function UnifiedTestPage() {
       case 'listen_type':
         // In exam mode, listen questions show the word as text
         return <WordCard word={currentQuestion.word.english} />;
+      case 'antonym_type':
+      case 'antonym_choice':
+      case 'antonym_and_type':
+      case 'antonym_and_choice':
+        return <AntonymCard english={currentQuestion.word.english} korean={currentQuestion.word.korean} />;
       default:
         return <WordCard word={currentQuestion.word.english} />;
     }

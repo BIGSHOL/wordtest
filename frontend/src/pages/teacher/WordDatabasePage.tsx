@@ -512,6 +512,7 @@ export function WordDatabasePage() {
                       <th className="text-left px-3 whitespace-nowrap">품사</th>
                       <th className="text-left px-3 whitespace-nowrap">한국어 뜻</th>
                       <th className="text-left px-3">예문</th>
+                      <th className="text-left px-3 whitespace-nowrap">반의어</th>
                       <th className="text-center px-3 whitespace-nowrap">영역</th>
                       <th className="text-left px-3 whitespace-nowrap">레슨</th>
                       <th className="text-center px-3 whitespace-nowrap">관리</th>
@@ -600,6 +601,15 @@ export function WordDatabasePage() {
                                 </div>
                               );
                             })()}
+                          </td>
+                          <td className="px-3 text-sm text-text-secondary whitespace-nowrap">
+                            {word.antonym ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium" style={{ backgroundColor: '#FFEDD5', color: '#EA580C' }}>
+                                {word.antonym}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-text-tertiary">-</span>
+                            )}
                           </td>
                           <td className="px-3 text-center">
                             {(() => {

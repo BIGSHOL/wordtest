@@ -95,32 +95,26 @@ input, textarea, select {
   overscroll-behavior: contain;
 }
 
-/* ── Print styles ── */
+/* ── Print styles ──
+ * 원칙: 웹 디자인을 최대한 유지. 숨기기 + 축소만 한다.
+ *   1) 사이드바/버튼 등 UI 숨기기
+ *   2) zoom으로 A4에 맞게 축소
+ *   3) 배경색 강제 인쇄 (print-color-adjust)
+ *   4) 나머지 border, padding, radius 등은 원본 그대로
+ */
 @page {
   size: A4;
   margin: 8mm;
 }
 
 @media print {
-  /* Hide sidebar, nav, and non-printable UI */
+  /* ── 1. 비인쇄 요소 숨기기 ── */
   aside,
   .print-hidden {
     display: none !important;
   }
 
-  /* Main content fills full width */
-  main {
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 100% !important;
-    overflow: visible !important;
-  }
-
-  main > div {
-    padding: 0 !important;
-  }
-
-  /* Remove flex min-width constraint on root layout */
+  /* ── 2. 레이아웃: min-width 해제, 사이드바 제거 후 전폭 ── */
   body,
   #root,
   #root > div,
@@ -129,26 +123,75 @@ input, textarea, select {
     width: 100% !important;
   }
 
-  /* Page break utility */
-  .print-page-break {
-    page-break-before: always;
-    break-before: page;
-  }
-
-  /* Report container: no border/shadow in print, shrink to fit A4 */
-  .print-report {
-    max-width: 100% !important;
-    padding: 0 !important;
+  main {
     margin: 0 !important;
+    width: 100% !important;
+    overflow: visible !important;
   }
 
-  /* Remove spacing between print pages */
-  .print-report > * {
-    margin-top: 0 !important;
-    margin-bottom: 0 !important;
+  /* TeacherLayout main > div.p-7.px-8 패딩 제거 (사이드바 없으므로 불필요) */
+  main > div {
+    padding: 0 !important;
   }
 
-  /* Each print page: shrink to fit one A4 page */
+  /* ── 3. 리포트 컨테이너: zoom 축소, min-width 해제 ── */
+  .print-report {
+    min-width: 0 !important;
+    zoom: 0.80;
+  }
+
+  /* ── 4. 리포트 카드: 원본 디자인 유지, overflow만 해제 ── */
+  .print-report-card {
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+
+  /* ── 5. 접힌 섹션 강제 표시 ── */
+  .print-always-show {
+    display: block !important;
+  }
+
+  /* ── 6. 모든 배경색 & 색상 정확히 인쇄 ── */
+  * {
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* 최외곽 페이지 배경만 흰색 (종이 색상) */
+  .min-h-screen {
+    background: white !important;
+    min-height: auto !important;
+  }
+
+  /* ── 7. 페이지 나누기 ── */
+  .print-break-before {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .print-page-break {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  /* ── 8. 테이블 ── */
+  tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  table {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  /* ── 9. MasteryReportPage 전용 (멀티페이지 탭) ── */
   .print-page {
     border: none !important;
     box-shadow: none !important;
@@ -158,54 +201,7 @@ input, textarea, select {
     zoom: 0.62;
   }
 
-  /* Show all pages during print (override screen-only hidden) */
   .print-show {
     display: block !important;
-  }
-
-  /* Report card: remove border/rounding, allow content to flow across pages */
-  .print-report-card {
-    border: none !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    overflow: visible !important;
-  }
-
-  /* Page break before a section */
-  .print-break-before {
-    break-before: page;
-    page-break-before: always;
-  }
-
-  /* Prevent breaking inside table rows and key content blocks */
-  tr {
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  /* Tables: repeat thead on every page */
-  thead {
-    display: table-header-group;
-  }
-
-  /* Allow tables to overflow naturally across pages */
-  table {
-    break-inside: auto;
-    page-break-inside: auto;
-  }
-
-  /* Remove background colors that waste ink (keep borders for readability) */
-  .bg-\[\#F8F8F6\],
-  .bg-\[\#FAFAFA\],
-  .min-h-screen {
-    background: white !important;
-    min-height: auto !important;
-  }
-
-  /* Remove animations in print */
-  * {
-    animation: none !important;
-    transition: none !important;
   }
 }

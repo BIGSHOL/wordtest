@@ -59,7 +59,7 @@ function CollapsibleSection({
           style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
         />
       </button>
-      {open && <div className="mt-3">{children}</div>}
+      <div className={`mt-3 print-always-show${!open ? ' hidden' : ''}`}>{children}</div>
     </div>
   );
 }
@@ -120,7 +120,7 @@ export function StudentResultPage() {
           <div className="w-8 h-8 border-4 border-teal border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="max-w-[900px] min-w-[860px] mx-auto space-y-6 py-6 px-4">
+        <div className="max-w-[900px] min-w-[860px] mx-auto space-y-6 py-6 px-4 print-report">
           {/* Top bar - hidden in print */}
           <div className="flex items-center justify-between print-hidden">
             <div className="flex items-center gap-3">

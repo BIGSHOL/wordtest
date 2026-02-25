@@ -30,6 +30,7 @@ class Word(Base):
     example_ko: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     is_excluded: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     compatible_engines: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    antonym: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     area1_meaning: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     area2_association: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     area3_pronunciation: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

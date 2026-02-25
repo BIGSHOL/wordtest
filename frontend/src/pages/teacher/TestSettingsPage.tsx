@@ -2,7 +2,7 @@
  * Test assignment page for teachers.
  * Supports cross-book range selection.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TeacherLayout } from '../../components/layout/TeacherLayout';
 import { TestConfigPanel, type TestConfigState } from '../../components/test-settings/TestConfigPanel';
@@ -489,6 +489,13 @@ export function TestSettingsPage() {
             onClose={() => setAssignModalConfig(null)}
             config={assignModalConfig}
             students={students}
+            existingAssignmentStudentIds={
+              new Set(
+                assignments
+                  .filter(a => a.test_config_id === assignModalConfig.id)
+                  .map(a => a.student_id)
+              )
+            }
             onAssigned={async () => {
               setAssignModalConfig(null);
               await Promise.all([refreshAssignments(), refreshConfigs()]);

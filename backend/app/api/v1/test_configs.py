@@ -176,6 +176,7 @@ async def assign_students_to_config(
         responses.append(
             TestAssignmentResponse(
                 id=a.id,
+                test_config_id=config.id,
                 student_id=a.student_id,
                 student_name=student.name if student else "",
                 student_school=student.school_name if student else None,

@@ -19,6 +19,7 @@ export interface User {
   latest_rank?: string | null;
   latest_sublevel?: number | null;
   latest_rank_label?: string | null;
+  teacher_name?: string | null;
 }
 
 export interface LoginRequest {

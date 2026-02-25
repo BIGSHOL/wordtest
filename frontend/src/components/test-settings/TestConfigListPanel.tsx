@@ -21,6 +21,8 @@ const QTYPE_LABELS: Record<string, { label: string; bg: string; color: string }>
   ko_type: { label: '한영타', bg: '#FEE2E2', color: '#DC2626' },
   emoji: { label: '이모지', bg: '#FCE7F3', color: '#DB2777' },
   sentence: { label: '예문', bg: '#E0E7FF', color: '#4F46E5' },
+  antonym_type: { label: '반의T', bg: '#FFEDD5', color: '#EA580C' },
+  antonym_choice: { label: '반의어', bg: '#FED7AA', color: '#C2410C' },
 };
 
 const ENGINE_LABELS: Record<string, { label: string; bg: string; color: string }> = {

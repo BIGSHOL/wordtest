@@ -1,0 +1,24 @@
+{
+  "completed_books": [
+    "Power Voca 5000-01|lv1",
+    "Power Voca 5000-02|lv2",
+    "Power Voca 5000-03|lv3",
+    "Power Voca 5000-04|lv4",
+    "Power Voca 5000-05|lv5",
+    "Power Voca 5000-06|lv6",
+    "Power Voca 5000-07|lv7",
+    "Power Voca 5000-08|lv8",
+    "Power Voca 5000-09|lv9",
+    "Power Voca 5000-10|lv10",
+    "Power Voca 수능 기출 5000-01|lv11",
+    "Power Voca 수능 기출 5000-02|lv12",
+    "Power Voca 수능 기출 5000-03|lv13",
+    "Power Voca 수능 기출 5000-04|lv14",
+    "Power Voca 수능 기출 5000-05|lv15"
+  ],
+  "stats": {
+    "processed": 10025,
+    "assigned": 4836,
+    "skipped": 5189
+  }
+}

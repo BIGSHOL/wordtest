@@ -110,14 +110,22 @@ export function AssignStudentsModal({
     }
   };
 
+  const [errorMsg, setErrorMsg] = useState('');
+
   const handleAssign = async () => {
     if (selectedIds.size === 0 || isSubmitting) return;
     setIsSubmitting(true);
+    setErrorMsg('');
     try {
       await testAssignmentService.assignStudentsToConfig(config.id, [...selectedIds]);
       onAssigned();
-    } catch {
-      // Error handling is delegated to the caller via onAssigned / parent
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 409) {
+        setErrorMsg('이미 배정된 학생이 포함되어 있습니다.');
+      } else {
+        setErrorMsg('배정 중 오류가 발생했습니다.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -285,6 +293,9 @@ export function AssignStudentsModal({
           className="flex items-center justify-between shrink-0"
           style={{ padding: '14px 24px', borderTop: '1px solid #E8E8E6', backgroundColor: '#FAFAF9' }}
         >
+          {errorMsg && (
+            <p className="text-[11px] text-red-500 mb-1" style={{ marginBottom: 4 }}>{errorMsg}</p>
+          )}
           <div className="flex items-center gap-2">
             <Users className="w-3.5 h-3.5" style={{ color: selectedIds.size > 0 ? '#2D9CAE' : '#9C9B99' }} />
             <span

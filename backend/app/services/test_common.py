@@ -650,6 +650,9 @@ def determine_correct_answer(
     # Korean answer types
     if canonical in ("en_to_ko", "listen_ko"):
         return word.korean
+    # Antonym answer types
+    if canonical in ("antonym_type", "antonym_choice"):
+        return word.antonym or word.english
     # English answer types
     return word.english
 
@@ -659,7 +662,7 @@ def is_typing_question(question_type: str | None) -> bool:
     if not question_type:
         return False
     canonical = resolve_name(question_type)
-    return canonical in ("listen_type", "ko_type")
+    return canonical in ("listen_type", "ko_type", "antonym_type")
 
 
 # ── Batch Answer Processing ───────────────────────────────────────────────────
