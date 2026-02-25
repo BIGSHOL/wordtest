@@ -2,8 +2,8 @@
  * Test config list panel - displays created test configurations.
  * Features: pagination (10/20/50/100), assign students, delete unused configs.
  */
-import { useState, useEffect, useRef } from 'react';
-import { Users, Trash2, Plus, ChevronLeft, ChevronRight, Pencil, Search } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Users, Trash2, Plus, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import type { TestConfigItem } from '../../services/testAssignment';
 
 interface Props {
@@ -53,26 +53,6 @@ function formatTime(config: TestConfigItem): string {
 export function TestConfigListPanel({ configs, onAssign, onDelete, onRename }: Props) {
   const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValue, setEditValue] = useState('');
-  const editRef = useRef<HTMLInputElement>(null);
-
-  const startEditing = (config: TestConfigItem) => {
-    setEditingId(config.id);
-    setEditValue(config.name);
-    setTimeout(() => editRef.current?.focus(), 0);
-  };
-
-  const commitEdit = () => {
-    if (editingId && editValue.trim() && onRename) {
-      const original = configs.find(c => c.id === editingId);
-      if (original && editValue.trim() !== original.name) {
-        onRename(editingId, editValue.trim());
-      }
-    }
-    setEditingId(null);
-  };
-
   // Reset page when data or search changes
   useEffect(() => setPage(0), [configs.length, searchQuery]);
 
