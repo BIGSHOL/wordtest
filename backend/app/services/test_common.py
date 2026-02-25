@@ -737,7 +737,7 @@ async def process_batch_answers(
             is_correct=is_correct,
             selected_answer=selected,
             correct_answer=correct,
-            time_taken_sec=None,  # no per-question timing in exam mode
+            time_taken_sec=ans.get("time_taken_seconds"),
             question_type=canonical_qt,
         )
         db.add(learning_answer)

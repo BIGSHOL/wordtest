@@ -40,6 +40,12 @@ description: 프론트엔드 Route-Page-Nav-Store-Service 간 참조 일관성�
 | `frontend/src/pages/student/StudentReportPage.tsx` | 학생 리포트 페이지 |
 | `frontend/src/pages/auth/LoginPage.tsx` | 로그인 페이지 |
 | `frontend/src/pages/auth/RegisterPage.tsx` | 회원가입 페이지 |
+| `frontend/src/components/test-settings/TestConfigPanel.tsx` | 테스트 설정 위자드 패널 |
+| `frontend/src/components/test-settings/AssignmentStatusTable.tsx` | 출제 현황 테이블 |
+| `frontend/src/components/test-settings/ConfigPreviewPanel.tsx` | 설정 미리보기 패널 |
+| `frontend/src/components/test-settings/TestConfigListPanel.tsx` | 생성된 테스트 목록 패널 |
+| `frontend/src/components/test-settings/AssignStudentsModal.tsx` | 학생 배정 모달 |
+| `frontend/src/components/test-settings/StudentSelectionCard.tsx` | 학생 선택 카드 |
 | `frontend/src/stores/auth.ts` | 인증 스토어 |
 | `frontend/src/stores/unifiedTestStore.ts` | 통합 테스트 스토어 (레벨업/레거시 공용) |
 | `frontend/src/services/api.ts` | Axios 인스턴스 |
@@ -104,24 +110,26 @@ Grep pattern='path="/' path="frontend/src/App.tsx" output_mode="content"
 
 **FAIL:** 네비게이션 항목이 존재하지 않는 라우트를 가리키면 404 에러 발생.
 
-### Step 4: Store → Service import 검증
+### Step 4: Store/Component → Service import 검증
 
 **도구:** Grep
 
-각 스토어 파일에서 import하는 서비스 함수가 해당 서비스 파일에 존재하는지 확인합니다.
+각 스토어 및 주요 컴포넌트 파일에서 import하는 서비스 함수/타입이 해당 서비스 파일에 존재하는지 확인합니다.
 
 ```bash
 Grep pattern="^import.*from.*services/" path="frontend/src/stores/" output_mode="content"
+Grep pattern="^import.*from.*services/" path="frontend/src/components/test-settings/" output_mode="content"
+Grep pattern="^import.*from.*services/" path="frontend/src/pages/teacher/TestSettingsPage.tsx" output_mode="content"
 ```
 
-각 import된 함수에 대해 서비스 파일에서 `export` 확인:
+각 import된 함수/타입에 대해 서비스 파일에서 `export` 확인:
 ```bash
-Grep pattern="export (const|function|async)" path="frontend/src/services/" output_mode="content"
+Grep pattern="export (const|function|async|interface|type)" path="frontend/src/services/" output_mode="content"
 ```
 
-**PASS 기준:** 모든 스토어가 import하는 서비스 함수가 해당 서비스에서 export됨.
+**PASS 기준:** 모든 스토어 및 컴포넌트가 import하는 서비스 함수/타입이 해당 서비스에서 export됨.
 
-**FAIL:** 존재하지 않는 서비스 함수를 호출하면 빌드 에러 발생.
+**FAIL:** 존재하지 않는 서비스 함수/타입을 호출하면 빌드 에러 발생.
 
 ### Step 5: TypeScript 빌드 검증
 
@@ -157,3 +165,4 @@ cd frontend && npx tsc --noEmit 2>&1 | head -30
 2. **직접 import 페이지** — `LoginPage`, `RegisterPage`는 lazyRetry 없이 직접 import하는 것이 정상 (인증 전 즉시 로드 필요).
 3. **학생 라우트 네비게이션** — 학생 페이지는 TeacherLayout이 아닌 별도 레이아웃을 사용하므로 TeacherLayout navItems에 없는 것이 정상.
 4. **types/ 디렉토리** — `frontend/src/types/test.ts`는 서비스가 아닌 타입 정의 파일로, 스토어에서 직접 import하지 않는 것이 정상. 컴포넌트에서 직접 import하여 사용.
+5. **test-settings 컴포넌트의 서비스 직접 import** — `components/test-settings/` 내 컴포넌트들이 `testAssignment.ts`, `word.ts` 등 서비스를 직접 import하는 것은 정상 패턴. 이 컴포넌트들은 스토어를 거치지 않고 서비스를 직접 호출하는 구조.

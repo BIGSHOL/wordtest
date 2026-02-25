@@ -119,11 +119,10 @@ export function LevelChartTable({ currentRank }: Props) {
             }}
           >
             <div
-              className="rounded-full border-[6px] border-[#CC0000]"
+              className="rounded-full border-[3px] border-[#CC0000]"
               style={{
-                width: '90px',
-                height: '90px',
-                background: 'radial-gradient(circle, #CC000018 0%, #CC000010 70%, transparent 100%)',
+                width: '70px',
+                height: '70px',
               }}
             />
           </div>

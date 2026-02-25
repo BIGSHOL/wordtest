@@ -31,6 +31,7 @@ class BatchAnswerItem(BaseModel):
     word_mastery_id: str
     selected_answer: str  # empty string for unanswered
     question_type: Optional[str] = None
+    time_taken_seconds: Optional[float] = None
 
 
 class LevelupBatchSubmitRequest(BaseModel):

@@ -48,6 +48,28 @@ export interface TestHistoryResponse {
   history: TestHistoryItem[];
 }
 
+export interface TestResultItem {
+  id: string;
+  student_id: string;
+  student_name: string;
+  student_school: string | null;
+  student_grade: string | null;
+  score: number | null;
+  determined_level: number | null;
+  rank_name: string | null;
+  rank_label: string | null;
+  total_questions: number;
+  correct_count: number;
+  duration_seconds: number | null;
+  completed_at: string | null;
+  test_type: 'test' | 'mastery';
+}
+
+export interface AllResultsResponse {
+  results: TestResultItem[];
+  total: number;
+}
+
 export interface WordStat {
   word_id: string;
   english: string;
@@ -63,13 +85,23 @@ export interface WordStatsResponse {
 }
 
 export const statsService = {
-  async getWordStats(): Promise<WordStatsResponse> {
-    const response = await api.get<WordStatsResponse>('/api/v1/stats/word-stats');
+  async getAllResults(params?: {
+    search?: string;
+    test_type?: string;
+    skip?: number;
+    limit?: number;
+  }): Promise<AllResultsResponse> {
+    const response = await api.get<AllResultsResponse>('/api/v1/stats/all-results', { params });
     return response.data;
   },
 
-  async getDashboardStats(): Promise<DashboardStats> {
-    const response = await api.get<DashboardStats>('/api/v1/stats/dashboard');
+  async getWordStats(period: string = 'all'): Promise<WordStatsResponse> {
+    const response = await api.get<WordStatsResponse>('/api/v1/stats/word-stats', { params: { period } });
+    return response.data;
+  },
+
+  async getDashboardStats(period: string = 'all'): Promise<DashboardStats> {
+    const response = await api.get<DashboardStats>('/api/v1/stats/dashboard', { params: { period } });
     return response.data;
   },
 

@@ -70,6 +70,8 @@ export const wordService = {
   async listWords(params?: {
     level?: number;
     book_name?: string;
+    lesson?: string;
+    part_of_speech?: string;
     search?: string;
     skip?: number;
     limit?: number;
@@ -80,6 +82,11 @@ export const wordService = {
 
   async listBooks(): Promise<string[]> {
     const response = await api.get<string[]>('/api/v1/words/books');
+    return response.data;
+  },
+
+  async listPartsOfSpeech(): Promise<string[]> {
+    const response = await api.get<string[]>('/api/v1/words/parts-of-speech');
     return response.data;
   },
 

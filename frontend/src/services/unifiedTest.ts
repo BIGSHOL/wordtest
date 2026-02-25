@@ -111,6 +111,7 @@ export interface BatchAnswerItem {
   word_mastery_id: string;
   selected_answer: string;
   question_type?: string;
+  time_taken_seconds?: number | null;
 }
 
 export interface LevelupBatchSubmitResult {

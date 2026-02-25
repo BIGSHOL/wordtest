@@ -172,6 +172,11 @@ class MasteryReportResponse(BaseModel):
     diagnosis: Optional[EngineDiagnosis] = None
 
 
+class AllResultsResponse(BaseModel):
+    results: list[RecentTest]
+    total: int
+
+
 class DashboardStats(BaseModel):
     total_students: int
     total_words: int

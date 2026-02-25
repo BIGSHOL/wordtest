@@ -15,31 +15,33 @@ class TestConfigResponse(BaseModel):
     time_limit_seconds: int
     is_active: bool
     book_name: Optional[str] = None
+    book_name_end: Optional[str] = None
     level_range_min: int
     level_range_max: int
     per_question_time_seconds: Optional[int] = None
     total_time_override_seconds: Optional[int] = None
     question_types: Optional[str] = None
+    question_type_counts: Optional[str] = None
     lesson_range_start: Optional[str] = None
     lesson_range_end: Optional[str] = None
+    assignment_count: int = 0
     created_at: str
     updated_at: str
 
 
 class CreateTestConfigRequest(BaseModel):
-    name: str
-    test_type: str
+    name: Optional[str] = None  # user-defined name; auto-generated if omitted
+    engine: str = "levelup"  # "levelup" or "legacy"
     question_count: int = 20
-    time_limit_seconds: int = 300
-    is_active: bool = True
+    per_question_time_seconds: int = 15
+    question_types: list[str] = ["en_to_ko", "ko_to_en"]
     book_name: Optional[str] = None
-    level_range_min: int = 1
-    level_range_max: int = 15
-    per_question_time_seconds: Optional[int] = None
-    total_time_override_seconds: Optional[int] = None
-    question_types: Optional[str] = None
+    book_name_end: Optional[str] = None
     lesson_range_start: Optional[str] = None
     lesson_range_end: Optional[str] = None
+    total_time_override_seconds: Optional[int] = None
+    question_type_counts: Optional[dict[str, int]] = None
+    is_active: bool = True
 
 
 class UpdateTestConfigRequest(BaseModel):
@@ -56,3 +58,7 @@ class UpdateTestConfigRequest(BaseModel):
     question_types: Optional[str] = None
     lesson_range_start: Optional[str] = None
     lesson_range_end: Optional[str] = None
+
+
+class AssignToConfigRequest(BaseModel):
+    student_ids: list[str]

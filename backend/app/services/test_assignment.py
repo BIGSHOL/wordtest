@@ -45,54 +45,88 @@ def _build_lesson_range(
     return None
 
 
-async def assign_test(
-    db: AsyncSession, teacher_id: str, data: AssignTestRequest
-) -> list[TestAssignmentResponse]:
-    """Create a TestConfig and assign it to multiple students with individual codes."""
-    engine_type, assignment_type = _resolve_engine(data.engine)
-    # Store question types as comma-separated canonical names
-    question_types_str = ",".join(data.question_types) if data.question_types else "en_to_ko,ko_to_en"
+async def build_test_config(
+    db: AsyncSession,
+    teacher_id: str,
+    *,
+    engine: str,
+    question_count: int,
+    per_question_time_seconds: int,
+    question_types: list[str] | None,
+    book_name: str | None,
+    book_name_end: str | None,
+    lesson_range_start: str | None,
+    lesson_range_end: str | None,
+    total_time_override_seconds: int | None,
+    question_type_counts: dict[str, int] | None,
+    is_active: bool = True,
+    name: str | None = None,
+) -> TestConfig:
+    """Build and persist a TestConfig from the given parameters.
 
-    time_limit = data.per_question_time_seconds * data.question_count
-    is_levelup = data.engine == "levelup"
+    Derives name, level range, and time limit automatically.
+    The config is added to the session but NOT committed (caller decides).
+    """
+    question_types_str = ",".join(question_types) if question_types else "en_to_ko,ko_to_en"
 
-    book_end = data.book_name_end or data.book_name
-    is_cross_book = book_end != data.book_name
+    time_limit = per_question_time_seconds * question_count
+    is_levelup = engine == "levelup"
+
+    book_end = book_name_end or book_name
+    is_cross_book = book_end != book_name
 
     # Derive level range from book names
-    level_min = await _get_book_level(db, data.book_name) if data.book_name else 1
+    level_min = await _get_book_level(db, book_name) if book_name else 1
     level_max = await _get_book_level(db, book_end) if book_end else 15
 
-    type_label = "레벨업" if is_levelup else "레거시"
-    if is_cross_book:
-        config_name = f"{data.book_name} {data.lesson_range_start} ~ {book_end} {data.lesson_range_end} ({type_label})"
+    type_label = "\ub808\ubca8\uc5c5" if is_levelup else "\ub808\uac70\uc2dc"
+    if name:
+        config_name = name
+    elif is_cross_book:
+        config_name = f"{book_name} {lesson_range_start} ~ {book_end} {lesson_range_end} ({type_label})"
     else:
-        config_name = f"{data.book_name} {data.lesson_range_start}-{data.lesson_range_end} ({type_label})"
+        config_name = f"{book_name} {lesson_range_start}-{lesson_range_end} ({type_label})"
 
     config = TestConfig(
         teacher_id=teacher_id,
         name=config_name,
         test_code=None,
-        test_type=data.engine,
-        question_count=data.question_count,
+        test_type=engine,
+        question_count=question_count,
         time_limit_seconds=time_limit,
-        is_active=True,
-        book_name=data.book_name,
+        is_active=is_active,
+        book_name=book_name,
         book_name_end=book_end,
         level_range_min=level_min,
         level_range_max=level_max,
-        per_question_time_seconds=data.per_question_time_seconds,
-        total_time_override_seconds=data.total_time_override_seconds,
+        per_question_time_seconds=per_question_time_seconds,
+        total_time_override_seconds=total_time_override_seconds,
         question_types=question_types_str,
-        question_type_counts=json.dumps(data.question_type_counts) if data.question_type_counts else None,
-        lesson_range_start=data.lesson_range_start,
-        lesson_range_end=data.lesson_range_end,
+        question_type_counts=json.dumps(question_type_counts) if question_type_counts else None,
+        lesson_range_start=lesson_range_start,
+        lesson_range_end=lesson_range_end,
     )
     db.add(config)
     await db.flush()
+    return config
+
+
+async def create_assignments_for_config(
+    db: AsyncSession,
+    teacher_id: str,
+    config: TestConfig,
+    student_ids: list[str],
+    engine: str,
+) -> list[TestAssignment]:
+    """Create individual TestAssignment rows for each student.
+
+    Generates a unique test code per assignment.
+    Assignments are added to the session but NOT committed (caller decides).
+    """
+    engine_type, assignment_type = _resolve_engine(engine)
 
     assignments = []
-    for student_id in data.student_ids:
+    for student_id in student_ids:
         individual_code = await generate_test_code(db)
         assignment = TestAssignment(
             test_config_id=config.id,
@@ -104,6 +138,33 @@ async def assign_test(
         )
         db.add(assignment)
         assignments.append(assignment)
+
+    return assignments
+
+
+async def assign_test(
+    db: AsyncSession, teacher_id: str, data: AssignTestRequest
+) -> list[TestAssignmentResponse]:
+    """Create a TestConfig and assign it to multiple students with individual codes."""
+    config = await build_test_config(
+        db,
+        teacher_id,
+        engine=data.engine,
+        question_count=data.question_count,
+        per_question_time_seconds=data.per_question_time_seconds,
+        question_types=data.question_types,
+        book_name=data.book_name,
+        book_name_end=data.book_name_end,
+        lesson_range_start=data.lesson_range_start,
+        lesson_range_end=data.lesson_range_end,
+        total_time_override_seconds=data.total_time_override_seconds,
+        question_type_counts=data.question_type_counts,
+        name=data.name,
+    )
+
+    assignments = await create_assignments_for_config(
+        db, teacher_id, config, data.student_ids, data.engine
+    )
 
     await db.commit()
 
@@ -117,10 +178,15 @@ async def assign_test(
     )
     students_map = {s.id: s for s in student_result.scalars().all()}
 
+    book_end = data.book_name_end or data.book_name
+    is_cross_book = book_end != data.book_name
+
     lesson_range = _build_lesson_range(
         data.book_name, book_end, data.lesson_range_start, data.lesson_range_end,
-        is_cross_book, level_min, level_max,
+        is_cross_book, config.level_range_min, config.level_range_max,
     )
+
+    question_types_str = config.question_types
 
     responses = []
     for a in assignments:
@@ -142,6 +208,8 @@ async def assign_test(
                 engine_type=a.engine_type,
                 status=a.status,
                 assigned_at=a.assigned_at,
+                total_time_override_seconds=data.total_time_override_seconds,
+                question_type_counts=json.dumps(data.question_type_counts) if data.question_type_counts else None,
                 test_session_id=a.test_session_id,
             )
         )
@@ -204,6 +272,8 @@ async def list_assignments_by_teacher(
                 engine_type=assignment.engine_type,
                 status=assignment.status,
                 assigned_at=assignment.assigned_at,
+                total_time_override_seconds=config.total_time_override_seconds,
+                question_type_counts=config.question_type_counts,
                 test_session_id=assignment.test_session_id,
                 learning_session_id=ls_map.get(assignment.id),
             )

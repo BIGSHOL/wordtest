@@ -8,7 +8,7 @@ import type { User } from '../../types/auth';
 import { studentService } from '../../services/student';
 import { statsService, type DashboardStats } from '../../services/stats';
 import { getLevelRank } from '../../types/rank';
-import { Users, Target, Trophy, Calendar, Timer, Search, FileText, Download } from 'lucide-react';
+import { Users, Target, Trophy, Calendar, Timer, FileText, Download } from 'lucide-react';
 
 function StatCard({
   icon: Icon,
@@ -38,7 +38,6 @@ export function DashboardPage() {
   const [students, setStudents] = useState<User[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -64,25 +63,13 @@ export function DashboardPage() {
     <TeacherLayout>
       <div className="space-y-6">
         {/* Top Bar */}
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="font-word text-[26px] font-extrabold text-text-primary mb-1">
-              대시보드
-            </h1>
-            <p className="font-word text-sm text-text-secondary">
-              학생 테스트 현황을 한눈에 확인하세요
-            </p>
-          </div>
-          <div className="relative w-60">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
-            <input
-              type="text"
-              placeholder="학생 검색..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-10 pr-4 bg-white border border-border-subtle rounded-[10px] text-sm text-text-primary placeholder:text-text-tertiary focus:outline-none focus:ring-2 focus:ring-teal/20"
-            />
-          </div>
+        <div>
+          <h1 className="font-word text-[26px] font-extrabold text-text-primary mb-1">
+            대시보드
+          </h1>
+          <p className="font-word text-sm text-text-secondary">
+            학생 테스트 현황을 한눈에 확인하세요
+          </p>
         </div>
 
         {/* Stats Row - 5 cards */}

@@ -8,6 +8,7 @@ import {
   Database,
   TrendingUp,
   BarChart3,
+  ClipboardList,
   LogOut,
 } from 'lucide-react';
 
@@ -20,6 +21,7 @@ const navItems = [
   { to: '/students', icon: Users, label: '학생 관리' },
   { to: '/test-settings', icon: Settings, label: '테스트 설정' },
   { to: '/words', icon: Database, label: '데이터베이스' },
+  { to: '/test-results', icon: ClipboardList, label: '테스트 결과' },
   { to: '/statistics', icon: TrendingUp, label: '통계' },
   { to: '/analysis', icon: BarChart3, label: '분석' },
 ];

@@ -23,6 +23,7 @@ class BatchAnswerItem(BaseModel):
     word_mastery_id: str
     selected_answer: str
     question_type: Optional[str] = None
+    time_taken_seconds: Optional[float] = None
 
 
 class LegacyBatchSubmitRequest(BaseModel):

@@ -28,6 +28,8 @@ async def list_words(
     current_user: CurrentUser,
     level: Optional[int] = Query(None),
     book_name: Optional[str] = Query(None),
+    lesson: Optional[str] = Query(None),
+    part_of_speech: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
@@ -42,12 +44,17 @@ async def list_words(
         conditions.append(Word.level == level)
     if book_name:
         conditions.append(Word.book_name == book_name)
+    if lesson:
+        conditions.append(Word.lesson == lesson)
+    if part_of_speech:
+        conditions.append(Word.part_of_speech == part_of_speech)
     if search:
         search_pattern = f"%{search}%"
         conditions.append(
             or_(
                 Word.english.ilike(search_pattern),
                 Word.korean.ilike(search_pattern),
+                Word.example_en.ilike(search_pattern),
             )
         )
 
@@ -84,6 +91,21 @@ async def list_books(
         .where(Word.book_name.isnot(None), Word.book_name != "")
         .distinct()
         .order_by(Word.book_name)
+    )
+    return [row[0] for row in result.all()]
+
+
+@router.get("/parts-of-speech", response_model=list[str])
+async def list_parts_of_speech(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """Return distinct part_of_speech values."""
+    result = await db.execute(
+        select(Word.part_of_speech)
+        .where(Word.part_of_speech.isnot(None), Word.part_of_speech != "")
+        .distinct()
+        .order_by(Word.part_of_speech)
     )
     return [row[0] for row in result.all()]
 

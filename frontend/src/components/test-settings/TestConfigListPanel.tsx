@@ -1,35 +1,16 @@
 /**
- * Assignment status table for test assignment page.
- * Features: pagination (10/20/50/100), refactored columns with engine + time display.
+ * Test config list panel - displays created test configurations.
+ * Features: pagination (10/20/50/100), assign students, delete unused configs.
  */
-import { useState, useEffect } from 'react';
-import { Trash2, RotateCcw, ChevronLeft, ChevronRight, Search } from 'lucide-react';
-import type { TestAssignmentItem } from '../../services/testAssignment';
+import { useState, useEffect, useRef } from 'react';
+import { Users, Trash2, Plus, ChevronLeft, ChevronRight, Pencil, Search } from 'lucide-react';
+import type { TestConfigItem } from '../../services/testAssignment';
 
 interface Props {
-  assignments: TestAssignmentItem[];
-  onDelete: (id: string) => void;
-  onReset: (id: string) => void;
-  onViewResult: (item: TestAssignmentItem) => void;
-}
-
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr);
-  const y = d.getFullYear();
-  const m = (d.getMonth() + 1).toString().padStart(2, '0');
-  const day = d.getDate().toString().padStart(2, '0');
-  return `${y}.${m}.${day}`;
-}
-
-function formatTimeDisplay(item: TestAssignmentItem): string {
-  if (item.total_time_override_seconds) {
-    const mins = Math.floor(item.total_time_override_seconds / 60);
-    return `${mins}분`;
-  }
-  if (item.per_question_time_seconds) {
-    return `${item.per_question_time_seconds}초/문제`;
-  }
-  return '-';
+  configs: TestConfigItem[];
+  onAssign: (configId: string) => void;
+  onDelete: (configId: string) => void;
+  onRename?: (configId: string, newName: string) => void;
 }
 
 const QTYPE_LABELS: Record<string, { label: string; bg: string; color: string }> = {
@@ -50,23 +31,54 @@ const ENGINE_LABELS: Record<string, { label: string; bg: string; color: string }
 
 const PAGE_SIZE = 10;
 
-export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewResult }: Props) {
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr);
+  const y = d.getFullYear();
+  const m = (d.getMonth() + 1).toString().padStart(2, '0');
+  const day = d.getDate().toString().padStart(2, '0');
+  return `${y}.${m}.${day}`;
+}
+
+function formatTime(config: TestConfigItem): string {
+  if (config.total_time_override_seconds) {
+    const mins = Math.floor(config.total_time_override_seconds / 60);
+    return `${mins}분`;
+  }
+  if (config.per_question_time_seconds) {
+    return `${config.per_question_time_seconds}초/문제`;
+  }
+  return '-';
+}
+
+export function TestConfigListPanel({ configs, onAssign, onDelete, onRename }: Props) {
   const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const editRef = useRef<HTMLInputElement>(null);
+
+  const startEditing = (config: TestConfigItem) => {
+    setEditingId(config.id);
+    setEditValue(config.name);
+    setTimeout(() => editRef.current?.focus(), 0);
+  };
+
+  const commitEdit = () => {
+    if (editingId && editValue.trim() && onRename) {
+      const original = configs.find(c => c.id === editingId);
+      if (original && editValue.trim() !== original.name) {
+        onRename(editingId, editValue.trim());
+      }
+    }
+    setEditingId(null);
+  };
 
   // Reset page when data or search changes
-  useEffect(() => setPage(0), [assignments.length, searchQuery]);
+  useEffect(() => setPage(0), [configs.length, searchQuery]);
 
   const filtered = searchQuery.trim()
-    ? assignments.filter(item => {
-        const term = searchQuery.toLowerCase();
-        return (
-          item.student_name.toLowerCase().includes(term) ||
-          (item.test_code && item.test_code.toLowerCase().includes(term)) ||
-          (item.student_school && item.student_school.toLowerCase().includes(term))
-        );
-      })
-    : assignments;
+    ? configs.filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    : configs;
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const startIdx = page * PAGE_SIZE;
@@ -81,9 +93,11 @@ export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewRe
       {/* Header */}
       <div className="flex items-center justify-between" style={{ padding: '20px 28px' }}>
         <div className="space-y-1">
-          <h2 className="text-base font-bold text-text-primary font-display">출제 현황</h2>
+          <h2 className="text-base font-bold text-text-primary font-display">
+            생성된 테스트
+          </h2>
           <p className="text-xs text-text-secondary">
-            현재 출제된 테스트 목록입니다. 출제된 학생만 테스트에 접속할 수 있습니다.
+            생성된 테스트 설정을 학생에게 배정할 수 있습니다.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -94,7 +108,7 @@ export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewRe
             <Search className="w-3.5 h-3.5 text-text-tertiary shrink-0" />
             <input
               type="text"
-              placeholder="이름, 학교, 코드 검색..."
+              placeholder="테스트 이름 검색..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1 bg-transparent text-[12px] text-text-primary placeholder:text-text-tertiary focus:outline-none"
@@ -104,50 +118,38 @@ export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewRe
             className="text-[11px] font-semibold rounded-full shrink-0"
             style={{ backgroundColor: '#EBF8FA', color: '#2D9CAE', padding: '4px 12px' }}
           >
-            {filtered.length}명 출제됨
+            {filtered.length}개
           </span>
         </div>
       </div>
 
       {filtered.length === 0 ? (
         <div className="p-8 text-center text-sm text-text-tertiary">
-          {searchQuery ? '검색 결과가 없습니다' : '아직 출제된 테스트가 없습니다.'}
+          {searchQuery ? '검색 결과가 없습니다' : '생성된 테스트가 없습니다'}
         </div>
       ) : (
         <>
           <div className="overflow-x-auto">
-            <table className="w-full" style={{ minWidth: 920 }}>
+            <table className="w-full" style={{ minWidth: 780 }}>
               <thead>
                 <tr style={{ backgroundColor: '#F8F8F6', height: 40, borderTop: '1px solid #E8E8E6', borderBottom: '1px solid #E8E8E6' }}>
-                  <th className="text-[11px] font-semibold text-text-secondary text-left pl-6 pr-2 whitespace-nowrap">학생</th>
-                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">학교/학년</th>
-                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">테스트코드</th>
+                  <th className="text-[11px] font-semibold text-text-secondary text-left pl-6 pr-2 whitespace-nowrap">테스트 이름</th>
                   <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">엔진</th>
                   <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">문제수</th>
                   <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">시간</th>
                   <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">유형</th>
-                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">출제범위</th>
-                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">출제일</th>
-                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">상태</th>
+                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">배정</th>
+                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">생성일</th>
                   <th className="text-[11px] font-semibold text-text-secondary text-left pl-2 pr-6 whitespace-nowrap">관리</th>
                 </tr>
               </thead>
               <tbody>
-                {pageData.map((item) => {
-                  const engineStyle = ENGINE_LABELS[item.engine_type ?? ''] ?? { label: item.engine_type ?? '-', bg: '#F0F0EE', color: '#6D6C6A' };
-                  const schoolGrade = [item.student_school, item.student_grade].filter(Boolean).join(' ') || '-';
+                {pageData.map((config) => {
+                  const engineStyle = ENGINE_LABELS[config.test_type] ?? { label: config.test_type, bg: '#F0F0EE', color: '#6D6C6A' };
                   return (
-                    <tr key={item.id} style={{ borderBottom: '1px solid #E8E8E6', height: 48 }}>
-                      <td className="text-xs font-semibold text-text-primary pl-6 pr-2 whitespace-nowrap">
-                        {item.student_name}
-                      </td>
-                      <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
-                        {schoolGrade}
-                      </td>
-                      <td className="px-2 whitespace-nowrap">
-                        <span className="text-xs font-bold" style={{ color: '#4F46E5', letterSpacing: 1 }}>
-                          {item.test_code}
-                        </span>
+                    <tr key={config.id} style={{ borderBottom: '1px solid #E8E8E6', height: 48 }}>
+                      <td className="text-xs font-semibold text-text-primary pl-6 pr-2 whitespace-nowrap max-w-[200px] truncate">
+                        {config.name}
                       </td>
                       <td className="px-2 whitespace-nowrap">
                         <span
@@ -158,25 +160,25 @@ export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewRe
                         </span>
                       </td>
                       <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
-                        {item.question_count}문제
+                        {config.question_count}문제
                       </td>
                       <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
-                        {formatTimeDisplay(item)}
+                        {formatTime(config)}
                       </td>
                       <td className="text-xs text-text-secondary px-2 max-w-[200px]">
                         <div className="flex flex-wrap items-center gap-1">
-                          {item.question_types ? (
-                            item.question_types.split(',').map((type) => {
+                          {config.question_types ? (
+                            config.question_types.split(',').map((type) => {
                               const trimmedType = type.trim();
-                              const config = QTYPE_LABELS[trimmedType];
-                              if (config) {
+                              const style = QTYPE_LABELS[trimmedType];
+                              if (style) {
                                 return (
                                   <span
                                     key={trimmedType}
                                     className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
-                                    style={{ backgroundColor: config.bg, color: config.color }}
+                                    style={{ backgroundColor: style.bg, color: style.color }}
                                   >
-                                    {config.label}
+                                    {style.label}
                                   </span>
                                 );
                               }
@@ -187,36 +189,42 @@ export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewRe
                           )}
                         </div>
                       </td>
-                      <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
-                        {item.lesson_range || '-'}
+                      <td className="px-2 whitespace-nowrap">
+                        <span
+                          className="text-[10px] font-semibold rounded-full flex items-center gap-1 w-fit"
+                          style={{
+                            backgroundColor: config.assignment_count > 0 ? '#EBF8FA' : '#F8F8F6',
+                            color: config.assignment_count > 0 ? '#2D9CAE' : '#9C9B99',
+                            padding: '3px 10px',
+                          }}
+                        >
+                          <Users className="w-3 h-3" />
+                          {config.assignment_count}명
+                        </span>
                       </td>
                       <td className="text-[11px] text-text-tertiary px-2 whitespace-nowrap">
-                        {formatDate(item.assigned_at)}
-                      </td>
-                      <td className="px-2 whitespace-nowrap">
-                        {item.status === 'pending' && (
-                          <span className="text-[10px] font-semibold rounded-full" style={{ backgroundColor: '#FEF2F2', color: '#EF4444', padding: '3px 8px' }}>미응시</span>
-                        )}
-                        {item.status === 'in_progress' && (
-                          <span className="text-[10px] font-semibold rounded-full" style={{ backgroundColor: '#EEF2FF', color: '#4F46E5', padding: '3px 8px' }}>학습중</span>
-                        )}
-                        {item.status === 'completed' && (
-                          <span className="text-[10px] font-semibold rounded-full" style={{ backgroundColor: '#E8FAF0', color: '#5A8F6B', padding: '3px 8px' }}>완료</span>
-                        )}
+                        {formatDate(config.created_at)}
                       </td>
                       <td className="pl-2 pr-6">
                         <div className="flex items-center gap-2">
-                          {item.status === 'pending' && (
-                            <button onClick={() => onDelete(item.id)} className="hover:opacity-70 transition-opacity" title="삭제">
+                          <button
+                            onClick={() => onAssign(config.id)}
+                            className="flex items-center gap-1 rounded-lg text-[11px] font-semibold text-white transition-all hover:opacity-90"
+                            style={{
+                              background: 'linear-gradient(135deg, #2D9CAE, #3DBDC8)',
+                              padding: '5px 12px',
+                            }}
+                          >
+                            <Plus className="w-3 h-3" />
+                            배정
+                          </button>
+                          {config.assignment_count === 0 && (
+                            <button
+                              onClick={() => onDelete(config.id)}
+                              className="hover:opacity-70 transition-opacity"
+                              title="삭제"
+                            >
                               <Trash2 className="w-3.5 h-3.5" style={{ color: '#EF4444' }} />
-                            </button>
-                          )}
-                          {item.status === 'completed' && (item.test_session_id || item.learning_session_id) && (
-                            <button onClick={() => onViewResult(item)} className="text-[11px] font-semibold hover:opacity-70 transition-opacity" style={{ color: '#2D9CAE' }}>보기</button>
-                          )}
-                          {item.status !== 'pending' && (
-                            <button onClick={() => onReset(item.id)} className="hover:opacity-70 transition-opacity" title="초기화">
-                              <RotateCcw className="w-3.5 h-3.5" style={{ color: '#F59E0B' }} />
                             </button>
                           )}
                         </div>
@@ -263,4 +271,4 @@ export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewRe
   );
 }
 
-export default AssignmentStatusTable;
+export default TestConfigListPanel;

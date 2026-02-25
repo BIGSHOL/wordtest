@@ -1,12 +1,13 @@
 """Statistics and analytics endpoints."""
-from typing import Annotated
+from typing import Annotated, Optional
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func, and_, Integer
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.services.test_common import format_rank_label
 from app.schemas.stats import (
+    AllResultsResponse,
     DashboardStats,
     EngineDiagnosis,
     EngineStats,
@@ -31,7 +32,6 @@ from app.core.deps import CurrentTeacher, CurrentUser
 from app.models.user import User
 from app.models.word import Word
 from app.models.test_session import TestSession
-from app.models.test_answer import TestAnswer
 from app.models.learning_session import LearningSession
 from app.models.learning_answer import LearningAnswer
 from app.models.word_mastery import WordMastery
@@ -42,10 +42,130 @@ from app.services import report_engine
 router = APIRouter(prefix="/stats", tags=["stats"])
 
 
+@router.get("/all-results", response_model=AllResultsResponse)
+async def get_all_results(
+    teacher: CurrentTeacher,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    search: Optional[str] = Query(None),
+    test_type: Optional[str] = Query(None, description="test | mastery"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(10, ge=1, le=100),
+):
+    """Get all test results with pagination (teacher only)."""
+    student_ids_subq = (
+        select(User.id)
+        .where(and_(User.role == "student", User.teacher_id == teacher.id))
+        .scalar_subquery()
+    )
+
+    results: list[RecentTest] = []
+
+    # --- TestSession results ---
+    if test_type != "mastery":
+        ts_query = (
+            select(TestSession, User.name, User.id, User.school_name, User.grade)
+            .join(User, TestSession.student_id == User.id)
+            .where(
+                and_(
+                    TestSession.student_id.in_(student_ids_subq),
+                    TestSession.completed_at.isnot(None),
+                )
+            )
+        )
+        if search:
+            ts_query = ts_query.where(User.name.ilike(f"%{search}%"))
+        ts_result = await db.execute(ts_query.order_by(TestSession.completed_at.desc()))
+        for row in ts_result.fetchall():
+            session = row[0]
+            duration = None
+            if session.completed_at and session.started_at:
+                duration = int((session.completed_at - session.started_at).total_seconds())
+            rank_label = None
+            if session.determined_level and session.determined_sublevel:
+                rank_label = format_rank_label(session.determined_level, session.determined_sublevel)
+            results.append(
+                RecentTest(
+                    id=session.id,
+                    student_id=row[2],
+                    student_name=row[1],
+                    student_school=row[3],
+                    student_grade=row[4],
+                    score=session.score,
+                    determined_level=session.determined_level,
+                    rank_name=session.rank_name,
+                    rank_label=rank_label,
+                    total_questions=session.total_questions,
+                    correct_count=session.correct_count,
+                    duration_seconds=duration,
+                    completed_at=str(session.completed_at) if session.completed_at else None,
+                    test_type="test",
+                )
+            )
+
+    # --- LearningSession (mastery) results ---
+    if test_type != "test":
+        ms_query = (
+            select(LearningSession, User.name, User.id, User.school_name, User.grade)
+            .join(User, LearningSession.student_id == User.id)
+            .where(
+                and_(
+                    LearningSession.student_id.in_(student_ids_subq),
+                    LearningSession.completed_at.isnot(None),
+                )
+            )
+        )
+        if search:
+            ms_query = ms_query.where(User.name.ilike(f"%{search}%"))
+        ms_result = await db.execute(ms_query.order_by(LearningSession.completed_at.desc()))
+        for row in ms_result.fetchall():
+            ms = row[0]
+            ans_result = await db.execute(
+                select(
+                    func.count(LearningAnswer.id),
+                    func.sum(func.cast(LearningAnswer.is_correct, Integer)),
+                    func.sum(LearningAnswer.time_taken_sec),
+                ).where(LearningAnswer.session_id == ms.id)
+            )
+            ans_row = ans_result.fetchone()
+            total_q = ans_row[0] or 0
+            correct_q = int(ans_row[1] or 0)
+            duration = int(ans_row[2] or 0) or None
+            if not duration and ms.completed_at and ms.started_at:
+                duration = int((ms.completed_at - ms.started_at).total_seconds())
+            score = round((correct_q / total_q * 100) if total_q > 0 else 0)
+            rank_label = format_rank_label(ms.current_level, 1) if ms.current_level else None
+            results.append(
+                RecentTest(
+                    id=ms.id,
+                    student_id=row[2],
+                    student_name=row[1],
+                    student_school=row[3],
+                    student_grade=row[4],
+                    score=score,
+                    determined_level=ms.current_level,
+                    rank_name=None,
+                    rank_label=rank_label,
+                    total_questions=total_q,
+                    correct_count=correct_q,
+                    duration_seconds=duration,
+                    completed_at=str(ms.completed_at) if ms.completed_at else None,
+                    test_type="mastery",
+                )
+            )
+
+    # Sort by completed_at descending
+    results.sort(key=lambda t: t.completed_at or "", reverse=True)
+    total = len(results)
+    paginated = results[skip : skip + limit]
+
+    return AllResultsResponse(results=paginated, total=total)
+
+
 @router.get("/dashboard", response_model=DashboardStats)
 async def get_dashboard_stats(
     teacher: CurrentTeacher,
     db: Annotated[AsyncSession, Depends(get_db)],
+    period: str = Query("all"),
 ):
     """Get aggregated dashboard statistics (teacher only)."""
 
@@ -68,6 +188,14 @@ async def get_dashboard_stats(
         .scalar_subquery()
     )
 
+    # Compute period filter
+    if period == "weekly":
+        period_start = now_kst() - timedelta(days=7)
+    elif period == "monthly":
+        period_start = now_kst() - timedelta(days=30)
+    else:
+        period_start = None
+
     if total_students == 0:
         # No students, return empty stats
         return DashboardStats(
@@ -84,37 +212,42 @@ async def get_dashboard_stats(
         )
 
     # Total tests for teacher's students (TestSession + LearningSession)
+    tests_conditions = [TestSession.student_id.in_(student_ids_subq)]
+    if period_start:
+        tests_conditions.append(TestSession.completed_at >= period_start)
     tests_query = (
         select(func.count())
         .select_from(TestSession)
-        .where(TestSession.student_id.in_(student_ids_subq))
+        .where(and_(*tests_conditions))
     )
     total_tests_result = await db.execute(tests_query)
     total_tests = total_tests_result.scalar() or 0
 
+    mastery_conditions = [
+        LearningSession.student_id.in_(student_ids_subq),
+        LearningSession.completed_at.isnot(None),
+    ]
+    if period_start:
+        mastery_conditions.append(LearningSession.completed_at >= period_start)
     mastery_tests_query = (
         select(func.count())
         .select_from(LearningSession)
-        .where(
-            and_(
-                LearningSession.student_id.in_(student_ids_subq),
-                LearningSession.completed_at.isnot(None),
-            )
-        )
+        .where(and_(*mastery_conditions))
     )
     mastery_tests_result = await db.execute(mastery_tests_query)
     total_tests += mastery_tests_result.scalar() or 0
 
     # Average score (only completed tests with score)
+    avg_score_conditions = [
+        TestSession.student_id.in_(student_ids_subq),
+        TestSession.completed_at.isnot(None),
+        TestSession.score.isnot(None),
+    ]
+    if period_start:
+        avg_score_conditions.append(TestSession.completed_at >= period_start)
     avg_score_query = (
         select(func.avg(TestSession.score))
-        .where(
-            and_(
-                TestSession.student_id.in_(student_ids_subq),
-                TestSession.completed_at.isnot(None),
-                TestSession.score.isnot(None),
-            )
-        )
+        .where(and_(*avg_score_conditions))
     )
     avg_score_result = await db.execute(avg_score_query)
     avg_score = avg_score_result.scalar() or 0.0
@@ -130,6 +263,14 @@ async def get_dashboard_stats(
         )
         .scalar_subquery()
     )
+    avg_time_conditions = [
+        TestSession.student_id.in_(student_ids_subq),
+        TestSession.completed_at.isnot(None),
+        TestSession.started_at.isnot(None),
+        TestSession.total_questions > 0,
+    ]
+    if period_start:
+        avg_time_conditions.append(TestSession.completed_at >= period_start)
     avg_time_query = (
         select(
             func.avg(
@@ -138,30 +279,24 @@ async def get_dashboard_stats(
                 / func.nullif(TestSession.total_questions, 0)
             )
         )
-        .where(
-            and_(
-                TestSession.student_id.in_(student_ids_subq),
-                TestSession.completed_at.isnot(None),
-                TestSession.started_at.isnot(None),
-                TestSession.total_questions > 0,
-            )
-        )
+        .where(and_(*avg_time_conditions))
     )
     avg_time_result = await db.execute(avg_time_query)
     avg_time_per_question = avg_time_result.scalar() or 0.0
 
     # Level distribution (from determined_level in completed tests + mastery current_level)
+    level_conditions = [
+        TestSession.student_id.in_(student_ids_subq),
+        TestSession.determined_level.isnot(None),
+    ]
+    if period_start:
+        level_conditions.append(TestSession.completed_at >= period_start)
     level_dist_query = (
         select(
             TestSession.determined_level,
             func.count(TestSession.id).label("count"),
         )
-        .where(
-            and_(
-                TestSession.student_id.in_(student_ids_subq),
-                TestSession.determined_level.isnot(None),
-            )
-        )
+        .where(and_(*level_conditions))
         .group_by(TestSession.determined_level)
         .order_by(TestSession.determined_level)
     )
@@ -171,18 +306,19 @@ async def get_dashboard_stats(
         level_counts[row[0]] = row[1]
 
     # Add mastery session levels
+    mastery_level_conditions = [
+        LearningSession.student_id.in_(student_ids_subq),
+        LearningSession.completed_at.isnot(None),
+        LearningSession.current_level.isnot(None),
+    ]
+    if period_start:
+        mastery_level_conditions.append(LearningSession.completed_at >= period_start)
     mastery_level_query = (
         select(
             LearningSession.current_level,
             func.count(LearningSession.id).label("count"),
         )
-        .where(
-            and_(
-                LearningSession.student_id.in_(student_ids_subq),
-                LearningSession.completed_at.isnot(None),
-                LearningSession.current_level.isnot(None),
-            )
-        )
+        .where(and_(*mastery_level_conditions))
         .group_by(LearningSession.current_level)
     )
     mastery_level_result = await db.execute(mastery_level_query)
@@ -352,8 +488,14 @@ async def get_dashboard_stats(
     today_mastery_result = await db.execute(today_mastery_query)
     today_test_count += today_mastery_result.scalar() or 0
 
-    # Score trend (daily averages for last 30 days)
-    thirty_days_ago = now_kst() - timedelta(days=30)
+    # Score trend - adjust range based on period
+    if period == "weekly":
+        trend_days = 7
+    elif period == "monthly":
+        trend_days = 30
+    else:
+        trend_days = 90
+    trend_start = now_kst() - timedelta(days=trend_days)
     score_trend_query = (
         select(
             func.date(TestSession.completed_at).label("date"),
@@ -365,7 +507,7 @@ async def get_dashboard_stats(
                 TestSession.student_id.in_(student_ids_subq),
                 TestSession.completed_at.isnot(None),
                 TestSession.score.isnot(None),
-                TestSession.completed_at >= thirty_days_ago,
+                TestSession.completed_at >= trend_start,
             )
         )
         .group_by(func.date(TestSession.completed_at))
@@ -399,6 +541,7 @@ async def get_dashboard_stats(
 async def get_word_stats(
     teacher: CurrentTeacher,
     db: Annotated[AsyncSession, Depends(get_db)],
+    period: str = Query("all"),
 ):
     """Get per-word accuracy and response time stats (teacher only)."""
     student_ids_subq = (
@@ -407,7 +550,19 @@ async def get_word_stats(
         .scalar_subquery()
     )
 
-    # Aggregate from LearningAnswer (main data source)
+    # Compute period filter
+    if period == "weekly":
+        ws_period_start = now_kst() - timedelta(days=7)
+    elif period == "monthly":
+        ws_period_start = now_kst() - timedelta(days=30)
+    else:
+        ws_period_start = None
+
+    # Aggregate from LearningAnswer only (TestAnswer is a legacy seed-data
+    # duplicate and not created by app code, so excluded to avoid double-counting)
+    la_conditions = [LearningSession.student_id.in_(student_ids_subq)]
+    if ws_period_start:
+        la_conditions.append(LearningSession.completed_at >= ws_period_start)
     la_query = (
         select(
             LearningAnswer.word_id,
@@ -419,47 +574,20 @@ async def get_word_stats(
         )
         .join(Word, LearningAnswer.word_id == Word.id)
         .join(LearningSession, LearningAnswer.session_id == LearningSession.id)
-        .where(LearningSession.student_id.in_(student_ids_subq))
+        .where(and_(*la_conditions))
         .group_by(LearningAnswer.word_id, Word.english, Word.korean)
     )
     la_result = await db.execute(la_query)
     word_map: dict[str, dict] = {}
     for row in la_result.fetchall():
+        attempt_cnt = row.attempt_count or 0
         word_map[row.word_id] = {
             "english": row.english,
             "korean": row.korean,
-            "attempts": row.attempt_count or 0,
+            "attempts": attempt_cnt,
             "correct": int(row.correct_count or 0),
-            "time_sum": float(row.avg_time or 0) * (row.attempt_count or 1),
+            "avg_time": float(row.avg_time or 0),
         }
-
-    # Also aggregate from TestAnswer
-    ta_query = (
-        select(
-            TestAnswer.word_id,
-            Word.english,
-            Word.korean,
-            func.count(TestAnswer.id).label("attempt_count"),
-            func.sum(func.cast(TestAnswer.is_correct, Integer)).label("correct_count"),
-        )
-        .join(Word, TestAnswer.word_id == Word.id)
-        .join(TestSession, TestAnswer.test_session_id == TestSession.id)
-        .where(TestSession.student_id.in_(student_ids_subq))
-        .group_by(TestAnswer.word_id, Word.english, Word.korean)
-    )
-    ta_result = await db.execute(ta_query)
-    for row in ta_result.fetchall():
-        if row.word_id in word_map:
-            word_map[row.word_id]["attempts"] += row.attempt_count or 0
-            word_map[row.word_id]["correct"] += int(row.correct_count or 0)
-        else:
-            word_map[row.word_id] = {
-                "english": row.english,
-                "korean": row.korean,
-                "attempts": row.attempt_count or 0,
-                "correct": int(row.correct_count or 0),
-                "time_sum": 0,
-            }
 
     # Build WordStat list (minimum 2 attempts to be meaningful)
     all_stats = []
@@ -467,7 +595,7 @@ async def get_word_stats(
         if d["attempts"] < 2:
             continue
         acc = round(d["correct"] / d["attempts"] * 100, 1)
-        avg_t = round(d["time_sum"] / d["attempts"], 1) if d["time_sum"] > 0 else None
+        avg_t = round(d["avg_time"], 1) if d["avg_time"] > 0 else None
         all_stats.append(WordStat(
             word_id=wid,
             english=d["english"],

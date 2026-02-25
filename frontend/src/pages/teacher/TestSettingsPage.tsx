@@ -5,19 +5,30 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TeacherLayout } from '../../components/layout/TeacherLayout';
-import { StudentSelectionCard } from '../../components/test-settings/StudentSelectionCard';
 import { TestConfigPanel, type TestConfigState } from '../../components/test-settings/TestConfigPanel';
 import { AssignmentStatusTable } from '../../components/test-settings/AssignmentStatusTable';
+import { ConfigPreviewPanel } from '../../components/test-settings/ConfigPreviewPanel';
+import { TestConfigListPanel } from '../../components/test-settings/TestConfigListPanel';
+import { AssignStudentsModal } from '../../components/test-settings/AssignStudentsModal';
 import { studentService } from '../../services/student';
 import { wordService } from '../../services/word';
 import { testAssignmentService } from '../../services/testAssignment';
 import type { User } from '../../types/auth';
 import type { LessonInfo } from '../../services/word';
-import type { TestAssignmentItem } from '../../services/testAssignment';
+import type { TestAssignmentItem, TestConfigItem, CreateTestConfigRequest } from '../../services/testAssignment';
 import { logger } from '../../utils/logger';
+
+type Tab = 'create' | 'configs' | 'status';
+
+const TAB_ITEMS: { key: Tab; label: string }[] = [
+  { key: 'create', label: '테스트 출제' },
+  { key: 'configs', label: '생성된 테스트' },
+  { key: 'status', label: '출제 현황' },
+];
 
 export function TestSettingsPage() {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<Tab>('create');
 
   // Data
   const [students, setStudents] = useState<User[]>([]);
@@ -26,6 +37,10 @@ export function TestSettingsPage() {
   const [lessonsStart, setLessonsStart] = useState<LessonInfo[]>([]);
   const [lessonsEnd, setLessonsEnd] = useState<LessonInfo[]>([]);
 
+  // Configs (test-only, no students)
+  const [configs, setConfigs] = useState<TestConfigItem[]>([]);
+  const [assignModalConfig, setAssignModalConfig] = useState<TestConfigItem | null>(null);
+
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -33,7 +48,8 @@ export function TestSettingsPage() {
   const [config, setConfig] = useState<TestConfigState>({
     timeMode: 'per_question',
     perQuestionTime: 10,
-    totalTime: 300,
+    customPerQuestionTime: '',
+    totalTime: 600,
     customTotalTime: '',
     questionCount: 20,
     customQuestionCount: '',
@@ -47,6 +63,7 @@ export function TestSettingsPage() {
     lessonEnd: '',
     distributionMode: 'equal',
     manualCounts: {},
+    configName: '',
   });
 
   // Word count from API
@@ -102,14 +119,16 @@ export function TestSettingsPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [studentData, bookData, assignmentData] = await Promise.all([
+        const [studentData, bookData, assignmentData, configData] = await Promise.all([
           studentService.listStudents(),
           wordService.listBooks(),
           testAssignmentService.listAssignments(),
+          testAssignmentService.listTestConfigs(),
         ]);
         setStudents(studentData);
         setBooks(bookData);
         setAssignments(assignmentData);
+        setConfigs(configData);
       } catch (error) {
         logger.error('Failed to load data:', error);
       }
@@ -205,6 +224,73 @@ export function TestSettingsPage() {
     }
   };
 
+  const refreshConfigs = async () => {
+    try {
+      const data = await testAssignmentService.listTestConfigs();
+      setConfigs(data);
+    } catch (error) {
+      logger.error('Failed to refresh configs:', error);
+    }
+  };
+
+  const handleCreateConfig = async () => {
+    const effectiveCount = config.questionCount === -1
+      ? parseInt(config.customQuestionCount) || 0
+      : config.questionCount;
+
+    const perQ = config.timeMode === 'per_question'
+      ? (config.perQuestionTime === -1 ? parseInt(config.customPerQuestionTime) || 15 : config.perQuestionTime)
+      : Math.ceil((config.totalTime === -1 ? parseInt(config.customTotalTime) * 60 || 600 : config.totalTime) / effectiveCount);
+
+    const selectedTypes = config.questionSelectionMode === 'engine'
+      ? config.questionTypes
+      : config.skillAreas.length > 0 ? config.skillAreas : ['en_to_ko', 'ko_to_en'];
+
+    const requestData: CreateTestConfigRequest = {
+      name: config.configName.trim() || undefined,
+      engine: config.engine,
+      question_count: effectiveCount,
+      per_question_time_seconds: perQ,
+      question_types: selectedTypes,
+      book_name: config.bookStart || undefined,
+      book_name_end: config.bookEnd !== config.bookStart ? config.bookEnd : undefined,
+      lesson_range_start: config.lessonStart || undefined,
+      lesson_range_end: config.lessonEnd || undefined,
+      total_time_override_seconds: config.timeMode === 'total'
+        ? (config.totalTime === -1 ? parseInt(config.customTotalTime) * 60 || undefined : config.totalTime)
+        : undefined,
+      question_type_counts: config.distributionMode === 'manual' && Object.keys(config.manualCounts).length > 0
+        ? config.manualCounts
+        : undefined,
+    };
+
+    setIsSubmitting(true);
+    try {
+      await testAssignmentService.createTestConfig(requestData);
+      await refreshConfigs();
+      setActiveTab('configs');
+    } catch (error) {
+      logger.error('Failed to create test config:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteConfig = async (configId: string) => {
+    if (!window.confirm('이 테스트 설정을 삭제하시겠습니까?')) return;
+    try {
+      await testAssignmentService.deleteTestConfig(configId);
+      await refreshConfigs();
+    } catch (error) {
+      logger.error('Failed to delete config:', error);
+    }
+  };
+
+  const handleAssignToConfig = (configId: string) => {
+    const cfg = configs.find(c => c.id === configId);
+    if (cfg) setAssignModalConfig(cfg);
+  };
+
   const handleAssign = async () => {
     if (selectedIds.size === 0) return;
     if (!config.bookStart || !config.bookEnd || !config.lessonStart || !config.lessonEnd) return;
@@ -233,6 +319,7 @@ export function TestSettingsPage() {
 
     const requestData = {
       student_ids: Array.from(selectedIds),
+      name: config.configName.trim() || undefined,
       engine: config.engine,
       question_count: questionCount,
       per_question_time_seconds: perQuestionTime,
@@ -254,6 +341,7 @@ export function TestSettingsPage() {
       await testAssignmentService.assignTest(requestData);
       setSelectedIds(new Set());
       await refreshAssignments();
+      setActiveTab('status');
     } catch (error) {
       logger.error('Failed to assign test:', error);
     } finally {
@@ -293,41 +381,58 @@ export function TestSettingsPage() {
     ? config.questionTypes.length > 0
     : config.skillAreas.length > 0;
 
-  const canAssign =
-    selectedIds.size > 0 &&
-    !!config.bookStart &&
-    !!config.bookEnd &&
-    !!config.lessonStart &&
-    !!config.lessonEnd &&
+  const canCreateConfig =
+    !!config.bookStart && !!config.bookEnd &&
+    !!config.lessonStart && !!config.lessonEnd &&
     hasValidTypes &&
     (config.questionCount > 0 || (config.questionCount === -1 && parseInt(config.customQuestionCount) > 0));
+
+  const canAssign = selectedIds.size > 0 && canCreateConfig;
 
   return (
     <TeacherLayout>
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Top Bar */}
-        <div>
-          <h1 className="text-2xl font-display font-bold text-text-primary">테스트 출제</h1>
-          <p className="text-[13px] text-text-secondary mt-1">
-            학생을 선택하고 테스트를 설정한 뒤 출제합니다
-          </p>
+        {/* Tab navigation */}
+        <div
+          className="flex rounded-xl overflow-hidden"
+          style={{ border: '1px solid #E8E8E6', backgroundColor: '#F8F8F6' }}
+        >
+          {TAB_ITEMS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className="flex-1 py-3 text-[14px] font-semibold transition-all relative"
+              style={{
+                backgroundColor: activeTab === tab.key ? '#FFFFFF' : 'transparent',
+                color: activeTab === tab.key ? '#2D9CAE' : '#9C9B99',
+                borderBottom: activeTab === tab.key ? '2px solid #2D9CAE' : '2px solid transparent',
+              }}
+            >
+              {tab.label}
+              {tab.key === 'configs' && configs.length > 0 && (
+                <span
+                  className="ml-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{ backgroundColor: '#EBF8FA', color: '#2D9CAE' }}
+                >
+                  {configs.length}
+                </span>
+              )}
+              {tab.key === 'status' && assignments.length > 0 && (
+                <span
+                  className="ml-1.5 text-[11px] font-bold px-1.5 py-0.5 rounded-full"
+                  style={{ backgroundColor: '#EBF8FA', color: '#2D9CAE' }}
+                >
+                  {assignments.length}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
 
-        {/* Two-column layout: Student selection + Config */}
-        <div className="flex gap-6 items-stretch">
-          {/* Left Column: Student Selection */}
-          <div className="flex-1 min-w-0">
-            <StudentSelectionCard
-              students={students}
-              selectedIds={selectedIds}
-              onToggle={handleToggle}
-              onToggleAll={handleToggleAll}
-            />
-          </div>
-
-          {/* Right Column: Config Panel */}
-          <div className="w-[460px] shrink-0">
-            <div className="sticky top-6">
+        {/* Tab: 테스트 출제 */}
+        {activeTab === 'create' && (
+          <div className="flex gap-6">
+            <div className="w-[880px] shrink-0">
               <TestConfigPanel
                 config={config}
                 onConfigChange={setConfig}
@@ -336,21 +441,60 @@ export function TestSettingsPage() {
                 lessonsEnd={lessonsEnd}
                 wordCount={wordCount}
                 compatibleCounts={compatibleCounts}
-                canAssign={canAssign}
-                isSubmitting={isSubmitting}
+                students={students}
+                selectedIds={selectedIds}
+                onToggle={handleToggle}
+                onToggleAll={handleToggleAll}
+              />
+            </div>
+            <div className="flex-1 min-w-0">
+              <ConfigPreviewPanel
+                config={config}
+                selectedStudentCount={selectedIds.size}
+                wordCount={wordCount}
+                onNameChange={(name) => setConfig(prev => ({ ...prev, configName: name }))}
                 onAssign={handleAssign}
+                onCreateConfig={handleCreateConfig}
+                canAssign={canAssign}
+                canCreateConfig={canCreateConfig}
+                isSubmitting={isSubmitting}
               />
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Full-width Assignment Table */}
-        <AssignmentStatusTable
-          assignments={assignments}
-          onDelete={handleDelete}
-          onReset={handleReset}
-          onViewResult={handleViewResult}
-        />
+        {/* Tab: 생성된 테스트 */}
+        {activeTab === 'configs' && (
+          <TestConfigListPanel
+            configs={configs}
+            onAssign={handleAssignToConfig}
+            onDelete={handleDeleteConfig}
+          />
+        )}
+
+        {/* Tab: 출제 현황 */}
+        {activeTab === 'status' && (
+          <AssignmentStatusTable
+            assignments={assignments}
+            onDelete={handleDelete}
+            onReset={handleReset}
+            onViewResult={handleViewResult}
+          />
+        )}
+
+        {/* 학생 배정 모달 (always available) */}
+        {assignModalConfig && (
+          <AssignStudentsModal
+            isOpen={!!assignModalConfig}
+            onClose={() => setAssignModalConfig(null)}
+            config={assignModalConfig}
+            students={students}
+            onAssigned={async () => {
+              setAssignModalConfig(null);
+              await Promise.all([refreshAssignments(), refreshConfigs()]);
+            }}
+          />
+        )}
       </div>
     </TeacherLayout>
   );

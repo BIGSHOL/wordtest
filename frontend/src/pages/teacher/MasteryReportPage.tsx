@@ -60,6 +60,7 @@ export function MasteryReportPage() {
   const [student, setStudent] = useState<User | null>(null);
   const [report, setReport] = useState<MasteryReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentTab, setCurrentTab] = useState(0);
 
   useEffect(() => {
     if (!studentId || !sessionId) return;
@@ -81,6 +82,47 @@ export function MasteryReportPage() {
   const levelName = LEVEL_NAMES[level] || '';
   const isListening = report?.test_type === 'listening';
 
+  const realWrong = report?.answers.filter((a) =>
+    !a.is_correct &&
+    a.selected_answer?.toLowerCase() !== a.word_english.toLowerCase() &&
+    a.selected_answer !== a.correct_answer
+  ) ?? [];
+
+  /* Reusable header block (logo + student info) shown on each print page */
+  const ReportHeader = () => (
+    <div className="space-y-3">
+      <div className="flex items-start justify-between">
+        <div className="flex flex-col items-start gap-1">
+          <img src="/images/logo-joshua.png" alt="Logo" className="h-10 w-auto" />
+          <span className="text-[#0D0D0D] text-sm font-medium tracking-tight">
+            {isListening ? '조슈아 영단어 리스닝 테스트' : '조슈아 영단어 레벨테스트'}
+          </span>
+        </div>
+        <table className="border-collapse border border-[#D0D0D0] text-xs">
+          <tbody>
+            <tr>
+              <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap w-[60px]">이름</td>
+              <td className="px-3 py-1.5 text-[#0D0D0D] border-r border-[#D0D0D0] whitespace-nowrap min-w-[80px]">{student?.name || '-'}</td>
+              <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap w-[60px]">학년</td>
+              <td className="px-3 py-1.5 text-[#0D0D0D] whitespace-nowrap min-w-[60px]">{student?.grade || '-'}</td>
+            </tr>
+            <tr className="border-t border-[#D0D0D0]">
+              <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap">소속학원</td>
+              <td className="px-3 py-1.5 text-[#0D0D0D] border-r border-[#D0D0D0] whitespace-nowrap">{student?.school_name || '조슈아 영어 학원'}</td>
+              <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap">응시일</td>
+              <td className="px-3 py-1.5 text-[#0D0D0D] whitespace-nowrap">
+                {report?.session.started_at
+                  ? new Date(report.session.started_at).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                  : '-'}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div className="h-[2px] bg-[#CC0000]" />
+    </div>
+  );
+
   return (
     <TeacherLayout>
       {isLoading ? (
@@ -94,9 +136,9 @@ export function MasteryReportPage() {
           </div>
         </div>
       ) : (
-        <div className="max-w-[900px] min-w-[860px] mx-auto space-y-6 py-6 px-4">
+        <div className="max-w-[900px] min-w-[860px] mx-auto space-y-6 py-6 px-4 print-report">
           {/* Top bar */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between print-hidden">
             <div className="flex items-center gap-3">
               <Link
                 to="/dashboard"
@@ -120,43 +162,34 @@ export function MasteryReportPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-border-subtle p-8 space-y-8">
-            {/* 1. Header */}
-            <div className="space-y-3">
-              <div className="flex items-start justify-between">
-                <div className="flex flex-col items-start gap-1">
-                  <img src="/images/logo-joshua.png" alt="Logo" className="h-10 w-auto" />
-                  <span className="text-[#0D0D0D] text-sm font-medium tracking-tight">
-                    {isListening ? '조슈아 영단어 리스닝 테스트' : '조슈아 영단어 레벨테스트'}
-                  </span>
-                </div>
-                <table className="border-collapse border border-[#D0D0D0] text-xs">
-                  <tbody>
-                    <tr>
-                      <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap w-[60px]">이름</td>
-                      <td className="px-3 py-1.5 text-[#0D0D0D] border-r border-[#D0D0D0] whitespace-nowrap min-w-[80px]">{student?.name || '-'}</td>
-                      <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap w-[60px]">학년</td>
-                      <td className="px-3 py-1.5 text-[#0D0D0D] whitespace-nowrap min-w-[60px]">{student?.grade || '-'}</td>
-                    </tr>
-                    <tr className="border-t border-[#D0D0D0]">
-                      <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap">소속학원</td>
-                      <td className="px-3 py-1.5 text-[#0D0D0D] border-r border-[#D0D0D0] whitespace-nowrap">{student?.school_name || '조슈아 영어 학원'}</td>
-                      <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap">응시일</td>
-                      <td className="px-3 py-1.5 text-[#0D0D0D] whitespace-nowrap">
-                        {report.session.started_at
-                          ? new Date(report.session.started_at).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-                          : '-'}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <div className="h-[2px] bg-[#CC0000]" />
-            </div>
+          {/* Tab navigation (screen only) */}
+          <div className="flex items-center gap-1 bg-white rounded-xl border border-border-subtle p-1 print-hidden">
+            {[
+              { label: '종합 결과', idx: 0 },
+              ...(report.word_summaries.length > 0 ? [{ label: '단어별 학습 결과', idx: 1 }] : []),
+              ...(realWrong.length > 0 ? [{ label: '오답 분석', idx: 2 }] : []),
+            ].map((tab) => (
+              <button
+                key={tab.idx}
+                onClick={() => setCurrentTab(tab.idx)}
+                className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-colors ${
+                  currentTab === tab.idx
+                    ? 'bg-[#CC0000] text-white'
+                    : 'text-text-secondary hover:bg-bg-muted'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-            {/* 2. Overview row */}
+          {/* ===== PAGE 1: Overview ===== */}
+          <div className={`bg-white rounded-2xl border border-border-subtle p-8 space-y-8 print-page ${currentTab !== 0 ? 'hidden print-show' : ''}`}>
+            <ReportHeader />
+            <p className="text-xs text-[#7A7A7A] -mt-4">학생의 전체 학습 성과와 레벨, 능력 분석 결과를 종합적으로 확인합니다.</p>
+
+            {/* Overview row */}
             {isListening ? (
-              /* Listening test: simplified overview — no radar, no rank badge, no level */
               <div className="flex gap-5">
                 <div className="flex-1 border border-[#E8E8E8] rounded-sm p-5 space-y-4 bg-[#FAFAFA]">
                   <h3 className="text-base font-semibold text-[#0D0D0D]">리스닝 테스트 결과</h3>
@@ -199,9 +232,7 @@ export function MasteryReportPage() {
                         const [c0, c1] = rank.colors;
                         return (
                           <div className="relative flex flex-col items-center gap-1">
-                            {/* Outer ring with shimmer */}
                             <div className="relative w-[76px] h-[76px] flex items-center justify-center">
-                              {/* Rotating conic ring */}
                               <div
                                 className="absolute inset-0 rounded-full animate-[spin_8s_linear_infinite]"
                                 style={{
@@ -210,7 +241,6 @@ export function MasteryReportPage() {
                                   WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
                                 }}
                               />
-                              {/* Pulse glow */}
                               <div
                                 className="absolute rounded-full animate-[pulse_3s_ease-in-out_infinite]"
                                 style={{
@@ -218,7 +248,6 @@ export function MasteryReportPage() {
                                   background: `radial-gradient(circle, ${c0}20 0%, ${c0}00 70%)`,
                                 }}
                               />
-                              {/* Badge circle */}
                               <div
                                 className="w-[68px] h-[68px] rounded-full flex flex-col items-center justify-center relative z-10"
                                 style={{
@@ -287,16 +316,20 @@ export function MasteryReportPage() {
                   </div>
                 </div>
 
-                {/* 3. Level Chart */}
+                {/* Level Chart */}
                 <LevelChartTable currentRank={level} />
 
-                {/* 4. Metric Detail Section */}
+                {/* Metric Detail Section */}
                 <MetricDetailSection details={report.metric_details} totalWordCount={report.total_word_count} />
               </>
             )}
+          </div>
 
-            {/* 5. Word Mastery Summary Table */}
-            {report.word_summaries.length > 0 && (
+          {/* ===== PAGE 2: Word Summaries ===== */}
+          {report.word_summaries.length > 0 && (
+            <div className={`bg-white rounded-2xl border border-border-subtle p-8 space-y-8 print-page-break print-page ${currentTab !== 1 ? 'hidden print-show' : ''}`}>
+              <ReportHeader />
+              <p className="text-xs text-[#7A7A7A] -mt-4">출제된 각 단어의 학습 단계, 정답률, 평균 응답 시간을 확인합니다. 마스터 완료 단어가 먼저, 정답률 높은 순으로 정렬됩니다.</p>
               <div className="space-y-3">
                 <h3 className="text-base font-semibold text-[#0D0D0D]">단어별 학습 결과</h3>
                 <div className="border border-[#E8E8E8] rounded overflow-hidden">
@@ -306,6 +339,7 @@ export function MasteryReportPage() {
                         <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#7A7A7A]">단어</th>
                         <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#7A7A7A]">뜻</th>
                         {!isListening && <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#7A7A7A]">단계</th>}
+                        <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#7A7A7A]">시도</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#7A7A7A]">정답</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#7A7A7A]">정답률</th>
                         <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#7A7A7A]">평균시간</th>
@@ -324,6 +358,7 @@ export function MasteryReportPage() {
                           </td>
                           <td className="px-3 py-2 text-[#7A7A7A]">{w.korean}</td>
                           {!isListening && <td className="px-3 py-2 text-center"><StageLabel stage={w.final_stage} /></td>}
+                          <td className="px-3 py-2 text-center text-[#7A7A7A]">{w.total_attempts}</td>
                           <td className="px-3 py-2 text-center text-[#7A7A7A]">{w.correct_count}</td>
                           <td className="px-3 py-2 text-center">
                             <span className={w.accuracy >= 80 ? 'text-green-600 font-medium' : w.accuracy >= 50 ? 'text-amber-600 font-medium' : 'text-red-500 font-medium'}>
@@ -339,46 +374,43 @@ export function MasteryReportPage() {
                   </table>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* 6. Wrong answers detail (filter out data anomalies) */}
-            {(() => {
-              const realWrong = report.answers.filter((a) =>
-                !a.is_correct &&
-                a.selected_answer?.toLowerCase() !== a.word_english.toLowerCase() &&
-                a.selected_answer !== a.correct_answer
-              );
-              return realWrong.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="text-base font-semibold text-[#0D0D0D]">오답 분석</h3>
-                  <div className="border border-[#E8E8E8] rounded overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-[#FEF2F2]">
-                          <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">번호</th>
-                          <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">단어</th>
-                          <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">정답</th>
-                          <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">내 답</th>
-                          {!isListening && <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#DC2626]">단계</th>}
+          {/* ===== PAGE 3: Wrong Answers ===== */}
+          {realWrong.length > 0 && (
+            <div className={`bg-white rounded-2xl border border-border-subtle p-8 space-y-8 print-page-break print-page ${currentTab !== 2 ? 'hidden print-show' : ''}`}>
+              <ReportHeader />
+              <p className="text-xs text-[#7A7A7A] -mt-4">틀린 문제를 분석하여 취약한 단어와 오답 패턴을 확인합니다.</p>
+              <div className="space-y-3">
+                <h3 className="text-base font-semibold text-[#0D0D0D]">오답 분석</h3>
+                <div className="border border-[#E8E8E8] rounded overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-[#FEF2F2]">
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">번호</th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">단어</th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">정답</th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#DC2626]">내 답</th>
+                        {!isListening && <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#DC2626]">단계</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {realWrong.map((a) => (
+                        <tr key={a.question_order} className="border-t border-[#F0F0F0]">
+                          <td className="px-3 py-2 text-[#7A7A7A]">{a.question_order}</td>
+                          <td className="px-3 py-2 font-medium text-[#0D0D0D]">{a.word_english}</td>
+                          <td className="px-3 py-2 text-green-600">{a.correct_answer}</td>
+                          <td className="px-3 py-2 text-red-500">{a.selected_answer || '(시간초과)'}</td>
+                          {!isListening && <td className="px-3 py-2 text-center"><StageLabel stage={a.stage} /></td>}
                         </tr>
-                      </thead>
-                      <tbody>
-                        {realWrong.map((a) => (
-                          <tr key={a.question_order} className="border-t border-[#F0F0F0]">
-                            <td className="px-3 py-2 text-[#7A7A7A]">{a.question_order}</td>
-                            <td className="px-3 py-2 font-medium text-[#0D0D0D]">{a.word_english}</td>
-                            <td className="px-3 py-2 text-green-600">{a.correct_answer}</td>
-                            <td className="px-3 py-2 text-red-500">{a.selected_answer || '(시간초과)'}</td>
-                            {!isListening && <td className="px-3 py-2 text-center"><StageLabel stage={a.stage} /></td>}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              );
-            })()}
-          </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </TeacherLayout>

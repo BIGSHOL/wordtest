@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 class AssignTestRequest(BaseModel):
     student_ids: list[str]
+    name: Optional[str] = None  # user-defined name; auto-generated if omitted
     engine: str = "levelup"  # "levelup" or "legacy"
     question_count: int = 20
     per_question_time_seconds: int = 15
@@ -36,5 +37,7 @@ class TestAssignmentResponse(BaseModel):
     engine_type: Optional[str] = None
     status: str
     assigned_at: datetime
+    total_time_override_seconds: Optional[int] = None
+    question_type_counts: Optional[str] = None
     test_session_id: Optional[str] = None
     learning_session_id: Optional[str] = None

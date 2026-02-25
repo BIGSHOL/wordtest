@@ -6,7 +6,7 @@ import { logger } from '../../utils/logger';
 import { getLevelRank } from '../../types/rank';
 import { speakWord, speakSentence } from '../../utils/tts';
 
-const ITEMS_PER_PAGE = 20;
+const ITEMS_PER_PAGE = 10;
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 async function checkTtsCache(text: string): Promise<boolean> {
@@ -55,6 +55,8 @@ export function WordDatabasePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [bookOptions, setBookOptions] = useState<string[]>([]);
   const [lessonOptions, setLessonOptions] = useState<LessonInfo[]>([]);
+  const [posFilter, setPosFilter] = useState<string>('');
+  const [posOptions, setPosOptions] = useState<string[]>([]);
 
   const fetchWords = async () => {
     try {
@@ -64,23 +66,21 @@ export function WordDatabasePage() {
         limit: number;
         search?: string;
         book_name?: string;
+        lesson?: string;
+        part_of_speech?: string;
       } = {
         skip: page * ITEMS_PER_PAGE,
         limit: ITEMS_PER_PAGE,
       };
       if (debouncedSearch) params.search = debouncedSearch;
       if (bookFilter) params.book_name = bookFilter;
+      if (lessonFilter) params.lesson = lessonFilter;
+      if (posFilter) params.part_of_speech = posFilter;
 
       const response = await wordService.listWords(params);
 
-      // Filter by lesson on client side if needed
-      let filteredWords = response.words;
-      if (lessonFilter) {
-        filteredWords = filteredWords.filter(w => w.lesson === lessonFilter);
-      }
-
-      setWords(filteredWords);
-      setTotal(lessonFilter ? filteredWords.length : response.total);
+      setWords(response.words);
+      setTotal(response.total);
     } catch (error) {
       logger.error('Failed to fetch words:', error);
     } finally {
@@ -99,11 +99,12 @@ export function WordDatabasePage() {
 
   useEffect(() => {
     fetchWords();
-  }, [page, debouncedSearch, bookFilter, lessonFilter]);
+  }, [page, debouncedSearch, bookFilter, lessonFilter, posFilter]);
 
-  // Load books on mount
+  // Load books and parts of speech on mount
   useEffect(() => {
     wordService.listBooks().then(setBookOptions).catch((e: unknown) => logger.error('Failed to load books:', e));
+    wordService.listPartsOfSpeech().then(setPosOptions).catch((e: unknown) => logger.error('Failed to load POS:', e));
   }, []);
 
   // Load lessons when book changes
@@ -242,9 +243,7 @@ export function WordDatabasePage() {
     alert('엑셀 가져오기 기능은 준비 중입니다.');
   };
 
-  const filteredTotal = lessonFilter
-    ? words.length
-    : (bookFilter ? words.length : total);
+  const filteredTotal = total;
 
   return (
     <TeacherLayout>
@@ -264,7 +263,7 @@ export function WordDatabasePage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
               <input
                 type="text"
-                placeholder="단어 검색..."
+                placeholder="단어, 뜻, 예문 검색..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 border border-border-subtle rounded-[10px] text-sm bg-white focus:outline-none focus:border-teal"
@@ -424,6 +423,29 @@ export function WordDatabasePage() {
                 </select>
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary pointer-events-none" />
               </div>
+              {posOptions.length > 0 && (
+                <>
+                  <div className="w-px h-5 bg-border-subtle" />
+                  <span className="text-[13px] font-semibold text-text-secondary whitespace-nowrap">품사</span>
+                  <div className="relative">
+                    <select
+                      value={posFilter}
+                      onChange={(e) => {
+                        setPosFilter(e.target.value);
+                        setPage(0);
+                      }}
+                      className="appearance-none pl-3 pr-8 py-1.5 rounded-lg border border-border-subtle bg-white text-sm text-text-primary focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal cursor-pointer"
+                      style={{ minWidth: 100 }}
+                    >
+                      <option value="">전체</option>
+                      {posOptions.map((pos) => (
+                        <option key={pos} value={pos}>{pos}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary pointer-events-none" />
+                  </div>
+                </>
+              )}
             </div>
             <span
               className="text-[11px] font-semibold rounded-full shrink-0"

@@ -67,6 +67,28 @@ function computeXpChange(params: {
 /** Track ongoing prefetches to avoid duplicate requests */
 const _prefetchingLevels = new Set<number>();
 
+/** Exam mode: track when each question was first shown (Date.now()) */
+const _questionFirstShown: Record<number, number> = {};
+/** Exam mode: recorded time in seconds for each question (first answer moment) */
+const _questionTimeTaken: Record<number, number> = {};
+
+function _resetExamTimers() {
+  for (const k of Object.keys(_questionFirstShown)) delete _questionFirstShown[Number(k)];
+  for (const k of Object.keys(_questionTimeTaken)) delete _questionTimeTaken[Number(k)];
+}
+
+function _markQuestionShown(index: number) {
+  if (!(index in _questionFirstShown)) {
+    _questionFirstShown[index] = Date.now();
+  }
+}
+
+function _recordFirstAnswer(index: number) {
+  if (!(index in _questionTimeTaken) && index in _questionFirstShown) {
+    _questionTimeTaken[index] = Math.round((Date.now() - _questionFirstShown[index]) / 1000 * 10) / 10;
+  }
+}
+
 // ── Store Interface ─────────────────────────────────────────────────────────
 
 export interface UnifiedTestStore {
@@ -359,11 +381,16 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
 
   // ── Shared Actions ─────────────────────────────────────────────────
 
-  startExam: () => set({ phase: 'testing' }),
+  startExam: () => {
+    _resetExamTimers();
+    _markQuestionShown(0);
+    set({ phase: 'testing' });
+  },
 
   goToQuestion: (index) => {
     const { flatQuestions } = get();
     if (index >= 0 && index < flatQuestions.length) {
+      _markQuestionShown(index);
       set({ currentQuestionIndex: index });
     }
   },
@@ -371,6 +398,7 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
   goNext: () => {
     const { currentQuestionIndex, flatQuestions } = get();
     if (currentQuestionIndex < flatQuestions.length - 1) {
+      _markQuestionShown(currentQuestionIndex + 1);
       set({ currentQuestionIndex: currentQuestionIndex + 1 });
     }
   },
@@ -378,20 +406,24 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
   goPrev: () => {
     const { currentQuestionIndex } = get();
     if (currentQuestionIndex > 0) {
+      _markQuestionShown(currentQuestionIndex - 1);
       set({ currentQuestionIndex: currentQuestionIndex - 1 });
     }
   },
 
   setLocalAnswer: (index, answer) => {
+    _recordFirstAnswer(index);
     set(state => ({ localAnswers: { ...state.localAnswers, [index]: answer } }));
   },
 
   setLocalTypedAnswer: (index, text) => {
+    if (text) _recordFirstAnswer(index);
     set(state => ({ localTypedAnswers: { ...state.localTypedAnswers, [index]: text } }));
   },
 
   reset: () => {
     _prefetchingLevels.clear();
+    _resetExamTimers();
     set(initialState);
   },
 
@@ -411,6 +443,7 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
           ? (state.localAnswers[i] || '')
           : (state.localTypedAnswers[i] || ''),
         question_type: q.question_type,
+        time_taken_seconds: _questionTimeTaken[i] ?? null,
       }));
 
       if (state.engineType === 'levelup') {
