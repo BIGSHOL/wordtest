@@ -10,7 +10,6 @@ interface Props {
   configs: TestConfigItem[];
   onAssign: (configId: string) => void;
   onDelete: (configId: string) => void;
-  onRename?: (configId: string, newName: string) => void;
 }
 
 const QTYPE_LABELS: Record<string, { label: string; bg: string; color: string }> = {
@@ -50,7 +49,7 @@ function formatTime(config: TestConfigItem): string {
   return '-';
 }
 
-export function TestConfigListPanel({ configs, onAssign, onDelete, onRename }: Props) {
+export function TestConfigListPanel({ configs, onAssign, onDelete }: Props) {
   const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   // Reset page when data or search changes
