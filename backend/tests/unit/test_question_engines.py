@@ -449,6 +449,59 @@ class TestSentence:
         assert spec.sentence_blank == "I have a ____."
         assert spec.sentence_en == "I have a dog."
 
+    # ── New: phrasal verb / idiom matching ──────────────────────────────
+
+    def test_blank_phrasal_verb(self):
+        """Phrasal verb with ~ should blank the first content word."""
+        assert make_sentence_blank(
+            "She took part in the competition.", "take part in ~"
+        ) == "She ____ part in the competition."
+
+    def test_blank_be_pattern(self):
+        """be-verb pattern should match inflected 'is/was/are'."""
+        assert make_sentence_blank(
+            "He is good at math.", "be good at ~"
+        ) == "He ____ good at math."
+
+    def test_blank_possessive(self):
+        """one's should match possessive pronouns like her/his/my."""
+        assert make_sentence_blank(
+            "She held her breath.", "hold one's breath"
+        ) == "She ____ her breath."
+
+    def test_blank_reflexive(self):
+        """oneself should match reflexive pronouns like himself."""
+        assert make_sentence_blank(
+            "He enjoyed himself at the party.", "enjoy oneself"
+        ) == "He ____ himself at the party."
+
+    def test_blank_abbreviation(self):
+        """Abbreviations with dots should be matched."""
+        assert make_sentence_blank(
+            "The store opens at 9 a.m.", "a.m."
+        ) == "The store opens at 9 ____."
+
+    def test_blank_irregular_verb(self):
+        """Irregular past tense should be blanked via _IRREGULAR table."""
+        assert make_sentence_blank(
+            "She went to school yesterday.", "go to ~"
+        ) == "She ____ to school yesterday."
+
+    def test_blank_preposition_tilde(self):
+        """Preposition + ~ should match after cleaning."""
+        assert make_sentence_blank(
+            "The cat is below the table.", "below ~"
+        ) == "The cat is ____ the table."
+
+    def test_can_generate_phrasal_verb(self, sample_pool):
+        """can_generate should work for phrasal verb entries."""
+        engine = get_engine("sentence")
+        word = make_word(
+            "take part in ~", "참가하다",
+            "She took part in the competition.",
+        )
+        assert engine.can_generate(word) is True
+
 
 # ══════════════════════════════════════════════════════════════════════════
 # TestListenEngines

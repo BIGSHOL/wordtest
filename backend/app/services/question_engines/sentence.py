@@ -13,29 +13,225 @@ from app.models.word import Word
 from app.services.question_engines.base import QuestionSpec, DistractorPool
 from app.services.question_engines.distractors import pick_english_distractors, shuffle_choices
 
+# ── Irregular verb table ──────────────────────────────────────────────────
+_IRREGULAR: dict[str, set[str]] = {
+    "be": {"was", "were", "been", "being", "is", "am", "are"},
+    "have": {"has", "had", "having"},
+    "do": {"does", "did", "done", "doing"},
+    "go": {"goes", "went", "gone", "going"},
+    "take": {"takes", "took", "taken", "taking"},
+    "make": {"makes", "made", "making"},
+    "come": {"comes", "came", "coming"},
+    "get": {"gets", "got", "gotten", "getting"},
+    "give": {"gives", "gave", "given", "giving"},
+    "find": {"finds", "found", "finding"},
+    "know": {"knows", "knew", "known", "knowing"},
+    "think": {"thinks", "thought", "thinking"},
+    "say": {"says", "said", "saying"},
+    "tell": {"tells", "told", "telling"},
+    "see": {"sees", "saw", "seen", "seeing"},
+    "put": {"puts", "putting"},
+    "run": {"runs", "ran", "running"},
+    "eat": {"eats", "ate", "eaten", "eating"},
+    "drink": {"drinks", "drank", "drunk", "drinking"},
+    "write": {"writes", "wrote", "written", "writing"},
+    "read": {"reads", "reading"},
+    "speak": {"speaks", "spoke", "spoken", "speaking"},
+    "break": {"breaks", "broke", "broken", "breaking"},
+    "grow": {"grows", "grew", "grown", "growing"},
+    "keep": {"keeps", "kept", "keeping"},
+    "hold": {"holds", "held", "holding"},
+    "stand": {"stands", "stood", "standing"},
+    "sit": {"sits", "sat", "sitting"},
+    "lose": {"loses", "lost", "losing"},
+    "pay": {"pays", "paid", "paying"},
+    "meet": {"meets", "met", "meeting"},
+    "set": {"sets", "setting"},
+    "begin": {"begins", "began", "begun", "beginning"},
+    "show": {"shows", "showed", "shown", "showing"},
+    "hear": {"hears", "heard", "hearing"},
+    "bring": {"brings", "brought", "bringing"},
+    "buy": {"buys", "bought", "buying"},
+    "lead": {"leads", "led", "leading"},
+    "catch": {"catches", "caught", "catching"},
+    "choose": {"chooses", "chose", "chosen", "choosing"},
+    "fall": {"falls", "fell", "fallen", "falling"},
+    "feel": {"feels", "felt", "feeling"},
+    "leave": {"leaves", "left", "leaving"},
+    "build": {"builds", "built", "building"},
+    "send": {"sends", "sent", "sending"},
+    "spend": {"spends", "spent", "spending"},
+    "cut": {"cuts", "cutting"},
+    "rise": {"rises", "rose", "risen", "rising"},
+    "drive": {"drives", "drove", "driven", "driving"},
+    "draw": {"draws", "drew", "drawn", "drawing"},
+    "teach": {"teaches", "taught", "teaching"},
+    "sing": {"sings", "sang", "sung", "singing"},
+    "swim": {"swims", "swam", "swum", "swimming"},
+    "throw": {"throws", "threw", "thrown", "throwing"},
+    "wear": {"wears", "wore", "worn", "wearing"},
+    "win": {"wins", "won", "winning"},
+    "lie": {"lies", "lay", "lain", "lying", "lied"},
+    "hang": {"hangs", "hung", "hanging"},
+}
+
+_POSSESSIVE_PAT = r"(?:my|your|his|her|its|our|their|one's)"
+_REFLEXIVE_PAT = r"(?:myself|yourself|himself|herself|itself|ourselves|yourselves|themselves)"
+_SUFFIX_PAT = r"(?:s|es|ed|ing|d|er|est|ly|tion|ment|ness|ful|less|ous|ive|al|able|ible)"
+_STOP_TOKENS = {"one's", "oneself", "a", "an", "the", "~", "..."}
+
+
+def _build_word_re(word: str) -> str:
+    """Build regex alternation for a word including irregular forms and suffixes."""
+    base = word.lower()
+    forms = {re.escape(base)}
+    if base in _IRREGULAR:
+        for f in _IRREGULAR[base]:
+            forms.add(re.escape(f))
+    escaped = re.escape(base)
+    forms.add(escaped + _SUFFIX_PAT)
+    # Handle silent-e doubling: e.g. "make" -> "making" (strip e + ing)
+    if base.endswith("e") and len(base) > 2:
+        stem = re.escape(base[:-1])
+        forms.add(stem + r"(?:ing|ed|er|est)")
+    # Handle consonant doubling: e.g. "run" -> "running"
+    if len(base) >= 2 and base[-1] not in "aeiouywx" and base[-2] in "aeiou":
+        doubled = re.escape(base + base[-1])
+        forms.add(doubled + r"(?:ing|ed|er|est)")
+    return r"(?:" + "|".join(forms) + r")"
+
+
+def _token_re(token: str) -> str | None:
+    """Convert a phrase token into a regex pattern, or None to skip."""
+    low = token.lower().strip()
+    if low in _STOP_TOKENS or not low:
+        return None
+    if low == "one's":
+        return _POSSESSIVE_PAT
+    if low == "oneself":
+        return _REFLEXIVE_PAT
+    return _build_word_re(low)
+
+
+def _clean_phrase(phrase: str) -> str:
+    """Remove annotations from a phrase: ~, ..., (), "", -ing suffix."""
+    cleaned = phrase
+    cleaned = re.sub(r'\(.*?\)', '', cleaned)  # remove parenthesized
+    cleaned = re.sub(r'".*?"', '', cleaned)     # remove quoted
+    cleaned = cleaned.replace('~', '').replace('...', '')
+    cleaned = re.sub(r'-ing\b', '', cleaned)    # "keep-ing" -> "keep"
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    return cleaned
+
+
+def _try_exact(sentence: str, word: str) -> str | None:
+    """Try exact + inflected match (Phase 1 logic)."""
+    if not word:
+        return None
+    # Exact
+    pat = re.compile(r'\b' + re.escape(word) + r'\b', re.IGNORECASE)
+    if pat.search(sentence):
+        return pat.sub('____', sentence, count=1)
+    # Inflected
+    ipat = re.compile(
+        r'\b' + re.escape(word) + r'(?:' + _SUFFIX_PAT + r')?\b',
+        re.IGNORECASE,
+    )
+    if ipat.search(sentence):
+        return ipat.sub('____', sentence, count=1)
+    return None
+
+
+def _try_phrase_match(sentence: str, phrase: str) -> str | None:
+    """Try matching first content word of a phrase using irregular forms."""
+    tokens = phrase.split()
+    content_tokens = []
+    for t in tokens:
+        low = t.lower().strip()
+        if low in _STOP_TOKENS or not low:
+            continue
+        content_tokens.append(t)
+
+    if not content_tokens:
+        return None
+
+    # Try each content word, prefer matching with following context
+    for i, token in enumerate(content_tokens):
+        word_pat = _build_word_re(token.lower().strip())
+        # Try with next context word for disambiguation
+        if i + 1 < len(content_tokens):
+            next_tok = content_tokens[i + 1].lower().strip()
+            next_re = _token_re(next_tok)
+            if next_re:
+                ctx_pat = re.compile(
+                    r'\b' + word_pat + r'\b\s+' + r'\b' + next_re + r'\b',
+                    re.IGNORECASE,
+                )
+                m = ctx_pat.search(sentence)
+                if m:
+                    # Replace only the first word part
+                    single = re.compile(r'\b' + word_pat + r'\b', re.IGNORECASE)
+                    return single.sub('____', sentence, count=1)
+
+        # Fallback: match single word
+        single = re.compile(r'\b' + word_pat + r'\b', re.IGNORECASE)
+        if single.search(sentence):
+            return single.sub('____', sentence, count=1)
+
+    return None
+
+
+def _try_abbreviation(sentence: str, target_word: str) -> str | None:
+    """Match abbreviations like a.m., p.m., P.E. without word boundaries."""
+    if '.' not in target_word:
+        return None
+    pat = re.compile(re.escape(target_word), re.IGNORECASE)
+    m = pat.search(sentence)
+    if not m:
+        return None
+    # When an abbreviation ending with '.' sits at sentence end,
+    # its period doubles as the sentence period — restore it.
+    end_of_sent = m.end() >= len(sentence.rstrip())
+    result = pat.sub('____', sentence, count=1)
+    if target_word.endswith('.') and end_of_sent and not result.rstrip().endswith('.'):
+        result = result.rstrip() + '.'
+    return result
+
 
 def make_sentence_blank(sentence: str, target_word: str) -> str | None:
     """Replace the target word in the sentence with ____.
 
-    Handles case-insensitive matching and common suffixes (s, ed, ing, etc.).
-    Returns None if the word is not found.
+    Phases:
+    1. Exact / inflected word-boundary match
+    2. Clean phrase (remove ~, ..., -ing, etc.) and retry
+    3. Phrase match: split into tokens, match first content word with
+       irregular verb support, possessive/reflexive pronoun patterns
+    4. Abbreviation match (dots in word)
     """
     if not sentence or not target_word:
         return None
 
-    # Try exact (case-insensitive) word boundary match first
-    pattern = re.compile(r'\b' + re.escape(target_word) + r'\b', re.IGNORECASE)
-    if pattern.search(sentence):
-        return pattern.sub('____', sentence, count=1)
+    # Phase 1: exact + inflected
+    result = _try_exact(sentence, target_word)
+    if result:
+        return result
 
-    # Try matching common inflected forms
-    inflect_pattern = re.compile(
-        r'\b' + re.escape(target_word)
-        + r'(?:s|es|ed|ing|d|er|est|ly|tion|ment|ness|ful|less|ous|ive|al|able|ible)?\b',
-        re.IGNORECASE,
-    )
-    if inflect_pattern.search(sentence):
-        return inflect_pattern.sub('____', sentence, count=1)
+    # Phase 2: clean phrase and retry exact
+    cleaned = _clean_phrase(target_word)
+    if cleaned != target_word:
+        result = _try_exact(sentence, cleaned)
+        if result:
+            return result
+
+    # Phase 3: phrase token matching
+    result = _try_phrase_match(sentence, cleaned)
+    if result:
+        return result
+
+    # Phase 4: abbreviation
+    result = _try_abbreviation(sentence, target_word)
+    if result:
+        return result
 
     return None
 
