@@ -26,4 +26,5 @@ class ListenTypeEngine:
             correct_answer=word.english,
             choices=None,
             is_typing=True,
+            hint=word.english[0] + "_" * (len(word.english) - 1) if word.english else None,
         )

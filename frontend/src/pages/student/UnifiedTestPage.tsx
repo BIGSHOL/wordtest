@@ -512,6 +512,7 @@ export function UnifiedTestPage() {
                 onSubmit={store.goNext}
                 disabled={false}
                 isListenMode={isListen}
+                hint={currentQuestion.hint}
               />
             ) : (
               <div className="flex flex-col gap-3 w-full">
@@ -647,6 +648,7 @@ export function UnifiedTestPage() {
               onSubmit={handleTypingSubmit}
               disabled={!!answerResult}
               isListenMode={isListen}
+              hint={currentQuestion.hint}
             />
           ) : (
             <div className="flex flex-col gap-3 w-full">

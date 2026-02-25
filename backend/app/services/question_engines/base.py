@@ -26,6 +26,7 @@ class QuestionSpec:
     sentence_en: str | None = None  # selected example sentence (English)
     sentence_ko: str | None = None  # selected example sentence (Korean)
     emoji: str | None = None        # emoji string for emoji questions
+    hint: str | None = None          # first-letter hint for typing questions
 
 
 @dataclass

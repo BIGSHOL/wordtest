@@ -600,6 +600,7 @@ def generate_questions_for_words(
             "context_mode": spec.context_mode or "word",
             "sentence_blank": spec.sentence_blank,
             "emoji": spec.emoji,
+            "hint": spec.hint,
         }
 
     questions: list[dict] = []

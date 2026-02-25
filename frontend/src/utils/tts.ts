@@ -10,6 +10,42 @@ function cleanForTts(text: string): string {
   return text.replace(/~/g, '').replace(/\s+/g, ' ').trim();
 }
 
+// ── Volume boost via Web Audio API GainNode ──────────────────────────────
+let audioCtx: AudioContext | null = null;
+let gainNode: GainNode | null = null;
+const TTS_GAIN = 2.0; // 2× amplification (adjust as needed)
+
+function getGainNode(): GainNode | null {
+  try {
+    if (!audioCtx) audioCtx = new AudioContext();
+    if (!gainNode) {
+      gainNode = audioCtx.createGain();
+      gainNode.gain.value = TTS_GAIN;
+      gainNode.connect(audioCtx.destination);
+    }
+    return gainNode;
+  } catch {
+    return null;
+  }
+}
+
+/** Play audio through GainNode for volume boost. */
+function playAmplified(audio: HTMLAudioElement): Promise<void> {
+  const gain = getGainNode();
+  if (!gain || !audioCtx) {
+    // Fallback: play normally
+    return audio.play().catch(() => {});
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+  try {
+    const source = audioCtx.createMediaElementSource(audio);
+    source.connect(gain);
+  } catch {
+    // Already connected — ignore InvalidStateError
+  }
+  return audio.play().catch(() => {});
+}
+
 // Preloaded audio cache: word → HTMLAudioElement (ready to play instantly)
 const audioCache = new Map<string, HTMLAudioElement>();
 const preloadingWords = new Set<string>();
@@ -118,7 +154,7 @@ function playAndWait(audio: HTMLAudioElement, timeout = 5000): Promise<void> {
     audio.onended = done;
     audio.onerror = done;
     audio.currentTime = 0;
-    audio.play().catch(done);
+    playAmplified(audio).catch(done);
   });
 }
 
@@ -143,7 +179,7 @@ async function playFromBackend(text: string): Promise<boolean> {
       const timer = setTimeout(() => { cleanup(); resolve(); }, 8000);
       audio.onended = () => { clearTimeout(timer); cleanup(); resolve(); };
       audio.onerror = () => { clearTimeout(timer); cleanup(); resolve(); };
-      audio.play().catch(() => { clearTimeout(timer); resolve(); });
+      playAmplified(audio).catch(() => { clearTimeout(timer); resolve(); });
     });
     return true;
   } catch {
@@ -222,7 +258,7 @@ export async function speakSentence(text: string) {
   const cached = sentenceCache.get(text);
   if (cached) {
     cached.currentTime = 0;
-    await cached.play().catch(() => {});
+    await playAmplified(cached).catch(() => {});
     return;
   }
 

@@ -13,6 +13,8 @@ interface TypingInputProps {
   placeholder?: string;
   /** When true, 0 key triggers replay instead of input (listen stages) */
   isListenMode?: boolean;
+  /** First-letter hint for typing questions */
+  hint?: string | null;
 }
 
 export const TypingInput = memo(function TypingInput({
@@ -22,6 +24,7 @@ export const TypingInput = memo(function TypingInput({
   disabled,
   placeholder = '영어 단어를 입력하세요',
   isListenMode = false,
+  hint,
 }: TypingInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const composingRef = useRef(false);
@@ -65,6 +68,11 @@ export const TypingInput = memo(function TypingInput({
         }}
       >
         <Keyboard className="w-5 h-5 text-text-tertiary shrink-0" />
+        {hint && (
+          <span className="text-lg font-bold text-indigo-500 shrink-0 select-none tracking-widest" style={{ fontFamily: 'monospace' }}>
+            {hint}
+          </span>
+        )}
         <input
           ref={inputRef}
           type="text"

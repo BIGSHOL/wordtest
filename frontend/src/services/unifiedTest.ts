@@ -27,6 +27,7 @@ export interface UnifiedQuestion {
   context_mode: string;
   sentence_blank: string | null;
   emoji: string | null;
+  hint: string | null;
 }
 
 export interface AnswerResult {
