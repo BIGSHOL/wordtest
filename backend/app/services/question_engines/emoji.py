@@ -14,7 +14,7 @@ class EmojiEngine:
     question_type = "emoji"
 
     def can_generate(self, word: Word) -> bool:
-        return bool(get_emoji(word.english))
+        return bool(get_emoji(word.english, word.korean))
 
     def generate(
         self,
@@ -22,7 +22,7 @@ class EmojiEngine:
         pool: DistractorPool,
         n_choices: int = 4,
     ) -> QuestionSpec:
-        emoji = get_emoji(word.english)
+        emoji = get_emoji(word.english, word.korean)
         correct = word.english
         distractors = get_emoji_distractors(correct, pool.all_english, n_choices - 1)
         return QuestionSpec(

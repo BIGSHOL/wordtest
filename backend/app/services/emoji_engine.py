@@ -42,19 +42,18 @@ EMOJI_MAP: dict[str, str] = {
     "deer": "🦌",
     "cow": "🐄",
     "sheep": "🐑",
-    "goat": "🐐",
+    # goat — not in DB
     "camel": "🐪",
     "gorilla": "🦍",
     "zebra": "🦓",
     "giraffe": "🦒",
     "crocodile": "🐊",
-    "octopus": "🐙",
+    # octopus — not in DB
     "snail": "🐌",
     "ant": "🐜",
-    "spider": "🕷️",
+    # spider — not in DB
     "parrot": "🦜",
-    "flamingo": "🦩",
-    "peacock": "🦚",
+    # flamingo, peacock — not in DB
     "swan": "🦢",
     "eagle": "🦅",
     "crab": "🦀",
@@ -74,54 +73,35 @@ EMOJI_MAP: dict[str, str] = {
     "banana": "🍌",
     "grape": "🍇",
     "orange": "🍊",
-    "lemon": "🍋",
     "watermelon": "🍉",
     "strawberry": "🍓",
-    "peach": "🍑",
-    "cherry": "🍒",
     "pineapple": "🍍",
-    "coconut": "🥥",
-    "avocado": "🥑",
-    "broccoli": "🥦",
     "corn": "🌽",
     "carrot": "🥕",
-    "tomato": "🍅",
     "potato": "🥔",
     "onion": "🧅",
     "garlic": "🧄",
     "mushroom": "🍄",
-    "peanut": "🥜",
     "bread": "🍞",
-    "cheese": "🧀",
     "egg": "🥚",
     "rice": "🍚",
     "pizza": "🍕",
-    "hamburger": "🍔",
-    "hotdog": "🌭",
     "sandwich": "🥪",
-    "taco": "🌮",
-    "sushi": "🍣",
     "noodle": "🍜",
     "soup": "🍲",
     "meat": "🥩",
     "bacon": "🥓",
-    "shrimp": "🦐",
     "cake": "🎂",
     "cookie": "🍪",
     "candy": "🍬",
     "chocolate": "🍫",
-    "donut": "🍩",
     "pie": "🥧",
     "popcorn": "🍿",
     "salt": "🧂",
     "honey": "🍯",
     "milk": "🥛",
-    "coffee": "☕",
     "tea": "🍵",
-    "wine": "🍷",
-    "beer": "🍺",
     "juice": "🧃",
-    "ice cream": "🍦",
     "bean": "🫘",
     "blueberry": "🫐",
     "cucumber": "🥒",
@@ -185,11 +165,10 @@ EMOJI_MAP: dict[str, str] = {
     "bag": "👜",
     "scissors": "✂️",
     "hammer": "🔨",
-    "axe": "🪓",
     "knife": "🔪",
     "shield": "🛡️",
     "sword": "🗡️",
-    "bow": "🏹",
+    # "bow" excluded — DB meaning is "인사하다" not bow & arrow
     "bell": "🔔",
     "balloon": "🎈",
     "gift": "🎁",
@@ -200,8 +179,6 @@ EMOJI_MAP: dict[str, str] = {
     "piano": "🎹",
     "drum": "🥁",
     "trumpet": "🎺",
-    "violin": "🎻",
-    "microphone": "🎤",
     "magnet": "🧲",
     "telescope": "🔭",
     "microscope": "🔬",
@@ -225,10 +202,8 @@ EMOJI_MAP: dict[str, str] = {
     "chain": "⛓️",
     "bomb": "💣",
     "flag": "🏁",
-    "trophy": "🏆",
     "medal": "🏅",
     "crown": "👑",
-    "diamond": "💎",
     "ring": "💍",
     "anchor": "⚓",
     "bandage": "🩹",
@@ -243,11 +218,9 @@ EMOJI_MAP: dict[str, str] = {
     # ── Vehicles & Transport ──
     "car": "🚗",
     "bus": "🚌",
-    "truck": "🚛",
     "ambulance": "🚑",
     "taxi": "🚕",
     "bicycle": "🚲",
-    "motorcycle": "🏍️",
     "airplane": "✈️",
     "helicopter": "🚁",
     "rocket": "🚀",
@@ -255,7 +228,6 @@ EMOJI_MAP: dict[str, str] = {
     "boat": "⛵",
     "train": "🚂",
     "tractor": "🚜",
-    "canoe": "🛶",
     "skateboard": "🛹",
     "parachute": "🪂",
 
@@ -281,8 +253,6 @@ EMOJI_MAP: dict[str, str] = {
     "ghost": "👻",
     "robot": "🤖",
     "clown": "🤡",
-    "ninja": "🥷",
-    "fairy": "🧚",
     "mermaid": "🧜",
     "wizard": "🧙",
     "pirate": "🏴‍☠️",
@@ -328,11 +298,11 @@ EMOJI_MAP: dict[str, str] = {
     "cook": "👨‍🍳",
     "write": "✍️",
     "pray": "🙏",
-    "wave": "👋",
+    "wave": "🌊",
     "clap": "👏",
     "hug": "🤗",
     "fight": "⚔️",
-    "fly": "🕊️",
+    # "fly" excluded — 🕊️ is dove, not generic "fly"
     "climb": "🧗",
     "surf": "🏄",
     "ski": "⛷️",
@@ -359,7 +329,7 @@ EMOJI_MAP: dict[str, str] = {
     "tower": "🗼",
     "palace": "🏯",
     "temple": "🛕",
-    "statue": "🗽",
+    # "statue" excluded — 🗽 is Statue of Liberty, too specific for generic "조각상"
     # "lighthouse" excluded — no dedicated emoji
 
     # ── Clothing & Accessories ──
@@ -368,14 +338,11 @@ EMOJI_MAP: dict[str, str] = {
     "pants": "👖",
     "hat": "🎩",
     "shoe": "👟",
-    "boot": "🥾",
     "scarf": "🧣",
     "glove": "🧤",
-    "sock": "🧦",
     "tie": "👔",
-    "bikini": "👙",
     "coat": "🧥",
-    "belt": "🪢",
+    # "belt" excluded — 🪢 is knot emoji, no belt emoji exists
 
     # ── Sports & Games ──
     "soccer": "⚽",
@@ -386,8 +353,6 @@ EMOJI_MAP: dict[str, str] = {
     "football": "🏈",
     "golf": "⛳",
     "bowling": "🎳",
-    "boxing": "🥊",
-    "wrestling": "🤼",
     "chess": "♟️",
     "dice": "🎲",
     "puzzle": "🧩",
@@ -412,10 +377,34 @@ EMOJI_MAP: dict[str, str] = {
     "peace": "☮️",
     "recycle": "♻️",
     "skull": "💀",
-    "poop": "💩",
     # "rainbow" excluded — duplicate with Nature section
     "sparkle": "✨",
     "hundred": "💯",
+}
+
+# ─── Polysemy Blacklist ──────────────────────────────────────────────────────
+# For words with multiple meanings, block emoji when Korean meaning indicates
+# the non-visual/abstract meaning that doesn't match the emoji.
+# Format: english_lower → list of Korean substrings that should BLOCK emoji.
+_POLYSEMY_BLOCK: dict[str, list[str]] = {
+    "bear": ["참다", "견디다", "낳다"],              # 🐻 only for 곰
+    "bank": ["둑", "제방", "거래하다"],              # 🏦 only for 은행
+    "run": ["운영", "경영", "작동"],                 # 🏃 only for 달리다
+    "store": ["저장", "비축"],                       # 🏪 only for 가게
+    "key": ["중요한", "핵심", "해답", "실마리"],      # 🔑 only for 열쇠
+    "party": ["정당", "당사자"],                     # 🎉 only for 파티
+    "ship": ["보내다"],                              # 🚢 only for 배
+    "plug": ["메우다", "틀어막다"],                   # 🔌 only for 플러그
+    "dice": ["썰다"],                                # 🎲 only for 주사위
+    "anchor": ["사회", "앵커"],                      # ⚓ only for 닻
+    "bomb": ["폭격하다"],                            # 💣 only for 폭탄
+    "lock": ["잠그다"],                              # 🔒 only for 자물쇠
+    "shield": ["보호하다", "가리다"],                 # 🛡️ only for 방패
+    "target": ["겨냥하다", "대상으로"],               # 🎯 only for 과녁/목표(noun)
+    "judge": ["판단하다", "평가하다"],                # 👨‍⚖️ only for 판사
+    "wave": ["손을 흔들"],                           # 🌊 only for 물결/파도
+    "cool": ["시원한"],                              # 😎 only for 멋진
+    "book": ["예약"],                                # 📖 only for 책
 }
 
 # Build reverse map for quick lookup
@@ -425,14 +414,27 @@ _REVERSE_MAP: dict[str, str] = {v: k for k, v in EMOJI_MAP.items()}
 _EMOJI_KEYS: set[str] = set(EMOJI_MAP.keys())
 
 
-def get_emoji(english: str) -> str | None:
-    """Return the emoji for an English word, or None if not mapped."""
-    return EMOJI_MAP.get(english.strip().lower())
+def get_emoji(english: str, korean: str | None = None) -> str | None:
+    """Return the emoji for an English word, or None if not mapped.
+
+    If korean is provided, checks polysemy blacklist to avoid mismatched emoji
+    for multi-meaning words (e.g. bear=참다 should not get 🐻).
+    """
+    key = english.strip().lower()
+    emoji = EMOJI_MAP.get(key)
+    if emoji and korean and key in _POLYSEMY_BLOCK:
+        for blocked_substr in _POLYSEMY_BLOCK[key]:
+            if blocked_substr in korean:
+                return None
+    return emoji
 
 
-def has_emoji(english: str) -> bool:
-    """Check if an English word has an emoji mapping."""
-    return english.strip().lower() in _EMOJI_KEYS
+def has_emoji(english: str, korean: str | None = None) -> bool:
+    """Check if an English word has an emoji mapping.
+
+    If korean is provided, also checks polysemy blacklist.
+    """
+    return get_emoji(english, korean) is not None
 
 
 def get_emoji_distractors(
