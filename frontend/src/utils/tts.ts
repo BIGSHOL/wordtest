@@ -10,18 +10,32 @@ function cleanForTts(text: string): string {
   return text.replace(/~/g, '').replace(/\s+/g, ' ').trim();
 }
 
-// ── Volume boost via Web Audio API GainNode ──────────────────────────────
+// ── Volume normalization via Compressor + Gain ───────────────────────────
 let audioCtx: AudioContext | null = null;
 let gainNode: GainNode | null = null;
-const TTS_GAIN = 2.0; // 2× amplification (adjust as needed)
+const TTS_GAIN = 1.5; // post-compressor boost
 
 function getGainNode(): GainNode | null {
   try {
     if (!audioCtx) audioCtx = new AudioContext();
     if (!gainNode) {
+      // Compressor: auto-levels volume differences between sources
+      const compressor = audioCtx.createDynamicsCompressor();
+      compressor.threshold.value = -30; // start compressing at -30dB
+      compressor.knee.value = 20;       // soft knee for natural sound
+      compressor.ratio.value = 8;       // 8:1 compression ratio
+      compressor.attack.value = 0.003;  // fast attack for speech
+      compressor.release.value = 0.15;  // smooth release
+
       gainNode = audioCtx.createGain();
       gainNode.gain.value = TTS_GAIN;
+
+      // Chain: source → compressor → gain → speakers
+      compressor.connect(gainNode);
       gainNode.connect(audioCtx.destination);
+
+      // Store compressor ref on gainNode for source connection
+      (gainNode as any)._compressor = compressor;
     }
     return gainNode;
   } catch {
@@ -29,7 +43,7 @@ function getGainNode(): GainNode | null {
   }
 }
 
-/** Play audio through GainNode for volume boost. */
+/** Play audio through Compressor → Gain for normalized volume. */
 function playAmplified(audio: HTMLAudioElement): Promise<void> {
   const gain = getGainNode();
   if (!gain || !audioCtx) {
@@ -39,7 +53,8 @@ function playAmplified(audio: HTMLAudioElement): Promise<void> {
   if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
   try {
     const source = audioCtx.createMediaElementSource(audio);
-    source.connect(gain);
+    const compressor = (gain as any)._compressor as AudioNode | undefined;
+    source.connect(compressor || gain);
   } catch {
     // Already connected — ignore InvalidStateError
   }
