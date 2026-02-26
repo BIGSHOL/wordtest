@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
-from app.schemas.student import CreateStudentRequest, UpdateStudentRequest
+from app.schemas.student import CreateStudentRequest, UpdateStudentRequest, BatchDeleteRequest
 from app.schemas.user import UserResponse
 from app.core.deps import CurrentTeacher
 from app.models.user import User
@@ -17,6 +17,7 @@ from app.services.student import (
     get_student_by_id,
     update_student,
     delete_student,
+    delete_students_batch,
 )
 
 router = APIRouter(prefix="/students", tags=["students"])
@@ -178,6 +179,22 @@ async def update_student_endpoint(
         grade=student_in.grade,
     )
     return updated
+
+
+@router.post("/batch-delete", status_code=status.HTTP_200_OK)
+async def batch_delete_students_endpoint(
+    body: BatchDeleteRequest,
+    teacher: CurrentTeacher,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Delete multiple students at once (teacher only)."""
+    if not body.student_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="student_ids must not be empty",
+        )
+    deleted = await delete_students_batch(db, body.student_ids)
+    return {"deleted": deleted}
 
 
 @router.delete("/{student_id}", status_code=status.HTTP_204_NO_CONTENT)

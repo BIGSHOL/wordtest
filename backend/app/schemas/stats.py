@@ -63,15 +63,17 @@ class WordStatsResponse(BaseModel):
 
 
 class RadarMetrics(BaseModel):
-    vocabulary_level: float  # 어휘수준 0-10
-    accuracy: float          # 정답률 0-10
-    speed: float             # 속도 0-10
-    vocabulary_size: float   # 어휘사이즈 0-10
+    meaning: float = 0.0        # 의미파악력 0-10
+    association: float = 0.0    # 단어연상력 0-10
+    listening: float = 0.0      # 발음청취력 0-10
+    inference: float = 0.0      # 어휘추론력 0-10
+    spelling: float = 0.0       # 철자기억력 0-10
+    comprehensive: float = 0.0  # 종합응용력 0-10 (5영역 가중평균)
 
 
 class MetricDetail(BaseModel):
-    key: str        # "vocabulary_level" | "accuracy" | "speed" | "vocabulary_size"
-    name: str       # "어휘수준" | "정답률" | "속도" | "어휘사이즈"
+    key: str        # skill area key
+    name: str       # Korean skill area name
     my_score: float
     avg_score: float
     description: str

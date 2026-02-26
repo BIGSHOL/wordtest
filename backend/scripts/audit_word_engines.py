@@ -30,7 +30,10 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
 async def main():
     factory = get_session_factory()
     async with factory() as db:
-        result = await db.execute(select(Word).where(Word.is_excluded == False))
+        from sqlalchemy.orm import selectinload
+        result = await db.execute(
+            select(Word).where(Word.is_excluded == False).options(selectinload(Word.examples))
+        )
         words = result.scalars().all()
 
         total = len(words)

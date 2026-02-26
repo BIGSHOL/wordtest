@@ -19,6 +19,7 @@ from app.services.question_engines.listen_type import ListenTypeEngine
 from app.services.question_engines.ko_type import KoTypeEngine
 from app.services.question_engines.antonym_type import AntonymTypeEngine
 from app.services.question_engines.antonym_choice import AntonymChoiceEngine
+from app.services.question_engines.sentence_type import SentenceTypeEngine
 from app.services.question_engines.distractors import (
     pick_korean_distractors,
     pick_english_distractors,
@@ -41,6 +42,7 @@ ENGINES: dict[str, QuestionEngine] = {
     "ko_type": KoTypeEngine(),
     "antonym_type": AntonymTypeEngine(),
     "antonym_choice": AntonymChoiceEngine(),
+    "sentence_type": SentenceTypeEngine(),
 }
 
 
@@ -63,6 +65,7 @@ LEGACY_NAME_MAP: dict[str, str] = {
     "meaning_and_type": "ko_type",
     "antonym_and_type": "antonym_type",
     "antonym_and_choice": "antonym_choice",
+    "sentence_and_type": "sentence_type",
 }
 
 # Canonical → legacy names (for API response backward compatibility)
@@ -77,6 +80,7 @@ CANONICAL_TO_LEVEL: dict[str, str] = {
     "ko_type": "meaning_word",     # no direct level-test equivalent
     "antonym_type": "word_meaning",     # no direct level-test equivalent
     "antonym_choice": "word_meaning",   # no direct level-test equivalent
+    "sentence_type": "sentence_blank",   # no direct level-test equivalent
 }
 
 CANONICAL_TO_MASTERY: dict[str, str] = {
@@ -90,6 +94,7 @@ CANONICAL_TO_MASTERY: dict[str, str] = {
     "ko_type": "meaning_and_type",
     "antonym_type": "antonym_and_type",
     "antonym_choice": "antonym_and_choice",
+    "sentence_type": "sentence_and_type",
 }
 
 

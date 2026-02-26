@@ -4,6 +4,7 @@
  */
 import { Info } from 'lucide-react';
 import type { TestConfigState } from './TestConfigPanel';
+import { ENGINE_FULL_LABELS, SKILL_AREA_LABELS } from '../../constants/engineLabels';
 
 interface Props {
   config: TestConfigState;
@@ -17,27 +18,8 @@ interface Props {
   isSubmitting: boolean;
 }
 
-const QUESTION_TYPE_LABELS: Record<string, string> = {
-  en_to_ko: '영→한',
-  ko_to_en: '한→영',
-  listen_en: '듣기(영)',
-  listen_ko: '듣기(한)',
-  listen_type: '듣고 타이핑',
-  ko_type: '한글 타이핑',
-  emoji: '이모지',
-  sentence: '예문 빈칸',
-  antonym_type: '반의어 타이핑',
-  antonym_choice: '반의어 고르기',
-};
-
-const SKILL_AREA_LABELS: Record<string, string> = {
-  meaning: '의미파악력',
-  association: '단어연상력',
-  listening: '발음청취력',
-  inference: '어휘추론력',
-  spelling: '철자기억력',
-  comprehensive: '종합응용력',
-};
+// ENGINE_FULL_LABELS, SKILL_AREA_LABELS
+// → imported from '../../constants/engineLabels'
 
 export function ConfigPreviewPanel({
   config, selectedStudentCount, wordCount,
@@ -64,7 +46,7 @@ export function ConfigPreviewPanel({
     : config.skillAreas;
 
   const typeLabels = config.questionSelectionMode === 'engine'
-    ? config.questionTypes.map(t => QUESTION_TYPE_LABELS[t] || t)
+    ? config.questionTypes.map(t => ENGINE_FULL_LABELS[t] || t)
     : config.skillAreas.map(s => SKILL_AREA_LABELS[s] || s);
 
   const hasScope = !!(config.bookStart && config.bookEnd && config.lessonStart && config.lessonEnd);

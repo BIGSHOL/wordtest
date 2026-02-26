@@ -91,30 +91,113 @@ RANK_TO_BOOK: dict[int, str] = {
     15: "POWER VOCA 수능 기출 5000-05",
 }
 
-# Per-metric interpretive descriptions by rank range
-_METRIC_DESC: dict[str, dict[str, str]] = {
-    "vocabulary_level": {
-        "low": "동학년 학생들과 비교했을 때 기초적인 어휘를 학습하는 단계입니다. 초등 수준의 필수 단어부터 체계적으로 익혀야 합니다. 일상 회화에서 자주 사용되는 기본 동사, 명사, 형용사를 중심으로 매일 10~20개씩 반복 학습하면 빠르게 성장할 수 있습니다. 우선 추천 교재의 앞부분부터 차근차근 진행하세요.",
-        "mid": "동학년 평균과 비슷한 중급 수준의 어휘력입니다. 학교 교과서에 나오는 단어들을 이해하고 사용할 수 있는 수준으로, 기본적인 독해와 듣기 활동이 가능합니다. 다만 고난도 지문이나 수능 수준의 어휘에는 아직 부족함이 있으므로, 현재 레벨의 교재를 꾸준히 반복하면서 다음 단계 어휘를 조금씩 미리 학습하면 효과적입니다.",
-        "high": "동학년 학생들 중에서도 상급 수준의 어휘력입니다. 다양한 분야의 전문적인 단어를 이해하고 활용할 수 있습니다. 수능 및 공인 영어 시험에서 요구하는 핵심 어휘를 대부분 알고 있으며, 학술 텍스트나 영자 신문도 무리 없이 읽을 수 있는 수준입니다. 심화 어휘와 다의어 학습으로 어휘의 깊이를 더해 보세요.",
+# ── Skill area (능력영역) system ───────────────────────────────────────────
+# 6 testable areas: 5 core + comprehensive (sentence_type engine)
+
+SKILL_AREA_ENGINES: dict[str, list[str]] = {
+    "meaning":        ["en_to_ko", "antonym_choice"],
+    "association":    ["ko_to_en", "emoji"],
+    "listening":      ["listen_en", "listen_ko"],
+    "inference":      ["sentence"],
+    "spelling":       ["listen_type", "ko_type", "antonym_type"],
+    "comprehensive":  ["sentence_type"],
+}
+
+ENGINE_TO_SKILL: dict[str, str] = {
+    engine: skill
+    for skill, engines in SKILL_AREA_ENGINES.items()
+    for engine in engines
+}
+
+SKILL_AREA_NAMES: dict[str, str] = {
+    "meaning": "의미파악력",
+    "association": "단어연상력",
+    "listening": "발음청취력",
+    "inference": "어휘추론력",
+    "spelling": "철자기억력",
+    "comprehensive": "종합응용력",
+}
+
+SKILL_AREA_KEYS = ["meaning", "association", "listening", "inference", "spelling", "comprehensive"]
+
+# Per-skill-area interpretive descriptions by 10% score tier (1~10)
+# Tier 1 = 0~10%, Tier 2 = 11~20%, ... Tier 10 = 91~100%
+_SKILL_DESC: dict[str, dict[int, str]] = {
+    "meaning": {
+        1: "영어 단어의 뜻을 거의 파악하지 못하는 단계입니다. 가장 기초적인 생활 영단어(예: apple, book, happy)부터 그림 카드와 함께 매일 5개씩 반복 학습하는 것을 권장합니다.",
+        2: "기초 단어의 뜻을 일부 알고 있으나 대부분 혼동합니다. 자주 접하는 일상 단어를 플래시카드로 만들어 하루 10개씩 반복하면 빠르게 기초를 다질 수 있습니다.",
+        3: "기본 단어의 뜻을 어렴풋이 알지만 정확도가 낮습니다. 단어장을 활용해 뜻과 예문을 함께 외우는 습관을 들이면 의미 파악력이 크게 향상됩니다.",
+        4: "일상적인 단어의 뜻은 대체로 파악하지만 비슷한 뜻의 단어를 혼동하는 경우가 많습니다. 유의어를 그룹으로 묶어 차이를 비교하며 학습하세요.",
+        5: "중간 수준의 의미 파악력을 보입니다. 기본 어휘는 안정적이나 다의어나 추상적 단어에서 오답이 발생합니다. 예문 속에서 단어의 쓰임을 파악하는 연습이 필요합니다.",
+        6: "평균 이상의 의미 파악력입니다. 대부분의 단어 뜻을 맞히지만 고난도 어휘에서 간혹 실수합니다. 수능 빈출 어휘와 다의어의 두 번째, 세 번째 뜻까지 학습해 보세요.",
+        7: "우수한 의미 파악력을 보여줍니다. 다의어의 문맥별 뜻 차이를 대부분 구분합니다. 학술 용어와 고급 어휘로 영역을 확장하면 상위권에 진입할 수 있습니다.",
+        8: "뛰어난 의미 파악력입니다. 고난도 어휘와 유사어의 미묘한 차이까지 정확히 구분합니다. 영영 사전으로 뉘앙스를 더 깊이 이해하면 최상위 수준에 도달합니다.",
+        9: "최상위 수준의 의미 파악력입니다. 대부분의 어휘를 정확하고 빠르게 파악하며, 학술 및 전문 용어까지 폭넓게 이해합니다. 원서 읽기로 실전 감각을 유지하세요.",
+        10: "완벽에 가까운 의미 파악력입니다. 모든 수준의 어휘를 즉시 파악하며 다의어, 유사어, 학술 용어까지 완벽합니다. 현재 수준을 유지하며 독해 속도 향상에 집중하세요.",
     },
-    "accuracy": {
-        "low": "동학년 평균보다 정답률이 낮은 편입니다. 단어의 뜻을 정확히 기억하지 못하거나, 비슷한 단어끼리 혼동하는 경우가 많은 것으로 보입니다. 틀린 단어를 따로 모아 오답 노트를 만들고, 하루 3~5회 반복 복습하면 정확도가 크게 향상됩니다. 특히 헷갈리는 단어 쌍(예: affect/effect)을 함께 정리하세요.",
-        "mid": "동학년 평균과 비슷한 안정적인 정답률을 보이고 있습니다. 기본 어휘는 탄탄하게 잡혀 있으나, 고난도 어휘나 다의어에서 오답이 발생하는 경향이 있습니다. 중급 이상의 단어에서 문맥에 따른 뜻 변화를 학습하고, 예문과 함께 단어를 익히면 정답률을 더 높일 수 있습니다.",
-        "high": "동학년 학생들 중에서도 매우 높은 정답률입니다. 꾸준한 학습 습관이 좋은 결과로 이어지고 있습니다. 단어의 뜻을 정확하게 파악하는 능력이 뛰어나며, 오답이 거의 없는 수준입니다. 이 정답률을 유지하면서 더 높은 난이도의 어휘에 도전해 보세요.",
+    "association": {
+        1: "한국어 뜻에서 영어 단어를 거의 떠올리지 못하는 단계입니다. 그림-단어 매칭 게임이나 이미지 연상 카드를 활용해 시각적으로 연결하는 연습부터 시작하세요.",
+        2: "아주 기본적인 단어만 연상할 수 있습니다. 매일 사용하는 물건에 영어 이름표를 붙여두고, 보는 즉시 영어 단어를 말하는 습관을 들여 보세요.",
+        3: "기초 단어의 연상은 가능하나 속도가 느리고 정확도가 낮습니다. 한국어 뜻을 보고 3초 안에 영어 단어를 말하는 속도 훈련이 효과적입니다.",
+        4: "일상 어휘는 연상하지만 비슷한 뜻의 단어끼리 혼동합니다. 유의어(big/large/huge)를 그룹으로 묶어 상황별 쓰임을 구분하는 연습이 도움됩니다.",
+        5: "중간 수준의 연상력입니다. 기본 어휘는 빠르게 떠올리지만 추상적 개념이나 고급 어휘에서 막힙니다. 주제별(감정, 과학, 사회) 어휘를 정리하며 연상 범위를 넓히세요.",
+        6: "평균 이상의 연상력을 보입니다. 대부분의 단어를 연상하지만 동의어 중 최적의 단어 선택에 어려움이 있습니다. 콜로케이션(자주 함께 쓰는 단어 조합)을 학습하세요.",
+        7: "우수한 연상력입니다. 유의어 간 미묘한 차이를 인식하고 상황에 맞는 단어를 선택합니다. 반의어와 파생어까지 함께 정리하면 어휘 네트워크가 더 강화됩니다.",
+        8: "뛰어난 연상력을 보여줍니다. 한국어 뜻에서 영어 단어를 즉시 떠올리며 유의어/반의어 관계까지 정확합니다. 영어로 생각하는 습관을 기르면 최고 수준에 도달합니다.",
+        9: "최상위 수준의 연상력입니다. 복잡한 개념도 적절한 영어 단어로 즉시 표현하며, 어휘 간 관계를 체계적으로 파악합니다. 영작문을 통해 실전 활용력을 높이세요.",
+        10: "완벽한 연상력입니다. 모든 개념을 즉시 영어로 변환하며 뉘앙스에 맞는 최적의 단어를 선택합니다. 현재 수준을 유지하며 표현의 다양성을 더해 보세요.",
     },
-    "speed": {
-        "low": "동학년 평균보다 응답 속도가 느린 편입니다. 단어를 보고 뜻을 떠올리는 데 시간이 오래 걸린다는 것은 아직 단어가 완전히 내재화되지 않았다는 의미입니다. 플래시카드 방식으로 단어를 보자마자 3초 안에 뜻을 말하는 연습을 반복하세요. 타이머를 설정하고 연습하면 자연스럽게 속도가 빨라집니다.",
-        "mid": "동학년 평균과 비슷한 적절한 응답 속도를 보이고 있습니다. 대부분의 단어를 무리 없이 인식하지만, 일부 어려운 단어에서 망설이는 경향이 있습니다. 꾸준한 반복 학습으로 더 빠르고 자동적으로 단어를 인식할 수 있도록 연습하면, 실제 시험에서도 시간 여유를 확보할 수 있습니다.",
-        "high": "동학년 학생들 중에서도 빠른 응답 속도를 보여주고 있습니다. 단어 인식이 자동화되어 있어 효율적인 학습이 가능합니다. 단어를 보는 즉시 의미를 파악하는 능력이 뛰어나므로, 이 속도를 유지하면서 더 복잡한 문맥(예문, 독해)에서의 어휘 활용 연습을 병행하면 좋습니다.",
+    "listening": {
+        1: "영어 발음을 듣고 단어를 거의 인식하지 못합니다. 알파벳 음가(phonics)부터 시작해서 기초 단어의 발음을 하나씩 익히세요. 매일 10분씩 영어 발음 듣기 연습을 권장합니다.",
+        2: "아주 기본적인 단어 발음만 인식합니다. 영어 단어를 들으며 따라 말하는 섀도잉(shadowing) 연습을 매일 하면 듣기 능력이 빠르게 향상됩니다.",
+        3: "기초 단어는 들리지만 비슷한 발음의 단어를 구분하지 못합니다. 최소 대립쌍(예: bat/bet, ship/sheep) 듣기 훈련으로 발음 차이를 인식하는 연습이 필요합니다.",
+        4: "일상 단어의 발음을 대체로 인식하지만 강세나 모음 차이에서 혼동합니다. 단어의 강세 위치를 의식하며 듣는 연습을 하고, 발음 기호를 함께 학습하세요.",
+        5: "중간 수준의 청취력입니다. 명확한 발음은 잘 인식하지만 빠른 속도나 연음에서 어려움이 있습니다. 영어 동영상을 자막 없이 시청하며 자연스러운 발음에 익숙해지세요.",
+        6: "평균 이상의 청취력을 보입니다. 대부분의 단어 발음을 정확히 인식하며, 비슷한 발음도 문맥 속에서 구분합니다. 다양한 억양(미국/영국식)에 노출되면 더 향상됩니다.",
+        7: "우수한 청취력입니다. 빠른 속도와 다양한 억양에서도 단어를 정확히 인식합니다. 팟캐스트나 뉴스 청취로 고급 어휘의 발음까지 익히면 최상위권에 진입합니다.",
+        8: "뛰어난 청취력을 보여줍니다. 연음, 축약, 다양한 억양 상황에서도 정확하게 단어를 식별합니다. 학술 강연이나 TED 토크 청취로 실전 감각을 유지하세요.",
+        9: "최상위 수준의 청취력입니다. 거의 모든 상황에서 영어 발음을 즉시 인식하고 정확한 의미를 파악합니다. 원어민 대화 수준의 자연스러운 영어를 청취하세요.",
+        10: "완벽에 가까운 청취력입니다. 모든 속도, 억양, 상황에서 영어 단어를 즉시 정확하게 인식합니다. 현재 수준을 유지하며 리스닝 실력을 독해와 연결해 보세요.",
     },
-    "vocabulary_size": {
-        "low": "동학년 평균보다 학습한 단어 수가 아직 적습니다. 현재 시험 범위에서 맞춘 단어 수가 전체 대비 낮은 편이므로, 매일 꾸준히 새로운 단어를 학습하면 빠르게 성장할 수 있습니다. 하루 20~30개의 새 단어를 목표로 설정하고, 이전에 학습한 단어를 주기적으로 복습하는 것이 중요합니다.",
-        "mid": "동학년 평균과 비슷한 적정 수준의 어휘량을 보유하고 있습니다. 시험 범위에서 중간 정도의 단어를 정확히 알고 있으며, 복습과 새 단어 학습을 병행하면 어휘력이 더욱 탄탄해집니다. 이미 아는 단어의 다양한 의미와 용법을 함께 학습하면 실질적인 어휘력이 더욱 깊어집니다.",
-        "high": "동학년 학생들 중에서도 풍부한 어휘량을 보유하고 있습니다. 시험 범위의 대부분의 단어를 정확히 알고 있으며, 다양한 난이도의 어휘를 골고루 습득한 상태입니다. 이제는 양적 확대보다 질적 심화에 집중하여, 동의어/반의어/파생어까지 확장 학습하면 어휘의 활용도가 한층 높아집니다.",
+    "inference": {
+        1: "문맥에서 단어를 추론하는 것이 매우 어려운 단계입니다. 짧고 쉬운 영어 문장을 매일 읽으며 단어가 어떤 상황에서 쓰이는지 감각을 키우는 것이 우선입니다.",
+        2: "아주 기본적인 문장에서만 단어를 유추할 수 있습니다. 그림이 있는 쉬운 영어 동화책을 읽으며 모르는 단어를 문맥으로 유추하는 연습을 시작하세요.",
+        3: "단순한 문맥에서 단어를 추론할 수 있으나 정확도가 낮습니다. 빈칸 채우기 문제를 매일 풀며 문맥 단서를 찾는 습관을 기르면 크게 향상됩니다.",
+        4: "일상적 문맥에서는 추론이 가능하지만 복잡한 문장에서 오답이 많습니다. 예문을 많이 읽으면서 단어가 어떤 품사, 어떤 문맥에서 쓰이는지 패턴을 익히세요.",
+        5: "중간 수준의 추론력입니다. 기본 문맥 추론은 안정적이나 관용 표현이나 고급 어휘가 포함된 문장에서 어려움이 있습니다. 다양한 장르의 짧은 지문을 읽는 습관이 필요합니다.",
+        6: "평균 이상의 추론력을 보입니다. 대부분의 문맥에서 적절한 단어를 찾아내며, 기본 관용 표현도 이해합니다. 수능 유형의 빈칸 추론 문제를 연습하면 더 향상됩니다.",
+        7: "우수한 추론력입니다. 복잡한 문장 구조와 관용 표현에서도 정확하게 단어를 추론합니다. 영자 신문이나 잡지를 읽으며 고급 문맥 추론력을 키워 보세요.",
+        8: "뛰어난 추론력을 보여줍니다. 학술적 지문이나 복합 문장에서도 빈칸에 맞는 단어를 빠르고 정확하게 찾아냅니다. 원서 다독으로 추론 속도를 더 높여 보세요.",
+        9: "최상위 수준의 추론력입니다. 거의 모든 문맥에서 정확한 단어를 추론하며, 문장의 논리 흐름을 빠르게 파악합니다. 비문학 독해로 다양한 분야의 어휘를 확장하세요.",
+        10: "완벽에 가까운 추론력입니다. 모든 난이도의 문맥에서 즉시 적절한 단어를 파악하며 논리적 추론이 탁월합니다. 현재 실력을 유지하며 비판적 독해로 발전시키세요.",
+    },
+    "spelling": {
+        1: "영어 철자를 거의 기억하지 못하는 단계입니다. 알파벳과 기초 단어(3~4글자)의 철자를 소리 내어 읽으며 쓰는 연습부터 시작하세요. 하루 3개씩 정확히 외우는 것을 목표로 합니다.",
+        2: "아주 기본적인 짧은 단어만 쓸 수 있습니다. 자주 사용하는 단어를 매일 5개씩 발음하며 받아쓰기 하면 철자 감각이 빠르게 형성됩니다.",
+        3: "짧은 단어의 철자는 기억하나 모음이나 이중 자음에서 자주 틀립니다. 틀린 단어를 오답 노트에 정리하고 3일 간격으로 반복 테스트하는 것이 효과적입니다.",
+        4: "기본 단어의 철자를 대체로 기억하지만 비슷한 철자의 단어를 혼동합니다. 자주 혼동하는 단어 쌍(예: their/there, quiet/quite)을 모아 집중 연습하세요.",
+        5: "중간 수준의 철자 기억력입니다. 일상 단어는 정확하게 쓰지만 긴 단어나 불규칙 철자에서 실수합니다. 접두사/접미사 규칙(un-, -tion, -ment)을 학습하면 체계적으로 기억할 수 있습니다.",
+        6: "평균 이상의 철자 기억력을 보입니다. 대부분의 단어를 정확히 타이핑하며, 기본적인 형태소 규칙을 이해합니다. 고급 접사와 어근(etymology) 학습으로 더 향상시킬 수 있습니다.",
+        7: "우수한 철자 기억력입니다. 긴 단어와 복잡한 철자도 대부분 정확합니다. 라틴어/그리스어 어근을 학습하면 처음 보는 단어의 철자도 추론할 수 있게 됩니다.",
+        8: "뛰어난 철자 기억력을 보여줍니다. 불규칙 철자와 예외적인 단어까지 정확하게 기억합니다. 속도와 정확성을 동시에 높이는 타이핑 연습을 병행하세요.",
+        9: "최상위 수준의 철자 기억력입니다. 거의 모든 단어를 빠르고 정확하게 타이핑하며, 영어 형태론에 대한 깊은 이해를 보여줍니다. 학술 용어 철자까지 도전해 보세요.",
+        10: "완벽에 가까운 철자 기억력입니다. 모든 수준의 단어를 즉시 정확하게 타이핑합니다. 현재 수준을 유지하며 다양한 분야의 전문 용어로 어휘 범위를 넓혀 보세요.",
+    },
+    "comprehensive": {
+        1: "영어 어휘 전반에 걸쳐 기초부터 다져야 하는 단계입니다. 가장 기본적인 생활 영단어부터 차근차근 학습하면 모든 영역이 함께 성장합니다. 꾸준함이 가장 중요합니다.",
+        2: "전체적으로 기초 단계이며, 모든 영역에서 기본기 훈련이 필요합니다. 매일 꾸준히 15분씩 단어 학습을 이어가면 빠른 시일 내에 눈에 띄는 성장을 경험할 수 있습니다.",
+        3: "기초 어휘력은 형성되어 가고 있으나 전반적으로 보강이 필요합니다. 가장 약한 영역 1~2개를 우선 집중 학습하면 종합 점수가 효과적으로 올라갑니다.",
+        4: "기본적인 어휘 능력이 갖춰지고 있습니다. 일부 영역에서 성장이 보이며, 약한 영역을 보완하면 중급 수준에 빠르게 도달할 수 있습니다. 균형 잡힌 학습 계획을 세워 보세요.",
+        5: "중간 수준의 종합 어휘력입니다. 기본기는 안정적이며, 영역별 강약이 뚜렷합니다. 강한 영역을 유지하면서 약한 영역에 학습 시간을 더 배분하면 효과적입니다.",
+        6: "평균 이상의 종합 어휘력을 보여줍니다. 대부분의 영역에서 안정적인 실력을 갖추고 있으며, 상대적으로 약한 영역 1~2개만 집중하면 상위권에 진입합니다.",
+        7: "우수한 종합 어휘력입니다. 여러 영역에서 고른 실력을 보이며 고급 어휘 학습 단계에 접어들었습니다. 심화 학습과 실전 문제 풀이를 병행하면 더욱 성장합니다.",
+        8: "뛰어난 종합 어휘력을 보여줍니다. 모든 영역에서 높은 수준의 실력을 유지하고 있습니다. 원서 읽기, 영작문 등 실전 활용을 통해 어휘력을 더욱 견고히 하세요.",
+        9: "최상위 수준의 종합 어휘력입니다. 모든 영역에서 탁월한 실력을 보이며 고급 어휘까지 폭넓게 이해합니다. 다양한 분야의 영어 원서를 읽으며 실력을 유지하세요.",
+        10: "완벽에 가까운 종합 어휘력입니다. 모든 영역에서 최고 수준의 실력을 갖추고 있습니다. 현재의 뛰어난 실력을 유지하면서 영어 독서와 실전 활용으로 발전시키세요.",
     },
 }
 
+# Legacy 4-axis metric names (kept for backward compatibility where needed)
 METRIC_NAMES: dict[str, str] = {
     "vocabulary_level": "어휘 수준",
     "accuracy": "정확도",
@@ -139,26 +222,20 @@ ENGINE_LABELS: dict[str, str] = {
     "en_to_ko": "영한",
     "ko_to_en": "한영",
     "emoji": "이모지",
-    "sentence": "예문",
-    "listen_en": "리스닝E",
-    "listen_ko": "리스닝K",
-    "listen_type": "리스닝T",
-    "ko_type": "한영T",
-    "antonym_type": "반의어T",
-    "antonym_choice": "반의어",
+    "sentence": "예문 빈칸",
+    "listen_en": "듣기 영어",
+    "listen_ko": "듣기 한국어",
+    "listen_type": "듣기 타이핑",
+    "ko_type": "한영 타이핑",
+    "antonym_type": "반의어 타이핑",
+    "antonym_choice": "반의어 고르기",
+    "sentence_type": "예문 타이핑",
 }
 
 _ENGINE_CATEGORY: dict[str, str] = {
-    "en_to_ko": "단어",
-    "ko_to_en": "단어",
-    "emoji": "이모지",
-    "sentence": "빈칸",
-    "listen_en": "리스닝",
-    "listen_ko": "리스닝",
-    "listen_type": "리스닝",
-    "ko_type": "타이핑",
-    "antonym_type": "타이핑",
-    "antonym_choice": "단어",
+    engine: SKILL_AREA_NAMES[skill]
+    for skill, engines in SKILL_AREA_ENGINES.items()
+    for engine in engines
 }
 
 
@@ -166,13 +243,15 @@ _ENGINE_CATEGORY: dict[str, str] = {
 # Calculation functions
 # ---------------------------------------------------------------------------
 
-def _score_tier(score: float) -> str:
-    """Map 0-10 score to description tier."""
-    if score <= 3:
-        return "low"
-    if score <= 6:
-        return "mid"
-    return "high"
+def _score_tier(score: float) -> int:
+    """Map 0-10 score to 1~10 tier (each tier = 10%)."""
+    tier = max(1, min(10, int(score) + 1))
+    # Edge case: exact 0 → tier 1, exact 10 → tier 10
+    if score <= 0:
+        return 1
+    if score >= 10:
+        return 10
+    return tier
 
 
 def calculate_speed_score(answers: list[dict]) -> tuple[float, float | None]:
@@ -334,11 +413,10 @@ def _estimate_peer_ranking(score: int) -> dict:
 async def calculate_member_averages(
     db: AsyncSession, teacher_id: str, grade: str | None = None
 ) -> dict[str, float]:
-    """Calculate average radar metrics across same-grade students.
+    """Calculate average skill area scores across same-grade students.
 
-    If grade is provided, filters to students with the same grade.
-    Falls back to all teacher's students if no grade match.
-    Returns dict with keys: vocabulary_level, accuracy, speed, vocabulary_size.
+    Returns dict with keys for all 6 skill areas.
+    Currently returns estimated averages; will use real peer data when available.
     """
     # Get students filtered by grade (same-grade peers) or all teacher's students
     filters = [User.role == "student", User.teacher_id == teacher_id]
@@ -350,21 +428,7 @@ async def calculate_member_averages(
         .scalar_subquery()
     )
 
-    # Average determined_level
-    avg_level_q = (
-        select(func.avg(TestSession.determined_level))
-        .where(
-            and_(
-                TestSession.student_id.in_(student_ids_subq),
-                TestSession.completed_at.isnot(None),
-                TestSession.determined_level.isnot(None),
-            )
-        )
-    )
-    avg_level_result = await db.execute(avg_level_q)
-    avg_level = avg_level_result.scalar() or 5.0
-
-    # Average accuracy
+    # Average accuracy as baseline for all skill areas
     avg_score_q = (
         select(func.avg(TestSession.score))
         .where(
@@ -377,12 +441,16 @@ async def calculate_member_averages(
     )
     avg_score_result = await db.execute(avg_score_q)
     avg_score = avg_score_result.scalar() or 50.0
+    base = round(float(avg_score) / 10, 1)
 
+    # Approximate per-area averages from overall accuracy
     return {
-        "vocabulary_level": round(float(avg_level), 1),
-        "accuracy": round(float(avg_score) / 10, 1),
-        "speed": 8.0,  # Dummy ~6s avg answer time
-        "vocabulary_size": round(float(avg_level) * 0.7, 1),  # Approximate
+        "meaning": base,
+        "association": round(base * 0.95, 1),
+        "listening": round(base * 0.85, 1),
+        "inference": round(base * 0.80, 1),
+        "spelling": round(base * 0.75, 1),
+        "comprehensive": round(base * 0.87, 1),
     }
 
 
@@ -503,22 +571,79 @@ def calculate_time_breakdown(answers: list[dict]) -> tuple[int | None, dict[str,
     return round(total), {k: round(v) for k, v in categories.items() if round(v) > 0}
 
 
+def session_duration_seconds(
+    started_at: "datetime | None",
+    completed_at: "datetime | None",
+) -> int | None:
+    """Fallback: compute total seconds from session start/end timestamps."""
+    if started_at and completed_at:
+        diff = (completed_at - started_at).total_seconds()
+        if diff > 0:
+            return round(diff)
+    return None
+
+
+def calculate_skill_area_scores(answers: list[dict]) -> dict[str, float]:
+    """Calculate per-skill-area accuracy scores (0-10 scale).
+
+    Groups answers by ENGINE_TO_SKILL mapping and calculates accuracy for each.
+    Comprehensive uses sentence_type data when available, otherwise weighted avg of other areas.
+    Returns dict with keys: meaning, association, listening, inference, spelling, comprehensive.
+    """
+    skill_data: dict[str, dict] = {k: {"total": 0, "correct": 0} for k in SKILL_AREA_KEYS}
+
+    for a in answers:
+        qt = infer_question_type(a)
+        if not qt:
+            continue
+        skill = ENGINE_TO_SKILL.get(qt)
+        if not skill:
+            continue
+        skill_data[skill]["total"] += 1
+        if a.get("is_correct"):
+            skill_data[skill]["correct"] += 1
+
+    scores: dict[str, float] = {}
+    # Track non-comprehensive areas for fallback weighted average
+    weighted_sum = 0.0
+    total_weight = 0
+
+    for key in SKILL_AREA_KEYS:
+        total = skill_data[key]["total"]
+        correct = skill_data[key]["correct"]
+        if total > 0:
+            score = round((correct / total) * 10, 1)
+            if key != "comprehensive":
+                weighted_sum += score * total
+                total_weight += total
+        else:
+            score = 0.0
+        scores[key] = score
+
+    # Fallback: if comprehensive has no data (no sentence_type questions), use weighted avg
+    if scores.get("comprehensive", 0.0) == 0.0 and skill_data["comprehensive"]["total"] == 0:
+        scores["comprehensive"] = round(weighted_sum / total_weight, 1) if total_weight > 0 else 0.0
+
+    return scores
+
+
 def get_metric_descriptions(
     rank: int, metrics: dict[str, float]
 ) -> list[dict]:
-    """Generate interpretive text for each radar metric.
+    """Generate interpretive text for each skill area metric.
 
-    Returns list of MetricDetail dicts.
+    Returns list of MetricDetail dicts for all 6 skill areas.
     """
     details = []
-    for key in ["vocabulary_level", "accuracy", "speed", "vocabulary_size"]:
-        score = metrics.get(key, 5.0)
+
+    for key in SKILL_AREA_KEYS:
+        score = metrics.get(key, 0.0)
         tier = _score_tier(score)
-        desc = _METRIC_DESC.get(key, {}).get(tier, "")
+        desc = _SKILL_DESC.get(key, {}).get(tier, "")
 
         details.append({
             "key": key,
-            "name": METRIC_NAMES[key],
+            "name": SKILL_AREA_NAMES.get(key, key),
             "my_score": score,
             "avg_score": 0.0,  # filled by caller
             "description": desc,
@@ -548,50 +673,32 @@ async def assemble_report_metrics(
     Returns dict with keys: radar, metric_details, peer_ranking, grade_level,
     vocab_description, recommended_book, total_time_seconds, category_times,
     per_engine_stats, diagnosis, vocab_raw.
-    """
-    # Radar metrics
-    accuracy_score = calculate_accuracy_score(correct_count, total_questions)
-    speed_score, avg_time = calculate_speed_score(answers)
-    vocab_raw, vocab_score = await calculate_vocab_size(
-        db, student_id, determined_rank=rank, test_answers=answers
-    )
 
-    radar = {
-        "vocabulary_level": float(rank),
-        "accuracy": accuracy_score,
-        "speed": speed_score,
-        "vocabulary_size": vocab_score,
-    }
+    Radar uses 6 skill area axes: meaning, association, listening, inference,
+    spelling, comprehensive (sentence_type engine, or weighted avg fallback).
+    """
+    # Skill area scores (6 axes)
+    radar = calculate_skill_area_scores(answers)
 
     # Peer ranking
     peer = await calculate_peer_ranking(db, student_id, score, student_grade)
 
-    # Same-grade averages
+    # Same-grade averages (now skill-area based)
     if teacher_id:
         avg_metrics = await calculate_member_averages(
             db, teacher_id, grade=student_grade
         )
     else:
-        avg_metrics = {
-            "vocabulary_level": 5.0, "accuracy": 5.0,
-            "speed": 5.0, "vocabulary_size": 5.0,
-        }
+        avg_metrics = {k: 5.0 for k in SKILL_AREA_KEYS}
 
     # Metric details with descriptions
     details_raw = get_metric_descriptions(rank, radar)
-    raw_values = {
-        "vocabulary_level": f"Lv.{rank}",
-        "accuracy": f"{score}%",
-        "speed": f"평균 {avg_time}초" if avg_time else "-",
-        "vocabulary_size": f"{vocab_raw:,}개",
-    }
     metric_details = []
     for d in details_raw:
-        d["avg_score"] = avg_metrics.get(d["key"], 5.0)
-        d["raw_value"] = raw_values.get(d["key"])
+        d["avg_score"] = 5.0  # fixed 50% for all skill areas
         metric_details.append(d)
 
-    # Time breakdown (by engine category)
+    # Time breakdown (by skill area category)
     total_time, cat_times = calculate_time_breakdown(answers)
 
     # Per-engine stats and diagnosis
@@ -602,6 +709,11 @@ async def assemble_report_metrics(
     grade_level = RANK_TO_GRADE.get(rank, "미정")
     vocab_desc = get_vocab_description(rank, score)
     recommended_book = RANK_TO_BOOK.get(rank, "")
+
+    # Legacy values for backward compat
+    vocab_raw, _ = await calculate_vocab_size(
+        db, student_id, determined_rank=rank, test_answers=answers
+    )
 
     return {
         "radar": radar,

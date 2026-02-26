@@ -29,7 +29,8 @@ export type QuestionType =
 export function isTypingQuestion(type: string): boolean {
   return type === 'listen_and_type' || type === 'meaning_and_type'
     || type === 'listen_type' || type === 'ko_type'
-    || type === 'antonym_type' || type === 'antonym_and_type';
+    || type === 'antonym_type' || type === 'antonym_and_type'
+    || type === 'sentence_type' || type === 'sentence_and_type';
 }
 
 export function isListenQuestion(type: string): boolean {
@@ -65,6 +66,9 @@ export function getQuestionTimer(type: string): number {
     case 'antonym_choice':
     case 'antonym_and_choice':
       return 8;
+    case 'sentence_type':
+    case 'sentence_and_type':
+      return 20;
     default:
       return 5;
   }

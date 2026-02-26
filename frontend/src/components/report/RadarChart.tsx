@@ -1,6 +1,6 @@
 /**
- * SVG 4-axis diamond radar chart for 어휘수준/정답률/속도/어휘사이즈.
- * Matches Pencil design node l1GZZ / jbNe3.
+ * SVG 6-axis hexagonal radar chart for 6 skill areas.
+ * Axes: 의미파악력 / 단어연상력 / 발음청취력 / 어휘추론력 / 철자기억력 / 종합응용력
  */
 import type { RadarMetrics } from '../../types/report';
 
@@ -8,50 +8,65 @@ interface Props {
   metrics: RadarMetrics;
 }
 
-// Chart geometry (center at 130,120, matching Pencil design 260x240)
-const CX = 130;
-const CY = 120;
-const R = 90; // max radius from center to axis endpoint
+const CX = 150;
+const CY = 140;
+const R = 100;
 
-// Axis endpoints (top, right, bottom, left)
-const AXES = [
-  { dx: 0, dy: -R, label: '어휘수준', key: 'vocabulary_level' as const },
-  { dx: R, dy: 0, label: '정확도', key: 'accuracy' as const },
-  { dx: 0, dy: R, label: '속도', key: 'speed' as const },
-  { dx: -R, dy: 0, label: '어휘 범위', key: 'vocabulary_size' as const },
+type SkillKey = keyof RadarMetrics;
+
+interface AxisDef {
+  key: SkillKey;
+  label: string;
+  angle: number; // degrees from top (12 o'clock), clockwise
+}
+
+const AXES: AxisDef[] = [
+  { key: 'meaning',       label: '의미파악력', angle: 0 },
+  { key: 'association',   label: '단어연상력', angle: 60 },
+  { key: 'listening',     label: '발음청취력', angle: 120 },
+  { key: 'inference',     label: '어휘추론력', angle: 180 },
+  { key: 'spelling',      label: '철자기억력', angle: 240 },
+  { key: 'comprehensive', label: '종합응용력', angle: 300 },
 ];
 
+function toRad(deg: number): number {
+  return ((deg - 90) * Math.PI) / 180;
+}
+
+function axisXY(angle: number, scale: number): [number, number] {
+  const rad = toRad(angle);
+  return [CX + R * scale * Math.cos(rad), CY + R * scale * Math.sin(rad)];
+}
+
 function gridPath(scale: number): string {
-  const pts = AXES.map((a) => `${CX + a.dx * scale},${CY + a.dy * scale}`);
-  return `M${pts[0]} L${pts[1]} L${pts[2]} L${pts[3]} Z`;
+  const pts = AXES.map((a) => {
+    const [x, y] = axisXY(a.angle, scale);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  return `M${pts.join(' L')} Z`;
 }
 
 function dataPath(metrics: RadarMetrics): string {
-  const values = AXES.map((a) => Math.max(0.05, metrics[a.key] / 10));
-  const pts = AXES.map(
-    (a, i) => `${CX + a.dx * values[i]},${CY + a.dy * values[i]}`,
-  );
-  return `M${pts[0]} L${pts[1]} L${pts[2]} L${pts[3]} Z`;
+  const pts = AXES.map((a) => {
+    const val = Math.max(0.05, (metrics[a.key] ?? 0) / 10);
+    const [x, y] = axisXY(a.angle, val);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  return `M${pts.join(' L')} Z`;
 }
 
-// Label positions (offset from axis endpoints)
-const LABEL_POS = [
-  { x: CX - 18, y: 10 },   // top
-  { x: CX + R + 4, y: CY - 6 }, // right
-  { x: CX - 10, y: CY + R + 14 }, // bottom
-  { x: 0, y: CY - 6 },     // left
-];
-
-const VAL_POS = [
-  { x: CX - 8, y: 22 },
-  { x: CX + R + 4, y: CY + 6 },
-  { x: CX - 8, y: CY + R + 26 },
-  { x: 14, y: CY + 6 },
-];
+// Label position offsets per axis
+function labelPos(angle: number): { x: number; y: number; anchor: string } {
+  const [bx, by] = axisXY(angle, 1.18);
+  let anchor = 'middle';
+  if (angle > 30 && angle < 150) anchor = 'start';
+  if (angle > 210 && angle < 330) anchor = 'end';
+  return { x: bx, y: by, anchor };
+}
 
 export function RadarChart({ metrics }: Props) {
   return (
-    <div className="flex-1 border border-[#E8E8E8] rounded-sm p-5 flex flex-col items-center gap-3 bg-[#FAFAFA]">
+    <div className="flex-1 border border-[#E8E8E8] rounded-sm p-3 flex flex-col items-center gap-1 bg-[#FAFAFA]">
       <style>{`
         @keyframes radar-heartbeat {
           0%   { transform: scale(1);    opacity: 0.15; }
@@ -62,28 +77,40 @@ export function RadarChart({ metrics }: Props) {
           100% { transform: scale(1);    opacity: 0.15; }
         }
         @keyframes radar-stroke-pulse {
-          0%   { stroke-width: 3;   stroke-opacity: 1; }
-          14%  { stroke-width: 4;   stroke-opacity: 1; }
-          28%  { stroke-width: 3;   stroke-opacity: 1; }
-          42%  { stroke-width: 3.5; stroke-opacity: 1; }
-          56%  { stroke-width: 3;   stroke-opacity: 1; }
-          100% { stroke-width: 3;   stroke-opacity: 1; }
+          0%   { stroke-width: 2.5; stroke-opacity: 1; }
+          14%  { stroke-width: 3.5; stroke-opacity: 1; }
+          28%  { stroke-width: 2.5; stroke-opacity: 1; }
+          42%  { stroke-width: 3;   stroke-opacity: 1; }
+          56%  { stroke-width: 2.5; stroke-opacity: 1; }
+          100% { stroke-width: 2.5; stroke-opacity: 1; }
         }
       `}</style>
-      <h3 className="text-lg font-bold text-[#0D0D0D] self-start">
+      <h3 className="text-[13px] font-bold text-[#0D0D0D] self-start">
         영역별 평가
       </h3>
 
-      <svg viewBox="0 0 260 240" className="w-[260px] h-[240px]">
-        {/* Grid layers (outer → inner) - thick lines for visibility */}
-        <path d={gridPath(1)} fill="none" stroke="#D0D0D0" strokeWidth={2.5} />
-        <path d={gridPath(0.75)} fill="none" stroke="#DCDCDC" strokeWidth={1.5} />
-        <path d={gridPath(0.5)} fill="none" stroke="#E8E8E8" strokeWidth={1.5} />
-        <path d={gridPath(0.25)} fill="none" stroke="#F0F0F0" strokeWidth={1} />
+      <svg viewBox="0 0 300 280" className="w-full max-w-[210px] h-auto">
+        {/* Grid layers (outer → inner) */}
+        <path d={gridPath(1)} fill="none" stroke="#D0D0D0" strokeWidth={2} />
+        <path d={gridPath(0.75)} fill="none" stroke="#DCDCDC" strokeWidth={1.2} />
+        <path d={gridPath(0.5)} fill="none" stroke="#E8E8E8" strokeWidth={1.2} />
+        <path d={gridPath(0.25)} fill="none" stroke="#F0F0F0" strokeWidth={0.8} />
 
-        {/* Axes */}
-        <line x1={CX} y1={CY - R} x2={CX} y2={CY + R} stroke="#D0D0D0" strokeWidth={1.5} />
-        <line x1={CX - R} y1={CY} x2={CX + R} y2={CY} stroke="#D0D0D0" strokeWidth={1.5} />
+        {/* Axis lines from center to each vertex */}
+        {AXES.map((a) => {
+          const [ex, ey] = axisXY(a.angle, 1);
+          return (
+            <line
+              key={a.key}
+              x1={CX}
+              y1={CY}
+              x2={ex}
+              y2={ey}
+              stroke="#D0D0D0"
+              strokeWidth={1}
+            />
+          );
+        })}
 
         {/* Data shape - fill (heartbeat pulse) */}
         <path
@@ -102,36 +129,59 @@ export function RadarChart({ metrics }: Props) {
           d={dataPath(metrics)}
           fill="none"
           stroke="#CC0000"
-          strokeWidth={3}
+          strokeWidth={2.5}
           strokeLinejoin="round"
           style={{
             animation: 'radar-stroke-pulse 1.8s ease-in-out infinite',
           }}
         />
 
-        {/* Labels + values */}
-        {AXES.map((axis, i) => (
-          <g key={axis.key}>
-            <text
-              x={LABEL_POS[i].x}
-              y={LABEL_POS[i].y}
-              fontSize={12}
-              fontWeight={600}
-              fill="#0D0D0D"
-            >
-              {axis.label}
-            </text>
-            <text
-              x={VAL_POS[i].x}
-              y={VAL_POS[i].y}
-              fontSize={11}
-              fontWeight={600}
+        {/* Data points */}
+        {AXES.map((a) => {
+          const val = Math.max(0.05, (metrics[a.key] ?? 0) / 10);
+          const [px, py] = axisXY(a.angle, val);
+          return (
+            <circle
+              key={`dot-${a.key}`}
+              cx={px}
+              cy={py}
+              r={3}
               fill="#CC0000"
-            >
-              {Math.round(metrics[axis.key])}/10
-            </text>
-          </g>
-        ))}
+              stroke="#FFF"
+              strokeWidth={1.5}
+            />
+          );
+        })}
+
+        {/* Labels + scores */}
+        {AXES.map((a) => {
+          const pos = labelPos(a.angle);
+          const score = Math.round(metrics[a.key] ?? 0);
+          return (
+            <g key={`label-${a.key}`}>
+              <text
+                x={pos.x}
+                y={pos.y - 6}
+                fontSize={11}
+                fontWeight={600}
+                fill="#0D0D0D"
+                textAnchor={pos.anchor}
+              >
+                {a.label}
+              </text>
+              <text
+                x={pos.x}
+                y={pos.y + 8}
+                fontSize={10}
+                fontWeight={600}
+                fill="#CC0000"
+                textAnchor={pos.anchor}
+              >
+                {score}/10
+              </text>
+            </g>
+          );
+        })}
       </svg>
     </div>
   );

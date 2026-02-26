@@ -8,7 +8,7 @@ export interface User {
   email: string | null;
   username: string | null;
   name: string;
-  role: 'teacher' | 'student';
+  role: 'master' | 'teacher' | 'student';
   teacher_id: string | null;
   school_name: string | null;
   grade: string | null;

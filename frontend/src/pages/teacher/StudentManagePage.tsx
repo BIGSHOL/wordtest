@@ -43,6 +43,8 @@ export function StudentManagePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   const [newStudent, setNewStudent] = useState(EMPTY_NEW_STUDENT);
   const [editData, setEditData] = useState({ name: '', password: '' });
 
@@ -133,9 +135,40 @@ export function StudentManagePage() {
     setError('');
     try {
       await studentService.deleteStudent(id);
+      setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
       await loadStudents();
     } catch {
       setError('학생 삭제에 실패했습니다.');
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`선택한 ${selectedIds.size}명의 학생을 삭제하시겠습니까?`)) return;
+    setError('');
+    try {
+      await studentService.deleteStudentsBatch([...selectedIds]);
+      setSelectedIds(new Set());
+      await loadStudents();
+    } catch {
+      setError('학생 일괄 삭제에 실패했습니다.');
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredStudents.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredStudents.map((s) => s.id)));
     }
   };
 
@@ -151,6 +184,16 @@ export function StudentManagePage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
+            {/* Batch Delete Button */}
+            {selectedIds.size > 0 && (
+              <button
+                onClick={handleBatchDelete}
+                className="flex items-center gap-2 px-4 py-2 bg-wrong text-white rounded-lg text-sm font-medium transition-all hover:opacity-90"
+              >
+                <Trash2 className="w-4 h-4" />
+                선택 삭제 ({selectedIds.size})
+              </button>
+            )}
             {/* Search Box */}
             <div className="relative w-[240px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
@@ -225,6 +268,14 @@ export function StudentManagePage() {
               <table className="w-full">
                 <thead>
                   <tr style={{ backgroundColor: '#F8F8F6', height: '44px' }}>
+                    <th className="px-4 text-center" style={{ width: '40px' }}>
+                      <input
+                        type="checkbox"
+                        checked={filteredStudents.length > 0 && selectedIds.size === filteredStudents.length}
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 rounded border-border-subtle text-teal focus:ring-teal/20 cursor-pointer accent-[#2D9CAE]"
+                      />
+                    </th>
                     <th className="px-4 text-left text-xs font-semibold text-text-tertiary whitespace-nowrap" style={{ width: '100px' }}>
                       이름
                     </th>
@@ -258,9 +309,17 @@ export function StudentManagePage() {
                     return (
                       <tr
                         key={student.id}
-                        className="border-b border-border-subtle hover:bg-bg-muted transition-colors"
+                        className={`border-b border-border-subtle hover:bg-bg-muted transition-colors ${selectedIds.has(student.id) ? 'bg-teal-light/30' : ''}`}
                         style={{ height: '52px' }}
                       >
+                        <td className="px-4 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(student.id)}
+                            onChange={() => toggleSelect(student.id)}
+                            className="w-4 h-4 rounded border-border-subtle text-teal focus:ring-teal/20 cursor-pointer accent-[#2D9CAE]"
+                          />
+                        </td>
                         <td className="px-4">
                           <div className="font-semibold text-text-primary truncate max-w-[100px]">{student.name}</div>
                         </td>

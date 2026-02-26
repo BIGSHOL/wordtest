@@ -96,11 +96,10 @@ input, textarea, select {
 }
 
 /* ── Print styles ──
- * 원칙: 웹 디자인을 최대한 유지. 숨기기 + 축소만 한다.
- *   1) 사이드바/버튼 등 UI 숨기기
- *   2) zoom으로 A4에 맞게 축소
- *   3) 배경색 강제 인쇄 (print-color-adjust)
- *   4) 나머지 border, padding, radius 등은 원본 그대로
+ * 원칙: 웹 = A4 용지 미리보기. 인쇄 시 동일 비율.
+ *   - 웹: w-[794px](=210mm) 컨테이너 + p-[30px](=8mm) 패딩 → 콘텐츠 734px
+ *   - 인쇄: @page margin 8mm → 인쇄 가능 영역 734px, 카드 패딩 제거 → 콘텐츠 734px
+ *   - zoom 불필요 — 양쪽 콘텐츠 폭이 동일하므로 레이아웃 완벽 일치
  */
 @page {
   size: A4;
@@ -129,21 +128,24 @@ input, textarea, select {
     overflow: visible !important;
   }
 
-  /* TeacherLayout main > div.p-7.px-8 패딩 제거 (사이드바 없으므로 불필요) */
   main > div {
     padding: 0 !important;
   }
 
-  /* ── 3. 리포트 컨테이너: zoom 축소, min-width 해제 ── */
+  /* ── 3. 리포트 컨테이너: A4 전폭 ── */
   .print-report {
     min-width: 0 !important;
-    zoom: 0.80;
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
   }
 
-  /* ── 4. 리포트 카드: 원본 디자인 유지, overflow만 해제 ── */
+  /* ── 4. 리포트 카드: 웹 p-[30px] → @page 8mm가 대체 ── */
   .print-report-card {
-    overflow: visible !important;
+    width: 100% !important;
+    padding: 0 !important;
     box-shadow: none !important;
+    overflow: visible !important;
   }
 
   /* ── 5. 접힌 섹션 강제 표시 ── */
@@ -159,7 +161,6 @@ input, textarea, select {
     transition: none !important;
   }
 
-  /* 최외곽 페이지 배경만 흰색 (종이 색상) */
   .min-h-screen {
     background: white !important;
     min-height: auto !important;
@@ -189,16 +190,6 @@ input, textarea, select {
   table {
     break-inside: auto;
     page-break-inside: auto;
-  }
-
-  /* ── 9. MasteryReportPage 전용 (멀티페이지 탭) ── */
-  .print-page {
-    border: none !important;
-    box-shadow: none !important;
-    border-radius: 0 !important;
-    padding: 4mm !important;
-    margin: 0 !important;
-    zoom: 0.62;
   }
 
   .print-show {

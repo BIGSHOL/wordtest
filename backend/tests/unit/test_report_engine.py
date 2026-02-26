@@ -9,12 +9,16 @@ from app.services.report_engine import (
     calculate_per_engine_stats,
     diagnose_strengths_weaknesses,
     calculate_time_breakdown,
+    calculate_skill_area_scores,
     infer_question_type,
     get_vocab_description,
     get_metric_descriptions,
     RANK_TO_GRADE,
     RANK_TO_BOOK,
     ENGINE_LABELS,
+    SKILL_AREA_NAMES,
+    SKILL_AREA_ENGINES,
+    ENGINE_TO_SKILL,
 )
 
 
@@ -194,15 +198,15 @@ class TestDiagnosis:
 
 
 # ---------------------------------------------------------------------------
-# TestTimeBreakdown - time grouping by category
+# TestTimeBreakdown - time grouping by skill area category
 # ---------------------------------------------------------------------------
 
 
 class TestTimeBreakdown:
-    """Test time breakdown calculation by engine category."""
+    """Test time breakdown calculation by skill area category."""
 
     def test_categories(self):
-        """Time should be grouped by _ENGINE_CATEGORY mapping."""
+        """Time should be grouped by skill area names."""
         answers = [
             {"question_type": "en_to_ko", "time_taken_seconds": 5.0},
             {"question_type": "ko_to_en", "time_taken_seconds": 3.0},
@@ -212,8 +216,10 @@ class TestTimeBreakdown:
         total, categories = calculate_time_breakdown(answers)
 
         assert total == 26  # 5+3+10+8=26
-        assert categories["단어"] == 8  # en_to_ko (5) + ko_to_en (3)
-        assert categories["리스닝"] == 18  # listen_en (10) + listen_ko (8)
+        # en_to_ko → meaning (의미파악력), ko_to_en → association (단어연상력)
+        assert categories["의미파악력"] == 5
+        assert categories["단어연상력"] == 3
+        assert categories["발음청취력"] == 18  # listen_en (10) + listen_ko (8)
 
     def test_no_times(self):
         """Answers with all None times should return (None, {})."""
@@ -225,6 +231,78 @@ class TestTimeBreakdown:
 
         assert total is None
         assert categories == {}
+
+
+# ---------------------------------------------------------------------------
+# TestSkillAreaScores - skill area score calculation
+# ---------------------------------------------------------------------------
+
+
+class TestSkillAreaScores:
+    """Test skill area score calculation from answers."""
+
+    def test_basic_scores(self):
+        """Each skill area should calculate accuracy independently."""
+        answers = [
+            {"question_type": "en_to_ko", "is_correct": True},
+            {"question_type": "en_to_ko", "is_correct": False},
+            {"question_type": "ko_to_en", "is_correct": True},
+            {"question_type": "ko_to_en", "is_correct": True},
+            {"question_type": "listen_en", "is_correct": True},
+            {"question_type": "listen_en", "is_correct": True},
+            {"question_type": "listen_en", "is_correct": False},
+            {"question_type": "sentence", "is_correct": True},
+            {"question_type": "ko_type", "is_correct": False},
+            {"question_type": "ko_type", "is_correct": False},
+        ]
+        scores = calculate_skill_area_scores(answers)
+
+        # meaning: en_to_ko 1/2 = 50% = 5.0
+        assert scores["meaning"] == 5.0
+        # association: ko_to_en 2/2 = 100% = 10.0
+        assert scores["association"] == 10.0
+        # listening: listen_en 2/3 = 66.7% = 6.7
+        assert scores["listening"] == 6.7
+        # inference: sentence 1/1 = 100% = 10.0
+        assert scores["inference"] == 10.0
+        # spelling: ko_type 0/2 = 0% = 0.0
+        assert scores["spelling"] == 0.0
+        # comprehensive: weighted avg
+        assert scores["comprehensive"] > 0
+
+    def test_empty(self):
+        """Empty answers should return all zeros."""
+        scores = calculate_skill_area_scores([])
+        assert scores["meaning"] == 0.0
+        assert scores["comprehensive"] == 0.0
+
+    def test_comprehensive_fallback_weighted(self):
+        """Comprehensive should fall back to weighted avg when no sentence_type data."""
+        answers = [
+            # 8 meaning questions, all correct (high weight)
+            *[{"question_type": "en_to_ko", "is_correct": True} for _ in range(8)],
+            # 2 spelling questions, all wrong (low weight)
+            *[{"question_type": "ko_type", "is_correct": False} for _ in range(2)],
+        ]
+        scores = calculate_skill_area_scores(answers)
+
+        # No sentence_type data → fallback weighted: (10*8 + 0*2) / 10 = 8.0
+        assert scores["comprehensive"] == 8.0
+
+    def test_comprehensive_from_sentence_type(self):
+        """Comprehensive should use sentence_type data when available."""
+        answers = [
+            *[{"question_type": "en_to_ko", "is_correct": True} for _ in range(5)],
+            {"question_type": "sentence_type", "is_correct": True},
+            {"question_type": "sentence_type", "is_correct": False},
+            {"question_type": "sentence_type", "is_correct": True},
+        ]
+        scores = calculate_skill_area_scores(answers)
+
+        # sentence_type: 2/3 = 66.7% = 6.7
+        assert scores["comprehensive"] == 6.7
+        # meaning: 5/5 = 100% = 10.0
+        assert scores["meaning"] == 10.0
 
 
 # ---------------------------------------------------------------------------
@@ -247,13 +325,38 @@ class TestStaticMappings:
         assert 1 in RANK_TO_BOOK
         assert 15 in RANK_TO_BOOK
 
-    def test_engine_labels_8(self):
-        """ENGINE_LABELS should have at least 8 engine types."""
-        assert len(ENGINE_LABELS) >= 8
+    def test_engine_labels_11(self):
+        """ENGINE_LABELS should have all 11 engine types."""
+        assert len(ENGINE_LABELS) >= 11
         assert "en_to_ko" in ENGINE_LABELS
         assert "ko_to_en" in ENGINE_LABELS
         assert "listen_en" in ENGINE_LABELS
-        assert "listen_ko" in ENGINE_LABELS
+        assert "antonym_type" in ENGINE_LABELS
+        assert "sentence_type" in ENGINE_LABELS
+
+    def test_skill_area_names_6(self):
+        """SKILL_AREA_NAMES should have 6 skill areas."""
+        assert len(SKILL_AREA_NAMES) == 6
+        assert "meaning" in SKILL_AREA_NAMES
+        assert "comprehensive" in SKILL_AREA_NAMES
+
+    def test_engine_to_skill_coverage(self):
+        """All engines in SKILL_AREA_ENGINES should be in ENGINE_TO_SKILL."""
+        for skill, engines in SKILL_AREA_ENGINES.items():
+            for engine in engines:
+                assert ENGINE_TO_SKILL[engine] == skill
+
+    def test_all_engines_mapped(self):
+        """All 11 canonical engines should be mapped to a skill area."""
+        all_engines = {"en_to_ko", "ko_to_en", "emoji", "sentence",
+                       "listen_en", "listen_ko", "listen_type", "ko_type",
+                       "antonym_type", "antonym_choice", "sentence_type"}
+        for engine in all_engines:
+            assert engine in ENGINE_TO_SKILL, f"{engine} not mapped"
+
+    def test_sentence_type_maps_to_comprehensive(self):
+        """sentence_type engine should map to comprehensive skill area."""
+        assert ENGINE_TO_SKILL["sentence_type"] == "comprehensive"
 
     def test_vocab_description(self):
         """get_vocab_description should format rank + accuracy correctly."""
@@ -262,19 +365,21 @@ class TestStaticMappings:
         # Should contain some vocab label
         assert len(desc) > 5
 
-    def test_metric_descriptions_4axes(self):
-        """get_metric_descriptions should return 4 metric detail dicts."""
+    def test_metric_descriptions_6areas(self):
+        """get_metric_descriptions should return 6 metric detail dicts."""
         metrics = {
-            "vocabulary_level": 5.0,
-            "accuracy": 7.0,
-            "speed": 8.0,
-            "vocabulary_size": 6.0,
+            "meaning": 5.0,
+            "association": 7.0,
+            "listening": 8.0,
+            "inference": 6.0,
+            "spelling": 4.0,
+            "comprehensive": 6.0,
         }
         details = get_metric_descriptions(rank=5, metrics=metrics)
 
-        assert len(details) == 4
+        assert len(details) == 6
         keys = {d["key"] for d in details}
-        assert keys == {"vocabulary_level", "accuracy", "speed", "vocabulary_size"}
+        assert keys == {"meaning", "association", "listening", "inference", "spelling", "comprehensive"}
 
         # Each detail should have required fields
         for d in details:

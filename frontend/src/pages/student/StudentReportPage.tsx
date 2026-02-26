@@ -126,7 +126,7 @@ export function StudentReportPage() {
 
   return (
     <div className="min-h-screen bg-[#F8F8F6]">
-      <div className="max-w-[900px] min-w-[860px] mx-auto space-y-6 py-6 px-4 print-report">
+      <div className="w-[794px] mx-auto space-y-6 py-6 print-report">
         {/* Top bar - hidden in print */}
         <div className="flex items-center justify-between print-hidden">
           <h1 className="font-display text-lg font-bold text-[#0D0D0D]">
@@ -141,29 +141,30 @@ export function StudentReportPage() {
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl border border-[#E8E8E6] p-8 space-y-8 print-report-card">
+        <div className="bg-white shadow-[0_1px_8px_rgba(0,0,0,0.08)] p-[30px] space-y-4 print-report-card">
           {/* 1. Header */}
-          <div className="space-y-3">
-            <div className="flex items-start justify-between">
-              <div className="flex flex-col items-start gap-1">
-                <img src="/images/logo-joshua.png" alt="Logo" className="h-10 w-auto" />
-                <span className="text-[#0D0D0D] text-sm font-medium tracking-tight">
-                  {isListening ? '조슈아 영단어 리스닝 테스트' : '조슈아 영단어 레벨테스트'}
-                </span>
+          <div className="space-y-0">
+            <div className="relative flex justify-between items-end pb-1.5">
+              {/* Left: Title text */}
+              <div className="flex flex-col">
+                <span className="text-[13px] font-bold tracking-wide text-[#AAA]">VOCA. LEVEL TEST</span>
+                <span className="text-[18px] font-bold text-[#0D0D0D] leading-tight">영단어 레벨테스트 결과</span>
               </div>
-              <table className="border-collapse border border-[#D0D0D0] text-xs">
+              {/* Logo – absolutely centered on the page width */}
+              <img src="/images/logo-injae.png" alt="Logo" className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 h-[49px] w-auto" />
+              <table className="border-collapse border border-[#D0D0D0] text-[10px]">
                 <tbody>
                   <tr>
-                    <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap w-[60px]">이름</td>
-                    <td className="px-3 py-1.5 text-[#0D0D0D] border-r border-[#D0D0D0] whitespace-nowrap min-w-[80px]">{report.student_name || '-'}</td>
-                    <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap w-[60px]">학년</td>
-                    <td className="px-3 py-1.5 text-[#0D0D0D] whitespace-nowrap min-w-[60px]">{report.student_grade || '-'}</td>
+                    <td className="bg-[#F5F5F5] px-2 py-1 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap w-[50px]">이름</td>
+                    <td className="px-2 py-1 text-[#0D0D0D] border-r border-[#D0D0D0] whitespace-nowrap min-w-[60px]">{report.student_name || '-'}</td>
+                    <td className="bg-[#F5F5F5] px-2 py-1 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap w-[50px]">학교</td>
+                    <td className="px-2 py-1 text-[#0D0D0D] whitespace-nowrap min-w-[50px]">{report.student_school || '-'}</td>
                   </tr>
                   <tr className="border-t border-[#D0D0D0]">
-                    <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap">소속학원</td>
-                    <td className="px-3 py-1.5 text-[#0D0D0D] border-r border-[#D0D0D0] whitespace-nowrap">{report.student_school || '조슈아 영어 학원'}</td>
-                    <td className="bg-[#F5F5F5] px-3 py-1.5 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap">응시일</td>
-                    <td className="px-3 py-1.5 text-[#0D0D0D] whitespace-nowrap">
+                    <td className="bg-[#F5F5F5] px-2 py-1 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap">학년</td>
+                    <td className="px-2 py-1 text-[#0D0D0D] border-r border-[#D0D0D0] whitespace-nowrap">{report.student_grade || '-'}</td>
+                    <td className="bg-[#F5F5F5] px-2 py-1 font-semibold text-[#333] border-r border-[#D0D0D0] whitespace-nowrap">응시일</td>
+                    <td className="px-2 py-1 text-[#0D0D0D] whitespace-nowrap">
                       {report.session.started_at
                         ? new Date(report.session.started_at).toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
                         : '-'}
@@ -207,9 +208,9 @@ export function StudentReportPage() {
           ) : (
             <>
               <CollapsibleSection title="종합 학습 결과">
-                <div className="flex gap-5">
+                <div className="flex gap-4">
                   {/* Left: Overall result */}
-                  <div className="flex-1 border border-[#E8E8E8] rounded-sm p-5 space-y-4 bg-[#FAFAFA]">
+                  <div className="flex-1 border border-[#E8E8E8] rounded-sm p-3 space-y-3 bg-[#FAFAFA]">
                     <div className="flex items-center gap-4">
                       <div className="flex-1 space-y-1">
                         <p className="text-[10px] text-[#7A7A7A]">추천 교재</p>
@@ -247,18 +248,18 @@ export function StudentReportPage() {
                         );
                       })()}
                     </div>
-                    <div className="flex gap-2">
-                      <div className="flex-1 border border-[#CC0000] rounded p-2.5 text-center space-y-1">
-                        <p className="text-xs font-bold text-[#CC0000]">학년수준</p>
-                        <p className="text-xs font-semibold text-[#0D0D0D] leading-tight">{report.grade_level}</p>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 border border-[#CC0000] rounded px-3 py-1.5">
+                        <p className="text-xs font-bold text-[#CC0000] w-[60px] shrink-0">학년수준</p>
+                        <p className="text-xs font-semibold text-[#0D0D0D]">{report.grade_level}</p>
                       </div>
-                      <div className="flex-1 border border-[#CC0000] rounded p-2.5 text-center space-y-1">
-                        <p className="text-xs font-bold text-[#CC0000]">어휘수준</p>
-                        <p className="text-xs font-semibold text-[#0D0D0D] leading-tight">{report.vocab_description}</p>
+                      <div className="flex items-center gap-2 border border-[#CC0000] rounded px-3 py-1.5">
+                        <p className="text-xs font-bold text-[#CC0000] w-[60px] shrink-0">어휘수준</p>
+                        <p className="text-xs font-semibold text-[#0D0D0D]">{report.vocab_description}</p>
                       </div>
-                      <div className="flex-1 border border-[#CC0000] rounded p-2.5 text-center space-y-1">
-                        <p className="text-xs font-bold text-[#CC0000]">동학년순위</p>
-                        <p className="text-xs font-semibold text-[#0D0D0D] leading-tight">
+                      <div className="flex items-center gap-2 border border-[#CC0000] rounded px-3 py-1.5">
+                        <p className="text-xs font-bold text-[#CC0000] w-[60px] shrink-0">동학년순위</p>
+                        <p className="text-xs font-semibold text-[#0D0D0D]">
                           {report.peer_ranking ? `상위 ${report.peer_ranking.percentile}%` : '-'}
                         </p>
                       </div>
@@ -269,30 +270,38 @@ export function StudentReportPage() {
                   <RadarChart metrics={report.radar_metrics} />
 
                   {/* Right: Stats summary */}
-                  <div className="w-[180px] shrink-0 border border-[#E8E8E8] rounded-sm p-5 space-y-3 bg-[#FAFAFA]">
-                    <h3 className="text-lg font-bold text-[#0D0D0D]">학습 통계</h3>
-                    <div className="space-y-1">
-                      <p className="text-sm text-[#555]">소요시간</p>
-                      <p className="text-xl font-bold text-[#CC0000]">
+                  <div className="w-[140px] shrink-0 border border-[#E8E8E8] rounded-sm p-3 space-y-1.5 bg-[#FAFAFA]">
+                    <h3 className="text-[13px] font-bold text-[#0D0D0D]">학습 통계</h3>
+                    <div className="space-y-0.5">
+                      <p className="text-[10px] text-[#555]">소요시간</p>
+                      <p className="text-base font-bold text-[#CC0000]">
                         {report.total_time_seconds != null ? formatTime(report.total_time_seconds) : '-'}
                       </p>
                     </div>
                     <div className="h-px bg-[#E8E8E8]" />
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-[#555]">총 문제수</span>
-                      <span className="text-sm font-semibold text-[#0D0D0D]">{report.session.total_questions}</span>
+                      <span className="text-xs text-[#555]">총 문제수</span>
+                      <span className="text-xs font-semibold text-[#0D0D0D]">{report.session.total_questions}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-[#555]">정답률</span>
-                      <span className="text-sm font-semibold text-[#0D0D0D]">{report.session.score}%</span>
+                      <span className="text-xs text-[#555]">정답률</span>
+                      <span className="text-xs font-semibold text-[#0D0D0D]">{report.session.score}%</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-[#555]">최고 콤보</span>
-                      <span className="text-sm font-semibold text-[#0D0D0D]">{report.session.best_combo}연속</span>
+                      <span className="text-xs text-[#555]">최고 콤보</span>
+                      <span className="text-xs font-semibold text-[#0D0D0D]">{report.session.best_combo}연속</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-[#555]">학습 단어</span>
-                      <span className="text-sm font-semibold text-[#0D0D0D]">{report.session.words_practiced}개</span>
+                      <span className="text-xs text-[#555]">학습 단어</span>
+                      <span className="text-xs font-semibold text-[#0D0D0D]">{report.session.words_practiced}개</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-[#555]">승급 단어</span>
+                      <span className="text-xs font-semibold text-[#5A8F6B]">{report.session.words_advanced}개</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs text-[#555]">강등 단어</span>
+                      <span className="text-xs font-semibold text-[#CC0000]">{report.session.words_demoted}개</span>
                     </div>
                   </div>
                 </div>
@@ -308,9 +317,9 @@ export function StudentReportPage() {
               <div className="h-px bg-[#E8E8E8]" />
 
               {/* 4. Metric Detail Section */}
-              <div className="print-break-before">
+              <div>
                 <CollapsibleSection title="학습 역량 분석">
-                  <MetricDetailSection details={report.metric_details} totalWordCount={report.total_word_count} />
+                  <MetricDetailSection details={report.metric_details} />
                 </CollapsibleSection>
               </div>
             </>

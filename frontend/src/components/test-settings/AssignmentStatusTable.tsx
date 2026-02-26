@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { Trash2, RotateCcw, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import type { TestAssignmentItem } from '../../services/testAssignment';
+import { QTYPE_BADGES, TEST_ENGINE_BADGES } from '../../constants/engineLabels';
 
 interface Props {
   assignments: TestAssignmentItem[];
@@ -32,23 +33,8 @@ function formatTimeDisplay(item: TestAssignmentItem): string {
   return '-';
 }
 
-const QTYPE_LABELS: Record<string, { label: string; bg: string; color: string }> = {
-  en_to_ko: { label: '영한', bg: '#DBEAFE', color: '#2563EB' },
-  ko_to_en: { label: '한영', bg: '#EDE9FE', color: '#7C3AED' },
-  listen_en: { label: '듣기영', bg: '#D1FAE5', color: '#059669' },
-  listen_ko: { label: '듣기한', bg: '#CCFBF1', color: '#0D9488' },
-  listen_type: { label: '듣기타', bg: '#FEF3C7', color: '#D97706' },
-  ko_type: { label: '한영타', bg: '#FEE2E2', color: '#DC2626' },
-  emoji: { label: '이모지', bg: '#FCE7F3', color: '#DB2777' },
-  sentence: { label: '예문', bg: '#E0E7FF', color: '#4F46E5' },
-  antonym_type: { label: '반의T', bg: '#FFEDD5', color: '#EA580C' },
-  antonym_choice: { label: '반의어', bg: '#FED7AA', color: '#C2410C' },
-};
-
-const ENGINE_LABELS: Record<string, { label: string; bg: string; color: string }> = {
-  levelup: { label: '레벨업', bg: '#EBF8FA', color: '#2D9CAE' },
-  legacy: { label: '레거시', bg: '#F0F0EE', color: '#6D6C6A' },
-};
+// QTYPE_BADGES, TEST_ENGINE_BADGES
+// → imported from '../../constants/engineLabels'
 
 const PAGE_SIZE = 10;
 
@@ -136,7 +122,7 @@ export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewRe
               </thead>
               <tbody>
                 {pageData.map((item) => {
-                  const engineStyle = ENGINE_LABELS[item.engine_type ?? ''] ?? { label: item.engine_type ?? '-', bg: '#F0F0EE', color: '#6D6C6A' };
+                  const engineStyle = TEST_ENGINE_BADGES[item.engine_type ?? ''] ?? { label: item.engine_type ?? '-', bg: '#F0F0EE', color: '#6D6C6A' };
                   const schoolGrade = [item.student_school, item.student_grade].filter(Boolean).join(' ') || '-';
                   return (
                     <tr key={item.id} style={{ borderBottom: '1px solid #E8E8E6', height: 48 }}>
@@ -170,15 +156,15 @@ export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewRe
                           {item.question_types ? (
                             item.question_types.split(',').map((type) => {
                               const trimmedType = type.trim();
-                              const config = QTYPE_LABELS[trimmedType];
-                              if (config) {
+                              const badge = QTYPE_BADGES[trimmedType];
+                              if (badge) {
                                 return (
                                   <span
                                     key={trimmedType}
                                     className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
-                                    style={{ backgroundColor: config.bg, color: config.color }}
+                                    style={{ backgroundColor: badge.bg, color: badge.color }}
                                   >
-                                    {config.label}
+                                    {badge.label}
                                   </span>
                                 );
                               }

@@ -10,13 +10,14 @@ import {
   BarChart3,
   ClipboardList,
   LogOut,
+  UserCog,
 } from 'lucide-react';
 
 interface TeacherLayoutProps {
   children: React.ReactNode;
 }
 
-const navItems = [
+const baseNavItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: '대시보드' },
   { to: '/students', icon: Users, label: '학생 관리' },
   { to: '/test-settings', icon: Settings, label: '테스트 설정' },
@@ -26,9 +27,17 @@ const navItems = [
   { to: '/analysis', icon: BarChart3, label: '분석' },
 ];
 
+const masterNavItems = [
+  { to: '/teachers', icon: UserCog, label: '선생님 관리' },
+];
+
 export function TeacherLayout({ children }: TeacherLayoutProps) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
+
+  const navItems = user?.role === 'master'
+    ? [...baseNavItems, ...masterNavItems]
+    : baseNavItems;
 
   const handleLogout = async () => {
     await logout();
@@ -113,7 +122,7 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
               <p className="text-sm font-medium text-text-primary truncate">
                 {user?.name}
               </p>
-              <p className="text-xs text-text-tertiary">선생님</p>
+              <p className="text-xs text-text-tertiary">{user?.role === 'master' ? '마스터' : '선생님'}</p>
             </div>
           </div>
           <button

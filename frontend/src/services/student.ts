@@ -37,6 +37,10 @@ export const studentService = {
   async deleteStudent(id: string): Promise<void> {
     await api.delete(`/api/v1/students/${id}`);
   },
+
+  async deleteStudentsBatch(ids: string[]): Promise<void> {
+    await api.post('/api/v1/students/batch-delete', { student_ids: ids });
+  },
 };
 
 export default studentService;

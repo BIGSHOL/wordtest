@@ -4,15 +4,17 @@
 import type { TestSessionData, AnswerDetail } from './test';
 
 export interface RadarMetrics {
-  vocabulary_level: number; // 어휘수준 0-10
-  accuracy: number;         // 정답률 0-10
-  speed: number;            // 속도 0-10
-  vocabulary_size: number;  // 어휘사이즈 0-10
+  meaning: number;        // 의미파악력 0-10
+  association: number;    // 단어연상력 0-10
+  listening: number;      // 발음청취력 0-10
+  inference: number;      // 어휘추론력 0-10
+  spelling: number;       // 철자기억력 0-10
+  comprehensive: number;  // 종합응용력 0-10 (5영역 가중평균)
 }
 
 export interface MetricDetail {
-  key: string;        // "vocabulary_level" | "accuracy" | "speed" | "vocabulary_size"
-  name: string;       // "어휘수준" | "정답률" | "속도" | "어휘사이즈"
+  key: string;        // skill area key
+  name: string;       // Korean skill area name
   my_score: number;
   avg_score: number;
   description: string;

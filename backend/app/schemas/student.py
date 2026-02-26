@@ -18,3 +18,7 @@ class UpdateStudentRequest(BaseModel):
     phone_number: Optional[str] = None
     school_name: Optional[str] = None
     grade: Optional[str] = None
+
+
+class BatchDeleteRequest(BaseModel):
+    student_ids: list[str]

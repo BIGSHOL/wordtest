@@ -7,7 +7,7 @@ import { useAuthStore } from '../../stores/auth';
 
 interface RouteGuardProps {
   children: React.ReactNode;
-  roles?: ('teacher' | 'student')[];
+  roles?: ('master' | 'teacher' | 'student')[];
 }
 
 export function RouteGuard({ children, roles }: RouteGuardProps) {
@@ -33,8 +33,13 @@ export function RouteGuard({ children, roles }: RouteGuardProps) {
   }
 
   if (roles && user && !roles.includes(user.role)) {
-    const redirect = user.role === 'teacher' ? '/dashboard' : '/student';
-    return <Navigate to={redirect} replace />;
+    // Master inherits teacher access
+    if (user.role === 'master' && roles.includes('teacher')) {
+      // Allow — master can access all teacher routes
+    } else {
+      const redirect = user.role === 'student' ? '/student' : '/dashboard';
+      return <Navigate to={redirect} replace />;
+    }
   }
 
   return <>{children}</>;

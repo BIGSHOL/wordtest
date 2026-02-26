@@ -17,6 +17,7 @@ import type { User } from '../../types/auth';
 import type { LessonInfo } from '../../services/word';
 import type { TestAssignmentItem, TestConfigItem, CreateTestConfigRequest } from '../../services/testAssignment';
 import { logger } from '../../utils/logger';
+import { SKILL_TO_ENGINES } from '../../constants/engineLabels';
 
 type Tab = 'create' | 'configs' | 'status';
 
@@ -244,7 +245,9 @@ export function TestSettingsPage() {
 
     const selectedTypes = config.questionSelectionMode === 'engine'
       ? config.questionTypes
-      : config.skillAreas.length > 0 ? config.skillAreas : ['en_to_ko', 'ko_to_en'];
+      : config.skillAreas.length > 0
+        ? [...new Set(config.skillAreas.flatMap(s => SKILL_TO_ENGINES[s] ?? []))]
+        : ['en_to_ko', 'ko_to_en'];
 
     const requestData: CreateTestConfigRequest = {
       name: config.configName.trim() || undefined,
@@ -311,11 +314,9 @@ export function TestSettingsPage() {
       : config.perQuestionTime;
     const totalTimeOverride = isExamMode ? config.totalTime : undefined;
 
-    // For skill mode, send skill areas as question_types (prefixed)
-    // Backend will resolve these; for now fallback to en_to_ko,ko_to_en
     const questionTypes = config.questionSelectionMode === 'engine'
       ? config.questionTypes
-      : ['en_to_ko', 'ko_to_en']; // TODO: map skill areas to engines when backend ready
+      : [...new Set(config.skillAreas.flatMap(s => SKILL_TO_ENGINES[s] ?? []))];
 
     const requestData = {
       student_ids: Array.from(selectedIds),

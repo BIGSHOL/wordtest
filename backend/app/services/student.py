@@ -85,3 +85,17 @@ async def update_student(
 async def delete_student(db: AsyncSession, student: User) -> None:
     await db.delete(student)
     await db.commit()
+
+
+async def delete_students_batch(
+    db: AsyncSession, student_ids: list[str]
+) -> int:
+    """Delete multiple students at once. Returns the number deleted."""
+    result = await db.execute(
+        select(User).where(User.id.in_(student_ids), User.role == "student")
+    )
+    students = list(result.scalars().all())
+    for student in students:
+        await db.delete(student)
+    await db.commit()
+    return len(students)

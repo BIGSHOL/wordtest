@@ -44,8 +44,8 @@ export function LevelChartTable({ currentRank }: Props) {
   const circleLeft = `calc(${fraction * 100}% + ${50 * (1 - fraction)}px)`;
 
   return (
-    <div className="space-y-2">
-      <h3 className="text-lg font-bold text-[#0D0D0D]">Level Chart</h3>
+    <div className="space-y-1">
+      <h3 className="text-[13px] font-bold text-[#0D0D0D]">Level Chart</h3>
 
       {/* Wrapper for circle overflow */}
       <div className="relative">
@@ -60,13 +60,13 @@ export function LevelChartTable({ currentRank }: Props) {
               return (
                 <div
                   key={lv.rank}
-                  className="flex-1 min-w-0 flex items-center justify-center border-r border-[#BBBBBB] last:border-r-0 py-2.5 relative"
+                  className="flex-1 min-w-0 flex items-center justify-center border-r border-[#BBBBBB] last:border-r-0 py-1.5 relative"
                   style={{
                     backgroundColor: isCurrent ? '#CC000020' : lv.bg,
                   }}
                 >
                   <span
-                    className="text-[16px] text-center whitespace-pre-line leading-tight"
+                    className="text-[11px] text-center whitespace-pre-line leading-tight"
                     style={{
                       color: lv.color,
                       fontWeight: isCurrent ? 700 : 500,
@@ -89,13 +89,13 @@ export function LevelChartTable({ currentRank }: Props) {
               return (
                 <div
                   key={i}
-                  className="flex-1 min-w-0 flex items-center justify-center border-r border-[#BBBBBB] last:border-r-0 py-2.5"
+                  className="flex-1 min-w-0 flex items-center justify-center border-r border-[#BBBBBB] last:border-r-0 py-1.5"
                   style={{
                     backgroundColor: isCurrent ? '#FFF0F0' : undefined,
                   }}
                 >
                   <span
-                    className="text-[11px] text-center whitespace-pre-line leading-tight"
+                    className="text-[9px] text-center whitespace-pre-line leading-tight"
                     style={{
                       color: isCurrent ? '#CC0000' : '#555555',
                       fontWeight: isCurrent ? 700 : 400,
@@ -121,8 +121,8 @@ export function LevelChartTable({ currentRank }: Props) {
             <div
               className="rounded-full border-[3px] border-[#CC0000]"
               style={{
-                width: '70px',
-                height: '70px',
+                width: '48px',
+                height: '48px',
               }}
             />
           </div>

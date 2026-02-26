@@ -52,11 +52,16 @@ async def get_all_results(
     limit: int = Query(10, ge=1, le=100),
 ):
     """Get all test results with pagination (teacher only)."""
-    student_ids_subq = (
-        select(User.id)
-        .where(and_(User.role == "student", User.teacher_id == teacher.id))
-        .scalar_subquery()
-    )
+    if teacher.role == "master":
+        student_ids_subq = (
+            select(User.id).where(User.role == "student").scalar_subquery()
+        )
+    else:
+        student_ids_subq = (
+            select(User.id)
+            .where(and_(User.role == "student", User.teacher_id == teacher.id))
+            .scalar_subquery()
+        )
 
     results: list[RecentTest] = []
 
@@ -170,9 +175,12 @@ async def get_dashboard_stats(
     """Get aggregated dashboard statistics (teacher only)."""
 
     # Total students
-    students_query = select(func.count()).select_from(User).where(
-        and_(User.role == "student", User.teacher_id == teacher.id)
-    )
+    if teacher.role == "master":
+        students_query = select(func.count()).select_from(User).where(User.role == "student")
+    else:
+        students_query = select(func.count()).select_from(User).where(
+            and_(User.role == "student", User.teacher_id == teacher.id)
+        )
     total_students_result = await db.execute(students_query)
     total_students = total_students_result.scalar() or 0
 
@@ -182,11 +190,16 @@ async def get_dashboard_stats(
     total_words = total_words_result.scalar() or 0
 
     # Subquery for student IDs (avoids loading all IDs into memory)
-    student_ids_subq = (
-        select(User.id)
-        .where(and_(User.role == "student", User.teacher_id == teacher.id))
-        .scalar_subquery()
-    )
+    if teacher.role == "master":
+        student_ids_subq = (
+            select(User.id).where(User.role == "student").scalar_subquery()
+        )
+    else:
+        student_ids_subq = (
+            select(User.id)
+            .where(and_(User.role == "student", User.teacher_id == teacher.id))
+            .scalar_subquery()
+        )
 
     # Compute period filter
     if period == "weekly":
@@ -544,11 +557,16 @@ async def get_word_stats(
     period: str = Query("all"),
 ):
     """Get per-word accuracy and response time stats (teacher only)."""
-    student_ids_subq = (
-        select(User.id)
-        .where(and_(User.role == "student", User.teacher_id == teacher.id))
-        .scalar_subquery()
-    )
+    if teacher.role == "master":
+        student_ids_subq = (
+            select(User.id).where(User.role == "student").scalar_subquery()
+        )
+    else:
+        student_ids_subq = (
+            select(User.id)
+            .where(and_(User.role == "student", User.teacher_id == teacher.id))
+            .scalar_subquery()
+        )
 
     # Compute period filter
     if period == "weekly":
@@ -630,13 +648,18 @@ async def get_student_history(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to view this student's history",
         )
-    # Teachers can only view their own students' history
-    if current_user.role == "teacher":
+    # Teachers can only view their own students' history; masters can view all
+    if current_user.role in ("teacher", "master"):
         student_check = await db.execute(
             select(User).where(User.id == student_id)
         )
         student = student_check.scalar_one_or_none()
-        if not student or student.teacher_id != current_user.id:
+        if not student:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not authorized to view this student's history",
+            )
+        if current_user.role == "teacher" and student.teacher_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not authorized to view this student's history",
@@ -705,24 +728,17 @@ async def get_enhanced_report(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized",
         )
-    if current_user.role == "teacher":
-        student_check = await db.execute(
-            select(User).where(User.id == student_id)
-        )
-        student = student_check.scalar_one_or_none()
-        if not student or student.teacher_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized",
-            )
-    else:
-        student_check = await db.execute(
-            select(User).where(User.id == student_id)
-        )
-        student = student_check.scalar_one_or_none()
-
+    student_check = await db.execute(
+        select(User).where(User.id == student_id)
+    )
+    student = student_check.scalar_one_or_none()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
+    if current_user.role == "teacher" and student.teacher_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized",
+        )
 
     # Load test result
     result = await get_test_result(db, test_id)
@@ -786,7 +802,7 @@ async def get_enhanced_report(
         grade_level=metrics["grade_level"],
         vocab_description=metrics["vocab_description"],
         recommended_book=metrics["recommended_book"],
-        total_time_seconds=metrics["total_time_seconds"],
+        total_time_seconds=metrics["total_time_seconds"] or report_engine.session_duration_seconds(session.started_at, session.completed_at),
         category_times=metrics["category_times"],
         per_engine_stats=[EngineStats(**s) for s in metrics["per_engine_stats"]],
         diagnosis=EngineDiagnosis(**metrics["diagnosis"]),
@@ -807,17 +823,12 @@ async def get_mastery_report(
     # Authorization
     if current_user.role == "student" and current_user.id != student_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
-    if current_user.role == "teacher":
-        student_check = await db.execute(select(User).where(User.id == student_id))
-        student = student_check.scalar_one_or_none()
-        if not student or student.teacher_id != current_user.id:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
-    else:
-        student_check = await db.execute(select(User).where(User.id == student_id))
-        student = student_check.scalar_one_or_none()
-
+    student_check = await db.execute(select(User).where(User.id == student_id))
+    student = student_check.scalar_one_or_none()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
+    if current_user.role == "teacher" and student.teacher_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
     # Load LearningSession
     session_result = await db.execute(
@@ -957,7 +968,7 @@ async def get_mastery_report(
         grade_level=metrics["grade_level"],
         vocab_description=metrics["vocab_description"],
         recommended_book=metrics["recommended_book"],
-        total_time_seconds=metrics["total_time_seconds"],
+        total_time_seconds=metrics["total_time_seconds"] or report_engine.session_duration_seconds(session.started_at, session.completed_at),
         total_word_count=total_word_count,
         word_summaries=word_summaries,
         per_engine_stats=[EngineStats(**s) for s in metrics["per_engine_stats"]],

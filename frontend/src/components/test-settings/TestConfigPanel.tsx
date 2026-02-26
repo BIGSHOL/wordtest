@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { Check, Info, Clock, Timer, Hash, Layers, ChevronLeft, ChevronRight, SplitSquareHorizontal, GripVertical, ArrowUpDown, Users, Search } from 'lucide-react';
 import type { LessonInfo } from '../../services/word';
 import type { User } from '../../types/auth';
+import { QUESTION_TYPE_OPTIONS, SKILL_AREA_OPTIONS, SKILL_TO_ENGINES, ENGINE_PRESETS } from '../../constants/engineLabels';
 
 // ── State ────────────────────────────────────────────────────────────────────
 
@@ -83,33 +84,8 @@ const TOTAL_TIME_OPTIONS = [
 
 const QUESTION_COUNT_OPTIONS = [10, 20, 30, 50];
 
-const QUESTION_TYPE_OPTIONS = [
-  { value: 'en_to_ko', label: '영한', desc: '영어 단어 보고 한국어 뜻 고르기' },
-  { value: 'ko_to_en', label: '한영', desc: '한국어 뜻 보고 영어 단어 고르기' },
-  { value: 'listen_en', label: '듣기 영어', desc: '발음 듣고 영어 단어 고르기' },
-  { value: 'listen_ko', label: '듣기 한국어', desc: '발음 듣고 한국어 뜻 고르기' },
-  { value: 'listen_type', label: '듣기 타이핑', desc: '발음 듣고 영어 타이핑' },
-  { value: 'ko_type', label: '한영 타이핑', desc: '한국어 뜻 보고 영어 타이핑' },
-  { value: 'emoji', label: '이모지', desc: '이모지 보고 영어 단어 고르기' },
-  { value: 'sentence', label: '예문 빈칸', desc: '예문의 빈칸에 맞는 단어 고르기' },
-  { value: 'antonym_type', label: '반의어 타이핑', desc: '반의어를 영어로 타이핑' },
-  { value: 'antonym_choice', label: '반의어 고르기', desc: '반의어를 4지선다로 고르기' },
-];
-
-const ENGINE_PRESETS = [
-  { label: '기본', types: ['en_to_ko', 'ko_to_en'] },
-  { label: '리스닝', types: ['listen_en', 'listen_ko', 'listen_type'] },
-  { label: '전체', types: QUESTION_TYPE_OPTIONS.map(o => o.value) },
-];
-
-const SKILL_AREA_OPTIONS = [
-  { value: 'meaning', label: '의미파악력', desc: '뜻을 파악할 수 있는 문장', icon: '📖' },
-  { value: 'association', label: '단어연상력', desc: '연관 단어들', icon: '🔗' },
-  { value: 'listening', label: '발음청취력', desc: '발음 혼동 단어/음성 힌트', icon: '👂' },
-  { value: 'inference', label: '어휘추론력', desc: '문맥으로 추론하는 빈칸 문장', icon: '🧠' },
-  { value: 'spelling', label: '철자기억력', desc: '철자 패턴/빈칸 철자', icon: '✏️' },
-  { value: 'comprehensive', label: '종합응용력', desc: '실전 응용 문장', icon: '⭐' },
-];
+// QUESTION_TYPE_OPTIONS, SKILL_AREA_OPTIONS, ENGINE_PRESETS
+// → imported from '../../constants/engineLabels'
 
 const PAGE_META = [
   { title: '학생 선택', icon: <Users className="w-3.5 h-3.5" /> },
@@ -848,62 +824,93 @@ function PageTypes({
             })}
           </div>
 
-          {/* Checkbox grid */}
-          <div className="grid grid-cols-2 gap-2">
-            {QUESTION_TYPE_OPTIONS.map((option) => {
-              const isSelected = config.questionTypes.includes(option.value);
-              const disabled = isTypeDisabled(option.value);
-              const count = compatibleCounts[option.value];
-              const showCount = hasRange && count !== undefined;
+          {/* Engines grouped by skill area — compact chip layout */}
+          <div className="space-y-1">
+            {SKILL_AREA_OPTIONS.map((area) => {
+              const areaEngines = SKILL_TO_ENGINES[area.value] || [];
+              const areaOptions = areaEngines
+                .map(e => QUESTION_TYPE_OPTIONS.find(o => o.value === e))
+                .filter(Boolean) as typeof QUESTION_TYPE_OPTIONS;
+              if (areaOptions.length === 0) return null;
+
+              const selectableEngines = areaEngines.filter(e => !isTypeDisabled(e));
+              const allSelected = selectableEngines.length > 0 && selectableEngines.every(e => config.questionTypes.includes(e));
+              const someSelected = areaEngines.some(e => config.questionTypes.includes(e));
+
               return (
-                <button
-                  key={option.value}
-                  onClick={() => toggleQuestionType(option.value)}
-                  className="flex items-center gap-2.5 rounded-lg transition-all text-left"
-                  style={{
-                    padding: '10px 12px',
-                    backgroundColor: disabled ? '#F3F3F1' : isSelected ? '#EBF8FA' : '#F8F8F6',
-                    border: disabled ? '1px solid #E8E8E6' : isSelected ? '2px solid #2D9CAE' : '1px solid #E8E8E6',
-                    opacity: disabled ? 0.55 : 1,
-                    cursor: disabled ? 'not-allowed' : 'pointer',
-                  }}
+                <div
+                  key={area.value}
+                  className="flex items-center gap-2 rounded-lg"
+                  style={{ padding: '6px 8px', backgroundColor: someSelected ? '#F5FBFC' : 'transparent' }}
                 >
-                  <span
-                    className="rounded flex items-center justify-center shrink-0"
-                    style={{
-                      width: 16, height: 16,
-                      backgroundColor: disabled ? '#D1D5DB' : isSelected ? '#2D9CAE' : 'transparent',
-                      border: disabled ? 'none' : isSelected ? 'none' : '2px solid #D1D5DB',
-                      borderRadius: 4,
+                  {/* Area toggle */}
+                  <button
+                    className="flex items-center gap-1.5 shrink-0"
+                    onClick={() => {
+                      if (selectableEngines.length === 0) return;
+                      const allOn = selectableEngines.every(e => config.questionTypes.includes(e));
+                      const newTypes = allOn
+                        ? config.questionTypes.filter(t => !selectableEngines.includes(t))
+                        : [...new Set([...config.questionTypes, ...selectableEngines])];
+                      update({ questionTypes: newTypes });
                     }}
                   >
-                    {isSelected && !disabled && <Check className="w-2.5 h-2.5 text-white" />}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className="text-[12px] font-bold"
-                        style={{ color: disabled ? '#9CA3AF' : isSelected ? '#2D9CAE' : '#3D3D3C' }}
-                      >
-                        {option.label}
-                      </span>
-                      {showCount && (
-                        <span
-                          className="text-[9px] font-medium px-1 rounded"
+                    <span
+                      className="rounded flex items-center justify-center shrink-0"
+                      style={{
+                        width: 14, height: 14,
+                        backgroundColor: allSelected ? '#2D9CAE' : someSelected ? '#94D3DD' : 'transparent',
+                        border: allSelected || someSelected ? 'none' : '2px solid #D1D5DB',
+                        borderRadius: 3,
+                      }}
+                    >
+                      {(allSelected || someSelected) && <Check className="w-2.5 h-2.5 text-white" />}
+                    </span>
+                    <span className="text-xs shrink-0">{area.icon}</span>
+                    <span className="text-[11px] font-bold whitespace-nowrap" style={{ color: '#3D3D3C' }}>{area.label}</span>
+                  </button>
+
+                  {/* Engine chips */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {areaOptions.map((option) => {
+                      const isSelected = config.questionTypes.includes(option.value);
+                      const disabled = isTypeDisabled(option.value);
+                      const count = compatibleCounts[option.value];
+                      const showCount = hasRange && count !== undefined;
+                      return (
+                        <button
+                          key={option.value}
+                          onClick={() => toggleQuestionType(option.value)}
+                          className="flex items-center gap-1 rounded-full transition-all whitespace-nowrap"
                           style={{
-                            backgroundColor: disabled ? '#FEE2E2' : '#E5E7EB',
-                            color: disabled ? '#DC2626' : '#6B7280',
+                            padding: '4px 10px',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            backgroundColor: disabled ? '#F3F3F1' : isSelected ? '#2D9CAE' : '#F0F0EE',
+                            color: disabled ? '#9CA3AF' : isSelected ? 'white' : '#4B4B4A',
+                            border: disabled ? '1px solid #E8E8E6' : isSelected ? '1px solid #2D9CAE' : '1px solid #E0E0DE',
+                            opacity: disabled ? 0.55 : 1,
+                            cursor: disabled ? 'not-allowed' : 'pointer',
                           }}
+                          title={disabled ? `호환 단어 부족 (${MIN_COMPATIBLE_WORDS}개 미만)` : option.desc}
                         >
-                          {count}단어
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[10px] truncate" style={{ color: disabled ? '#9CA3AF' : '#6D6C6A' }}>
-                      {disabled ? `호환 단어 부족 (${MIN_COMPATIBLE_WORDS}개 미만)` : option.desc}
-                    </div>
+                          {option.label}
+                          {showCount && (
+                            <span
+                              className="rounded-full text-[9px] font-medium px-1.5"
+                              style={{
+                                backgroundColor: disabled ? '#FEE2E2' : isSelected ? 'rgba(255,255,255,0.25)' : '#E5E7EB',
+                                color: disabled ? '#DC2626' : isSelected ? 'rgba(255,255,255,0.9)' : '#6B7280',
+                              }}
+                            >
+                              {count}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>

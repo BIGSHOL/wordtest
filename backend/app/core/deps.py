@@ -57,4 +57,5 @@ def require_role(*roles: str):
     return role_checker
 
 
-CurrentTeacher = Annotated[User, Depends(require_role("teacher"))]
+CurrentTeacher = Annotated[User, Depends(require_role("teacher", "master"))]
+CurrentMaster = Annotated[User, Depends(require_role("master"))]

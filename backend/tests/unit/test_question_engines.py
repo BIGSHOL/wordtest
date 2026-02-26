@@ -82,9 +82,9 @@ def sample_pool(sample_words):
 class TestEngineRegistry:
     """Tests for engine registry, get_engine, resolve_name, compute_compatible_engines."""
 
-    def test_all_10_registered(self):
-        """ENGINES dict should contain exactly 10 engines."""
-        assert len(ENGINES) == 10
+    def test_all_11_registered(self):
+        """ENGINES dict should contain exactly 11 engines."""
+        assert len(ENGINES) == 11
         expected = {
             "en_to_ko",
             "ko_to_en",
@@ -96,6 +96,7 @@ class TestEngineRegistry:
             "ko_type",
             "antonym_type",
             "antonym_choice",
+            "sentence_type",
         }
         assert set(ENGINES.keys()) == expected
 

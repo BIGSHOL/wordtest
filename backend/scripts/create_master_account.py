@@ -5,13 +5,13 @@ Usage:
     python scripts/create_master_account.py
 
 기본 계정:
-    - ID: master@wordtest.com
+    - 아이디: master
     - PW: Master1234!
     - 이름: 마스터 관리자
-    - 역할: teacher (모든 학생 조회 가능)
+    - 역할: master (관리자)
 """
 import asyncio
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from app.db.session import get_db
 from app.models.user import User
 from app.core.security import get_password_hash
@@ -19,22 +19,46 @@ from app.core.security import get_password_hash
 
 async def create_master_account():
     """마스터 계정 생성"""
-    master_email = "master@wordtest.com"
+    master_username = "master"
     master_password = "Master1234!"
     master_name = "마스터 관리자"
 
     async for db in get_db():
-        # 기존 계정 확인
+        # 기존 계정 확인 (username 또는 이전 email 방식 모두 체크)
         result = await db.execute(
-            select(User).where(User.email == master_email)
+            select(User).where(
+                or_(User.username == master_username, User.email == "master@wordtest.com")
+            )
         )
         existing = result.scalar_one_or_none()
 
         if existing:
-            print(f"[INFO] 마스터 계정이 이미 존재합니다: {master_email}")
+            print(f"[INFO] 마스터 계정이 이미 존재합니다: {existing.username}")
             print(f"  - ID: {existing.id}")
             print(f"  - 이름: {existing.name}")
             print(f"  - 역할: {existing.role}")
+
+            changed = False
+
+            # 역할이 master가 아니면 업데이트
+            if existing.role != "master":
+                existing.role = "master"
+                changed = True
+                print(f"\n[OK] 역할이 'master'로 업데이트되었습니다.")
+
+            # username 정리 (이전 email 형식 → 단순 username)
+            if existing.username != master_username:
+                existing.username = master_username
+                changed = True
+                print(f"[OK] 아이디가 '{master_username}'으로 변경되었습니다.")
+
+            # email 필드 정리
+            if existing.email:
+                existing.email = None
+                changed = True
+
+            if changed:
+                await db.commit()
 
             # 비밀번호 업데이트 여부 확인
             update = input("\n비밀번호를 재설정하시겠습니까? (y/N): ").strip().lower()
@@ -43,18 +67,17 @@ async def create_master_account():
                 await db.commit()
                 print(f"\n[OK] 비밀번호가 '{master_password}'로 재설정되었습니다.")
             else:
-                print("\n[SKIP] 변경사항 없음")
+                print("\n[SKIP] 비밀번호 변경 없음")
             return
 
         # 새 마스터 계정 생성
         master_user = User(
-            email=master_email,
-            username=master_email,
+            username=master_username,
             password_hash=get_password_hash(master_password),
             name=master_name,
-            role="teacher",  # 모든 학생을 관리할 수 있는 교사 역할
+            role="master",
             teacher_id=None,
-            school_name="Word Test 시스템",
+            school_name=None,
             grade=None,
             phone_number=None,
         )
@@ -67,7 +90,7 @@ async def create_master_account():
         print("마스터 계정 생성 완료")
         print("="*60)
         print(f"계정 ID: {master_user.id}")
-        print(f"이메일: {master_email}")
+        print(f"아이디: {master_username}")
         print(f"비밀번호: {master_password}")
         print(f"이름: {master_name}")
         print(f"역할: {master_user.role}")
@@ -95,7 +118,7 @@ async def show_teacher_student_count():
             )
             count = len(list(student_count.scalars().all()))
 
-            print(f"\n{teacher.name} ({teacher.email or teacher.id[:8]})")
+            print(f"\n{teacher.name} ({teacher.username or teacher.id[:8]})")
             print(f"  - 담당 학생: {count}명")
 
             if count > 0:
