@@ -172,39 +172,49 @@ export function ConfigPreviewPanel({
             {selectedTypes.length === 0 ? (
               <div className="text-[13px] text-text-tertiary">미선택</div>
             ) : (
-              <div className="space-y-2.5">
+              <div className="space-y-1.5">
                 {SKILL_AREA_OPTIONS
                   .map((area) => {
                     const engines = SKILL_TO_ENGINES[area.value] || [];
-                    // engine 모드: 선택된 엔진만, skill 모드: 해당 영역이 선택되면 전체 엔진
                     const activeEngines = config.questionSelectionMode === 'engine'
                       ? engines.filter(e => config.questionTypes.includes(e))
                       : config.skillAreas.includes(area.value) ? engines : [];
                     if (activeEngines.length === 0) return null;
                     const areaTotal = activeEngines.reduce((sum, e) => sum + (engineCounts[e] ?? 0), 0);
                     return (
-                      <div key={area.value}>
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-1">
-                            <span style={{ fontSize: 11 }}>{area.icon}</span>
-                            <span className="text-[10px] font-bold text-text-secondary">
+                      <div
+                        key={area.value}
+                        className="rounded-lg overflow-hidden"
+                        style={{ border: '1px solid #E8E8E6' }}
+                      >
+                        {/* 영역 헤더 */}
+                        <div
+                          className="flex items-center justify-between"
+                          style={{ padding: '6px 10px', backgroundColor: '#F3FAFB' }}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <span style={{ fontSize: 12 }}>{area.icon}</span>
+                            <span className="text-[11px] font-bold" style={{ color: '#1A7A8A' }}>
                               {area.label}
                             </span>
                           </div>
-                          <span className="text-[10px] font-bold" style={{ color: '#2D9CAE' }}>
+                          <span className="text-[11px] font-bold" style={{ color: '#2D9CAE' }}>
                             {areaTotal}문제
                           </span>
                         </div>
-                        <div className="flex flex-wrap gap-1">
-                          {activeEngines.map(e => (
-                            <span
-                              key={e}
-                              className="text-[10px] font-medium px-1.5 py-0.5 rounded"
-                              style={{ backgroundColor: '#E6F5F7', color: '#1A7A8A' }}
-                            >
-                              {ENGINE_FULL_LABELS[e] || e} {engineCounts[e] ?? 0}
-                            </span>
-                          ))}
+                        {/* 엔진 목록 */}
+                        <div style={{ padding: '5px 10px', backgroundColor: '#FFFFFF' }}>
+                          <div className="flex flex-wrap gap-1">
+                            {activeEngines.map(e => (
+                              <span
+                                key={e}
+                                className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+                                style={{ backgroundColor: '#EEF7F8', color: '#1A7A8A' }}
+                              >
+                                {ENGINE_FULL_LABELS[e] || e} <b>{engineCounts[e] ?? 0}</b>
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     );
