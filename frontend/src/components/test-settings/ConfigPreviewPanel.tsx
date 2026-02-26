@@ -6,10 +6,8 @@ import { Info } from 'lucide-react';
 import type { TestConfigState } from './TestConfigPanel';
 import {
   ENGINE_FULL_LABELS,
-  SKILL_AREA_LABELS,
   SKILL_AREA_OPTIONS,
   SKILL_TO_ENGINES,
-  ENGINE_TO_SKILL,
 } from '../../constants/engineLabels';
 
 interface Props {
@@ -51,9 +49,17 @@ export function ConfigPreviewPanel({
     ? config.questionTypes
     : config.skillAreas;
 
-  const typeLabels = config.questionSelectionMode === 'engine'
-    ? config.questionTypes.map(t => ENGINE_FULL_LABELS[t] || t)
-    : config.skillAreas.map(s => SKILL_AREA_LABELS[s] || s);
+  // Compute per-engine question counts (equal or manual distribution)
+  const engineCounts: Record<string, number> = (() => {
+    if (config.distributionMode === 'manual') return config.manualCounts;
+    // Equal distribution
+    if (selectedTypes.length === 0) return {};
+    const base = Math.floor(effectiveCount / selectedTypes.length);
+    const remainder = effectiveCount - base * selectedTypes.length;
+    const result: Record<string, number> = {};
+    selectedTypes.forEach((t, i) => { result[t] = base + (i < remainder ? 1 : 0); });
+    return result;
+  })();
 
   const hasScope = !!(config.bookStart && config.bookEnd && config.lessonStart && config.lessonEnd);
   const scopeText = hasScope
@@ -158,50 +164,45 @@ export function ConfigPreviewPanel({
             value={timeText}
           />
 
-          {/* 문제 유형 - 6대 영역별 그룹 */}
+          {/* 문제 유형 - 6대 영역별 그룹 + 문제 수 */}
           <div>
             <div className="text-[11px] font-semibold text-text-secondary mb-2">
               문제 유형
             </div>
             {selectedTypes.length === 0 ? (
               <div className="text-[13px] text-text-tertiary">미선택</div>
-            ) : config.questionSelectionMode === 'skill' ? (
-              /* 영역 모드: 영역 이름만 표시 */
-              <div className="flex flex-wrap gap-1.5">
-                {typeLabels.map((label, idx) => (
-                  <span
-                    key={idx}
-                    className="text-[11px] font-medium px-2 py-1 rounded"
-                    style={{ backgroundColor: '#2D9CAE', color: '#FFFFFF' }}
-                  >
-                    {label}
-                  </span>
-                ))}
-              </div>
             ) : (
-              /* 엔진 모드: 6대 영역별로 그룹핑 */
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {SKILL_AREA_OPTIONS
                   .map((area) => {
                     const engines = SKILL_TO_ENGINES[area.value] || [];
-                    const activeEngines = engines.filter(e => config.questionTypes.includes(e));
+                    // engine 모드: 선택된 엔진만, skill 모드: 해당 영역이 선택되면 전체 엔진
+                    const activeEngines = config.questionSelectionMode === 'engine'
+                      ? engines.filter(e => config.questionTypes.includes(e))
+                      : config.skillAreas.includes(area.value) ? engines : [];
                     if (activeEngines.length === 0) return null;
+                    const areaTotal = activeEngines.reduce((sum, e) => sum + (engineCounts[e] ?? 0), 0);
                     return (
                       <div key={area.value}>
-                        <div className="flex items-center gap-1 mb-1">
-                          <span style={{ fontSize: 12 }}>{area.icon}</span>
-                          <span className="text-[10px] font-semibold text-text-secondary">
-                            {area.label}
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-1">
+                            <span style={{ fontSize: 11 }}>{area.icon}</span>
+                            <span className="text-[10px] font-bold text-text-secondary">
+                              {area.label}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-bold" style={{ color: '#2D9CAE' }}>
+                            {areaTotal}문제
                           </span>
                         </div>
                         <div className="flex flex-wrap gap-1">
                           {activeEngines.map(e => (
                             <span
                               key={e}
-                              className="text-[11px] font-medium px-2 py-0.5 rounded"
-                              style={{ backgroundColor: '#2D9CAE', color: '#FFFFFF' }}
+                              className="text-[10px] font-medium px-1.5 py-0.5 rounded"
+                              style={{ backgroundColor: '#E6F5F7', color: '#1A7A8A' }}
                             >
-                              {ENGINE_FULL_LABELS[e] || e}
+                              {ENGINE_FULL_LABELS[e] || e} {engineCounts[e] ?? 0}
                             </span>
                           ))}
                         </div>
