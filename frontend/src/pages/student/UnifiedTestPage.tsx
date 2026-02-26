@@ -153,14 +153,28 @@ export function UnifiedTestPage() {
     return () => clearTimeout(timer);
   }, [answerResult, timeMode]);
 
-  // ── Per-question: TTS for listen questions ─────────────────────────
+  // ── TTS auto-play for listen questions (both modes) ────────────────
   useEffect(() => {
-    if (timeMode !== 'per_question' || phase !== 'testing' || hasAnswer) return;
+    if (phase !== 'testing') return;
     if (!currentQuestion) return;
     const qt = currentQuestion.question_type || '';
-    if (isListenQuestion(qt)) {
-      speakWord(currentQuestion.word.english);
-    }
+    if (!isListenQuestion(qt)) return;
+
+    // Per-question mode: skip if already answered
+    if (timeMode === 'per_question' && hasAnswer) return;
+    // Exam mode: skip if this question already has a local answer
+    if (timeMode === 'total' && localAnswers[currentQuestionIndex] != null) return;
+
+    let cancelled = false;
+    const repeatPlay = async () => {
+      while (!cancelled) {
+        await speakWord(currentQuestion.word.english);
+        // Wait 2 seconds before replaying
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    };
+    repeatPlay();
+    return () => { cancelled = true; };
   }, [currentQuestionIndex, phase, timeMode, hasAnswer]);
 
   // ── Keyboard shortcuts ─────────────────────────────────────────────
@@ -404,8 +418,8 @@ export function UnifiedTestPage() {
 
   // Question card renderer (shared between modes)
   const renderQuestionCard = () => {
-    // Per-question mode: use ListeningCard for listen questions (hides word, shows headphones)
-    if (timeMode === 'per_question' && isListen && !isSentence) {
+    // Listen questions: always use ListeningCard (hides word, shows headphones)
+    if (isListen && !isSentence) {
       return <ListeningCard english={currentQuestion.word.english} />;
     }
 
@@ -438,8 +452,7 @@ export function UnifiedTestPage() {
       case 'listen_en':
       case 'listen_ko':
       case 'listen_type':
-        // In exam mode, listen questions show the word as text
-        return <WordCard word={currentQuestion.word.english} />;
+        return <ListeningCard english={currentQuestion.word.english} />;
       case 'antonym_type':
       case 'antonym_choice':
       case 'antonym_and_type':
