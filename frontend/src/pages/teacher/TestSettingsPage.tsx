@@ -2,7 +2,7 @@
  * Test assignment page for teachers.
  * Supports cross-book range selection.
  */
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TeacherLayout } from '../../components/layout/TeacherLayout';
 import { TestConfigPanel, type TestConfigState } from '../../components/test-settings/TestConfigPanel';

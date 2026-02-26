@@ -56,9 +56,9 @@ function dataPath(metrics: RadarMetrics): string {
 }
 
 // Label position offsets per axis
-function labelPos(angle: number): { x: number; y: number; anchor: string } {
+function labelPos(angle: number): { x: number; y: number; anchor: 'start' | 'middle' | 'end' } {
   const [bx, by] = axisXY(angle, 1.18);
-  let anchor = 'middle';
+  let anchor: 'start' | 'middle' | 'end' = 'middle';
   if (angle > 30 && angle < 150) anchor = 'start';
   if (angle > 210 && angle < 330) anchor = 'end';
   return { x: bx, y: by, anchor };

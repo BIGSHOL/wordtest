@@ -444,7 +444,7 @@ export function UnifiedTestPage() {
       case 'antonym_choice':
       case 'antonym_and_type':
       case 'antonym_and_choice':
-        return <AntonymCard english={currentQuestion.word.english} korean={currentQuestion.word.korean} />;
+        return <AntonymCard english={currentQuestion.word.english} korean={currentQuestion.word.korean ?? undefined} />;
       default:
         return <WordCard word={currentQuestion.word.english} />;
     }

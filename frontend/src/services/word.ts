@@ -29,6 +29,7 @@ export interface Word {
   area4_inference: string | null;
   area5_spelling: string | null;
   area6_context: string | null;
+  antonym: string | null;
   created_at: string;
 }
 
