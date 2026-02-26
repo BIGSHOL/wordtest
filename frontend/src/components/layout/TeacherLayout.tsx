@@ -107,7 +107,11 @@ export function TeacherLayout({ children }: TeacherLayoutProps) {
 
         {/* User section */}
         <div className="border-t border-border-subtle p-4">
-          <div className="flex items-center gap-3 mb-3">
+          <div
+            className="flex items-center gap-3 mb-3 cursor-pointer rounded-lg p-1 -m-1 hover:bg-bg-muted transition-colors"
+            onClick={() => navigate('/profile')}
+            title="프로필 / 비밀번호 변경"
+          >
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center"
               style={{
