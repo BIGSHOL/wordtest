@@ -4,7 +4,13 @@
  */
 import { Info } from 'lucide-react';
 import type { TestConfigState } from './TestConfigPanel';
-import { ENGINE_FULL_LABELS, SKILL_AREA_LABELS } from '../../constants/engineLabels';
+import {
+  ENGINE_FULL_LABELS,
+  SKILL_AREA_LABELS,
+  SKILL_AREA_OPTIONS,
+  SKILL_TO_ENGINES,
+  ENGINE_TO_SKILL,
+} from '../../constants/engineLabels';
 
 interface Props {
   config: TestConfigState;
@@ -152,14 +158,15 @@ export function ConfigPreviewPanel({
             value={timeText}
           />
 
-          {/* 문제 유형 */}
+          {/* 문제 유형 - 6대 영역별 그룹 */}
           <div>
             <div className="text-[11px] font-semibold text-text-secondary mb-2">
               문제 유형
             </div>
             {selectedTypes.length === 0 ? (
               <div className="text-[13px] text-text-tertiary">미선택</div>
-            ) : (
+            ) : config.questionSelectionMode === 'skill' ? (
+              /* 영역 모드: 영역 이름만 표시 */
               <div className="flex flex-wrap gap-1.5">
                 {typeLabels.map((label, idx) => (
                   <span
@@ -170,6 +177,38 @@ export function ConfigPreviewPanel({
                     {label}
                   </span>
                 ))}
+              </div>
+            ) : (
+              /* 엔진 모드: 6대 영역별로 그룹핑 */
+              <div className="space-y-2">
+                {SKILL_AREA_OPTIONS
+                  .map((area) => {
+                    const engines = SKILL_TO_ENGINES[area.value] || [];
+                    const activeEngines = engines.filter(e => config.questionTypes.includes(e));
+                    if (activeEngines.length === 0) return null;
+                    return (
+                      <div key={area.value}>
+                        <div className="flex items-center gap-1 mb-1">
+                          <span style={{ fontSize: 12 }}>{area.icon}</span>
+                          <span className="text-[10px] font-semibold text-text-secondary">
+                            {area.label}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {activeEngines.map(e => (
+                            <span
+                              key={e}
+                              className="text-[11px] font-medium px-2 py-0.5 rounded"
+                              style={{ backgroundColor: '#2D9CAE', color: '#FFFFFF' }}
+                            >
+                              {ENGINE_FULL_LABELS[e] || e}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })
+                  .filter(Boolean)}
               </div>
             )}
           </div>
