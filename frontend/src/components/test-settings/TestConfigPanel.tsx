@@ -1255,9 +1255,9 @@ export function TestConfigPanel({
   const isLastPage = currentPage === totalPages - 1;
 
   return (
-    <div className="flex flex-col h-full">
+    <div>
       {/* Page header + Step Indicator */}
-      <div className="flex items-center justify-between mb-5 shrink-0">
+      <div className="flex items-center justify-between mb-5">
         <div className="space-y-1">
           <h2 className="text-base font-bold text-text-primary font-display">테스트 출제</h2>
           <p className="text-xs text-text-secondary">
@@ -1268,7 +1268,7 @@ export function TestConfigPanel({
       </div>
 
       {/* Wizard card */}
-      <div className="bg-white rounded-2xl overflow-hidden flex flex-col flex-1" style={{ border: '1px solid #E8E8E6' }}>
+      <div className="bg-white rounded-2xl overflow-hidden flex flex-col" style={{ border: '1px solid #E8E8E6' }}>
         {/* Page title */}
         <div
           className="flex items-center gap-2.5"
@@ -1279,7 +1279,7 @@ export function TestConfigPanel({
         </div>
 
         {/* Page content */}
-        <div className="overflow-y-auto flex-1" style={{ padding: '24px 28px', minHeight: 320 }}>
+        <div className="overflow-y-auto" style={{ padding: '24px 28px', height: 520 }}>
           {currentPage === 0 && (
             <PageStudents
               students={students}
