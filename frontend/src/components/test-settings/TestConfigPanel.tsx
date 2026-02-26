@@ -1268,7 +1268,7 @@ export function TestConfigPanel({
       </div>
 
       {/* Wizard card */}
-      <div className="bg-white rounded-2xl overflow-hidden flex flex-col flex-1" style={{ border: '1px solid #E8E8E6' }}>
+      <div className="bg-white rounded-2xl overflow-hidden flex flex-col" style={{ border: '1px solid #E8E8E6' }}>
         {/* Page title */}
         <div
           className="flex items-center gap-2.5"
@@ -1279,7 +1279,7 @@ export function TestConfigPanel({
         </div>
 
         {/* Page content */}
-        <div className="overflow-y-auto flex-1" style={{ padding: '24px 28px', minHeight: 400 }}>
+        <div className="overflow-y-auto" style={{ padding: '24px 28px', height: 520 }}>
           {currentPage === 0 && (
             <PageStudents
               students={students}
