@@ -8,7 +8,7 @@ Combines sentence blank context with typing input.
 Shows first letter + underscores as hint.
 """
 from app.models.word import Word
-from app.services.question_engines.base import QuestionSpec, DistractorPool
+from app.services.question_engines.base import QuestionSpec, DistractorPool, make_typing_hint
 from app.services.question_engines.sentence import _pick_example, make_sentence_blank
 
 
@@ -31,7 +31,7 @@ class SentenceTypeEngine:
         ex_ko = example[1] if example else (word.example_ko or "")
         blank = make_sentence_blank(ex_en, word.english)
 
-        hint = correct[0] + "_" * (len(correct) - 1) if correct else None
+        hint = make_typing_hint(correct)
 
         return QuestionSpec(
             question_type=self.question_type,

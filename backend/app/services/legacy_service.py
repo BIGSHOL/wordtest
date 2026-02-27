@@ -134,6 +134,7 @@ async def start_session(
         "lesson_range_start": config.lesson_range_start,
         "lesson_range_end": config.lesson_range_end,
         "question_types": config.question_types,
+        "config_name": config.name or "",
     }
 
 

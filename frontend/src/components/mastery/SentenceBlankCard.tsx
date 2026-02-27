@@ -2,9 +2,10 @@
  * Sentence fill-in-the-blank card for higher-level words.
  * Shows English sentence with ____ and Korean translation with highlighted word.
  */
-import { memo, useRef, useEffect, useCallback } from 'react';
+import { memo, useRef, useEffect, useCallback, useMemo } from 'react';
 import { BookOpen, Volume2 } from 'lucide-react';
 import { speakSentence } from '../../utils/tts';
+import { koreanToEnglish } from '../../utils/koreanToEnglish';
 
 interface SentenceBlankCardProps {
   /** English sentence with ____ replacing the target word */
@@ -107,6 +108,27 @@ function highlightKorean(sentenceKo: string, korean: string): React.ReactNode {
   return sentenceKo;
 }
 
+/** Parse hint into position types and metadata */
+function parseHint(hint: string | null | undefined) {
+  if (!hint) return { chars: [] as Array<'hint' | 'input' | 'space'>, hintChars: new Map<number, string>(), inputPositions: [] as number[], totalLen: 4 };
+  const chars: Array<'hint' | 'input' | 'space'> = [];
+  const hintChars = new Map<number, string>();
+  const inputPositions: number[] = [];
+  for (let i = 0; i < hint.length; i++) {
+    const c = hint[i];
+    if (c === ' ') {
+      chars.push('space');
+    } else if (c !== '_') {
+      chars.push('hint');
+      hintChars.set(i, c);
+    } else {
+      chars.push('input');
+      inputPositions.push(i);
+    }
+  }
+  return { chars, hintChars, inputPositions, totalLen: hint.length };
+}
+
 export const SentenceBlankCard = memo(function SentenceBlankCard({
   sentenceBlank,
   korean,
@@ -126,7 +148,32 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
 
   const inputRef = useRef<HTMLInputElement>(null);
   const composingRef = useRef(false);
+  const valueRef = useRef(typingValue ?? '');
+  valueRef.current = typingValue ?? '';
 
+  const { chars, hintChars, inputPositions, totalLen } = useMemo(() => parseHint(typingHint), [typingHint]);
+  const userSlots = inputPositions.length;
+
+  /** Extract user-typed characters from full value */
+  const getUserInput = useCallback((val: string): string => {
+    if (!val) return '';
+    return inputPositions.map(pos => val[pos] || '').join('');
+  }, [inputPositions]);
+
+  /** Reconstruct full value from user input characters */
+  const buildValue = useCallback((userInput: string): string => {
+    const result: string[] = new Array(totalLen).fill('');
+    hintChars.forEach((ch, pos) => { result[pos] = ch; });
+    chars.forEach((type, pos) => { if (type === 'space') result[pos] = ' '; });
+    for (let i = 0; i < userInput.length && i < inputPositions.length; i++) {
+      result[inputPositions[i]] = userInput[i];
+    }
+    return result.join('');
+  }, [totalLen, hintChars, chars, inputPositions]);
+
+  const userPart = getUserInput(typingValue ?? '');
+
+  // Focus management
   useEffect(() => {
     if (isTyping && !typingDisabled) {
       const timer = setTimeout(() => inputRef.current?.focus(), 100);
@@ -135,33 +182,69 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
   }, [isTyping, typingDisabled]);
 
   useEffect(() => {
-    if (isTyping && typingValue === '' && !typingDisabled) {
+    if (isTyping && userPart.length === 0 && !typingDisabled) {
       const timer = setTimeout(() => inputRef.current?.focus(), 50);
       return () => clearTimeout(timer);
     }
-  }, [isTyping, typingValue, typingDisabled]);
+  }, [isTyping, userPart.length, typingDisabled]);
+
+  // Reset hidden input when question changes
+  useEffect(() => {
+    if (inputRef.current) inputRef.current.value = '';
+  }, [typingValue]);
+
+  const appendChars = useCallback((raw: string) => {
+    const english = koreanToEnglish(raw);
+    if (!english) return;
+    const cur = getUserInput(valueRef.current);
+    const remaining = userSlots - cur.length;
+    if (remaining <= 0) return;
+    const added = english.slice(0, remaining);
+    onTypingChange?.(buildValue(cur + added));
+  }, [userSlots, onTypingChange, getUserInput, buildValue]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (isListenMode && e.key === '0') {
+      if (composingRef.current || e.nativeEvent.isComposing) return;
+      if (isListenMode && e.key === '0') { e.preventDefault(); return; }
+
+      if (e.key === 'Backspace') {
         e.preventDefault();
+        const cur = getUserInput(valueRef.current);
+        if (cur.length > 0) onTypingChange?.(buildValue(cur.slice(0, -1)));
         return;
       }
-      if (e.key === 'Enter' && !composingRef.current && (typingValue ?? '').trim().length > 0) {
+
+      if (e.key === 'Enter') {
         e.preventDefault();
-        onTypingSubmit?.();
+        if (getUserInput(valueRef.current).length >= userSlots) onTypingSubmit?.();
+        return;
+      }
+
+      if (/^[a-zA-Z]$/.test(e.key)) {
+        e.preventDefault();
+        appendChars(e.key);
       }
     },
-    [typingValue, onTypingSubmit, isListenMode],
+    [userSlots, onTypingChange, onTypingSubmit, appendChars, isListenMode, getUserInput, buildValue],
   );
 
-  const handleChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (composingRef.current) return;
-      onTypingChange?.(e.target.value);
-    },
-    [onTypingChange],
-  );
+  const handleCompositionEnd = useCallback((e: React.CompositionEvent) => {
+    composingRef.current = false;
+    const raw = (e.target as HTMLInputElement).value;
+    if (inputRef.current) inputRef.current.value = '';
+    if (raw) appendChars(raw);
+  }, [appendChars]);
+
+  const handleInput = useCallback((e: React.FormEvent<HTMLInputElement>) => {
+    if (composingRef.current) return;
+    const raw = e.currentTarget.value;
+    if (inputRef.current) inputRef.current.value = '';
+    if (raw) appendChars(raw);
+  }, [appendChars]);
+
+  // Compute cursor position (next input slot index)
+  const nextInputIdx = userPart.length < userSlots ? inputPositions[userPart.length] : -1;
 
   return (
     <div
@@ -179,41 +262,85 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
         {STAGE_PROMPTS[stage] || '빈칸에 들어갈 단어는?'}
       </p>
 
-      {/* Sentence with blank or inline input */}
-      <p className="font-word text-[20px] md:text-[22px] font-medium text-text-primary leading-relaxed text-center px-2">
+      {/* Sentence with inline letter boxes */}
+      <div
+        className="font-word text-[20px] md:text-[22px] font-medium text-text-primary text-center px-2"
+        style={{ lineHeight: '2.2' }}
+      >
         {parts[0]}
         {isTyping ? (
-          <span className="inline-flex items-end mx-1">
-            {typingHint && (
-              <span className="text-[20px] font-bold text-indigo-500 select-none" style={{ fontFamily: 'monospace' }}>
-                {typingHint}
-              </span>
-            )}
+          <span
+            className="relative inline-flex items-center cursor-text"
+            style={{ gap: 2, verticalAlign: 'baseline', margin: '0 4px', flexWrap: 'wrap', justifyContent: 'center' }}
+            onClick={() => !typingDisabled && inputRef.current?.focus()}
+          >
+            {/* Hidden input for keyboard capture */}
             <input
               ref={inputRef}
               type="text"
+              inputMode="text"
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="off"
               spellCheck={false}
-              value={typingValue ?? ''}
-              onChange={handleChange}
+              disabled={typingDisabled}
+              className="absolute inset-0 opacity-0"
+              style={{ fontSize: 16, caretColor: 'transparent', zIndex: 10 }}
               onKeyDown={handleKeyDown}
               onCompositionStart={() => { composingRef.current = true; }}
-              onCompositionEnd={(e) => {
-                composingRef.current = false;
-                onTypingChange?.((e.target as HTMLInputElement).value);
-              }}
-              disabled={typingDisabled}
-              placeholder="..."
-              className="font-word text-[20px] md:text-[22px] font-bold text-accent-indigo placeholder:text-text-tertiary bg-transparent outline-none text-center"
-              style={{
-                borderBottom: `3px solid ${typingDisabled ? '#D1D5DB' : '#4F46E5'}`,
-                borderBottomStyle: (typingValue ?? '') ? 'solid' : 'dashed',
-                width: `${Math.max(4, (typingValue ?? '').length + 2)}ch`,
-                minWidth: '80px',
-              }}
+              onCompositionEnd={handleCompositionEnd}
+              onInput={handleInput}
             />
+            {/* Letter boxes */}
+            {chars.map((type, i) => {
+              if (type === 'space') {
+                return <span key={i} style={{ display: 'inline-block', width: 8 }} />;
+              }
+
+              const isHintBox = type === 'hint';
+              const hintLetter = hintChars.get(i) || '';
+              const inputIdx = type === 'input' ? inputPositions.indexOf(i) : -1;
+              const char = isHintBox ? hintLetter : (inputIdx >= 0 ? userPart[inputIdx] || '' : '');
+              const isCursor = i === nextInputIdx && !typingDisabled;
+
+              return (
+                <span
+                  key={i}
+                  className="inline-flex items-center justify-center select-none"
+                  style={{
+                    width: 22,
+                    height: 28,
+                    borderRadius: 4,
+                    backgroundColor: isHintBox ? '#EEF2FF' : char ? '#FAFAF9' : '#FFFFFF',
+                    border: isCursor
+                      ? '2px solid #4F46E5'
+                      : isHintBox
+                        ? '1.5px solid #C7D2FE'
+                        : char
+                          ? '1px solid #D1D5DB'
+                          : '1px dashed #D1D5DB',
+                    fontFamily: "'Pretendard Variable', 'Pretendard', monospace",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: isHintBox ? '#4F46E5' : '#1A1918',
+                    position: 'relative',
+                  }}
+                >
+                  {char}
+                  {isCursor && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        width: 2,
+                        height: 14,
+                        backgroundColor: '#4F46E5',
+                        animation: 'letterBlink 1s step-end infinite',
+                      }}
+                    />
+                  )}
+                </span>
+              );
+            })}
           </span>
         ) : (
           <span
@@ -224,14 +351,21 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
           </span>
         )}
         {parts[1]}
-      </p>
+      </div>
 
       {/* Enter hint */}
-      {isTyping && !typingDisabled && (
+      {isTyping && !typingDisabled && userPart.length < userSlots && (
         <p className="font-display text-xs text-text-tertiary">
           Enter를 눌러 제출
         </p>
       )}
+
+      <style>{`
+        @keyframes letterBlink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
+        }
+      `}</style>
 
       {/* Korean sentence with word highlighted in bold */}
       {sentenceKo && (
@@ -240,7 +374,7 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
         </p>
       )}
 
-      {/* TTS button — only for listening mode (sentence_type doesn't need it) */}
+      {/* TTS button — only for listening mode */}
       {isListenMode && sentenceEn && (
         <button
           onClick={() => speakSentence(sentenceEn)}

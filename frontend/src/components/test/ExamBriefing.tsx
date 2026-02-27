@@ -27,6 +27,7 @@ interface ExamBriefingProps {
   timeMode?: 'per_question' | 'total';
   perQuestionTime?: number;
   questionTypes?: string; // comma-separated canonical engine names
+  configName?: string;
   onStart: () => void;
 }
 
@@ -117,28 +118,28 @@ function PageDots({ total, current }: { total: number; current: number }) {
 
 function GuideRow({ icon, bg, text }: { icon: React.ReactNode; bg: string; text: string }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2.5">
       <div
-        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
         style={{ backgroundColor: bg }}
       >
         {icon}
       </div>
-      <p className="font-display text-[14px] font-medium text-text-secondary">{text}</p>
+      <p className="font-display text-[13px] font-medium text-text-secondary">{text}</p>
     </div>
   );
 }
 
 function ShortcutRow({ keys, desc }: { keys: string; desc: string }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2.5">
       <kbd
-        className="inline-flex items-center justify-center min-w-[48px] h-8 px-2.5 rounded-md text-[13px] font-bold font-mono shrink-0"
+        className="inline-flex items-center justify-center min-w-[42px] h-7 px-2 rounded-md text-[12px] font-bold font-mono shrink-0"
         style={{ backgroundColor: '#F3F4F6', color: '#374151', border: '1px solid #D1D5DB' }}
       >
         {keys}
       </kbd>
-      <span className="font-display text-[14px] font-medium text-text-secondary">{desc}</span>
+      <span className="font-display text-[13px] font-medium text-text-secondary">{desc}</span>
     </div>
   );
 }
@@ -156,6 +157,7 @@ export const ExamBriefing = memo(function ExamBriefing({
   timeMode = 'total',
   perQuestionTime = 10,
   questionTypes,
+  configName,
   onStart,
 }: ExamBriefingProps) {
   const [step, setStep] = useState(0);
@@ -181,7 +183,7 @@ export const ExamBriefing = memo(function ExamBriefing({
 
   return (
     <div className="min-h-screen bg-bg-cream flex flex-col items-center md:justify-center lg:justify-center px-5 py-8">
-      <div className="w-full md:w-[480px] lg:w-[480px] flex flex-col gap-6">
+      <div className="w-full flex flex-col gap-6" style={{ maxWidth: step === 1 ? 680 : 480 }}>
         {/* ── Step 0: Exam Info ── */}
         {step === 0 && (
           <div className="flex flex-col gap-6 animate-fadeIn">
@@ -201,7 +203,7 @@ export const ExamBriefing = memo(function ExamBriefing({
                   className="font-display text-[26px] font-bold text-text-primary"
                   style={{ letterSpacing: -0.5 }}
                 >
-                  {rangeText}
+                  {configName || rangeText}
                 </h1>
                 <p className="font-display text-sm font-medium text-text-secondary">
                   {today}
@@ -277,134 +279,131 @@ export const ExamBriefing = memo(function ExamBriefing({
           </div>
         )}
 
-        {/* ── Step 1: Comprehensive Guide ── */}
+        {/* ── Step 1: Comprehensive Guide (2-column on desktop) ── */}
         {step === 1 && (
-          <div className="flex flex-col gap-5 animate-fadeIn">
+          <div className="flex flex-col gap-4 animate-fadeIn">
             <h2
-              className="font-display text-[24px] font-bold text-text-primary text-center pt-2"
+              className="font-display text-[22px] font-bold text-text-primary text-center pt-1"
               style={{ letterSpacing: -0.3 }}
             >
               정답 입력 방법
             </h2>
 
-            {/* Question type guide — show only types included in this test */}
-            <div
-              className="rounded-2xl bg-bg-surface p-5"
-              style={{ boxShadow: '0 2px 12px #1A191808' }}
-            >
-              <h3 className="font-display text-[16px] font-bold text-text-primary mb-4">
-                출제 문제 유형
-              </h3>
-              <div className="flex flex-col gap-3">
-                {engines.length > 0 ? (
-                  engines.map(engine => {
-                    const isType = ['listen_type', 'ko_type', 'antonym_type', 'sentence_type'].includes(engine);
-                    const isListen = engine.startsWith('listen');
-                    const desc = ENGINE_DESCRIPTIONS[engine] || engine;
-                    const opt = QUESTION_TYPE_OPTIONS.find(o => o.value === engine);
-                    return (
-                      <div key={engine} className="flex items-center gap-3">
-                        <div
-                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: isType ? '#FEF3C7' : isListen ? '#D1FAE5' : '#EEF2FF' }}
-                        >
-                          {isType ? (
-                            <Keyboard className="w-4 h-4" style={{ color: '#D97706' }} />
-                          ) : isListen ? (
-                            <Volume2 className="w-4 h-4" style={{ color: '#059669' }} />
-                          ) : (
-                            <MousePointerClick className="w-4 h-4" style={{ color: '#4F46E5' }} />
-                          )}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Left column: 출제 문제 유형 */}
+              <div
+                className="rounded-2xl bg-bg-surface p-4 md:self-start"
+                style={{ boxShadow: '0 2px 12px #1A191808' }}
+              >
+                <h3 className="font-display text-[14px] font-bold text-text-primary mb-3">
+                  출제 문제 유형
+                </h3>
+                <div className="flex flex-col gap-2.5">
+                  {engines.length > 0 ? (
+                    engines.map(engine => {
+                      const isType = ['listen_type', 'ko_type', 'antonym_type', 'sentence_type'].includes(engine);
+                      const isListen = engine.startsWith('listen');
+                      const desc = ENGINE_DESCRIPTIONS[engine] || engine;
+                      const opt = QUESTION_TYPE_OPTIONS.find(o => o.value === engine);
+                      return (
+                        <div key={engine} className="flex items-center gap-2.5">
+                          <div
+                            className="w-7 h-7 rounded-md flex items-center justify-center shrink-0"
+                            style={{ backgroundColor: isType ? '#FEF3C7' : isListen ? '#D1FAE5' : '#EEF2FF' }}
+                          >
+                            {isType ? (
+                              <Keyboard className="w-3.5 h-3.5" style={{ color: '#D97706' }} />
+                            ) : isListen ? (
+                              <Volume2 className="w-3.5 h-3.5" style={{ color: '#059669' }} />
+                            ) : (
+                              <MousePointerClick className="w-3.5 h-3.5" style={{ color: '#4F46E5' }} />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="font-display text-[13px] font-semibold text-text-primary">
+                              {opt?.label || engine}
+                            </span>
+                            <span className="font-display text-[11px] text-text-tertiary ml-1.5">
+                              {desc}
+                            </span>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <span className="font-display text-[14px] font-semibold text-text-primary">
-                            {opt?.label || engine}
-                          </span>
-                          <span className="font-display text-[13px] text-text-tertiary ml-2">
-                            {desc}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p className="font-display text-[13px] text-text-secondary">
-                    선택형 문제가 출제됩니다
-                  </p>
-                )}
+                      );
+                    })
+                  ) : (
+                    <p className="font-display text-[12px] text-text-secondary">
+                      선택형 문제가 출제됩니다
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* How to answer */}
-            <div
-              className="rounded-2xl bg-bg-surface p-5"
-              style={{ boxShadow: '0 2px 12px #1A191808' }}
-            >
-              <h3 className="font-display text-[16px] font-bold text-text-primary mb-4">
-                풀이 방법
-              </h3>
-              <div className="flex flex-col gap-3">
-                <GuideRow
-                  icon={<MousePointerClick className="w-4 h-4 text-accent-indigo" />}
-                  bg="#EEF2FF"
-                  text="선택형: 보기 번호를 터치하여 정답 선택"
-                />
-                {hasTyping && (
-                  <GuideRow
-                    icon={<Keyboard className="w-4 h-4" style={{ color: '#D97706' }} />}
-                    bg="#FEF3C7"
-                    text="타이핑형: 영어 단어를 직접 입력 후 Enter로 제출"
-                  />
-                )}
-                {engines.some(e => e.startsWith('listen')) && (
-                  <GuideRow
-                    icon={<Volume2 className="w-4 h-4" style={{ color: '#059669' }} />}
-                    bg="#D1FAE5"
-                    text="듣기형: 발음이 자동 재생되며, 다시 듣기 버튼으로 반복 가능"
-                  />
-                )}
-                {timeMode === 'total' ? (
-                  <>
+              {/* Right column: 풀이 방법 + 키보드 단축키 */}
+              <div className="flex flex-col gap-4">
+                <div
+                  className="rounded-2xl bg-bg-surface p-4"
+                  style={{ boxShadow: '0 2px 12px #1A191808' }}
+                >
+                  <h3 className="font-display text-[14px] font-bold text-text-primary mb-3">
+                    풀이 방법
+                  </h3>
+                  <div className="flex flex-col gap-2.5">
                     <GuideRow
-                      icon={<div className="flex items-center gap-0.5"><ChevronLeft className="w-3.5 h-3.5 text-accent-indigo" /><ChevronRight className="w-3.5 h-3.5 text-accent-indigo" /></div>}
+                      icon={<MousePointerClick className="w-3.5 h-3.5 text-accent-indigo" />}
                       bg="#EEF2FF"
-                      text="이전/다음 버튼으로 자유롭게 이동 가능"
+                      text="선택형: 보기를 터치하여 정답 선택"
                     />
-                    <GuideRow
-                      icon={<Send className="w-4 h-4 text-accent-indigo" />}
-                      bg="#EEF2FF"
-                      text="모두 풀었으면 제출 버튼을 눌러 시험 종료"
-                    />
-                  </>
-                ) : (
-                  <GuideRow
-                    icon={<ArrowRight className="w-4 h-4 text-accent-indigo" />}
-                    bg="#EEF2FF"
-                    text="정답을 선택하면 자동으로 다음 문제로 이동"
-                  />
-                )}
-              </div>
-            </div>
+                    {hasTyping && (
+                      <GuideRow
+                        icon={<Keyboard className="w-3.5 h-3.5" style={{ color: '#D97706' }} />}
+                        bg="#FEF3C7"
+                        text="타이핑형: 영어 입력 후 Enter 제출"
+                      />
+                    )}
+                    {engines.some(e => e.startsWith('listen')) && (
+                      <GuideRow
+                        icon={<Volume2 className="w-3.5 h-3.5" style={{ color: '#059669' }} />}
+                        bg="#D1FAE5"
+                        text="듣기형: 자동 재생, 다시 듣기 가능"
+                      />
+                    )}
+                    {timeMode === 'total' ? (
+                      <>
+                        <GuideRow
+                          icon={<div className="flex items-center gap-0.5"><ChevronLeft className="w-3 h-3 text-accent-indigo" /><ChevronRight className="w-3 h-3 text-accent-indigo" /></div>}
+                          bg="#EEF2FF"
+                          text="이전/다음 버튼으로 자유 이동"
+                        />
+                        <GuideRow
+                          icon={<Send className="w-3.5 h-3.5 text-accent-indigo" />}
+                          bg="#EEF2FF"
+                          text="완료 후 제출 버튼으로 종료"
+                        />
+                      </>
+                    ) : (
+                      <GuideRow
+                        icon={<ArrowRight className="w-3.5 h-3.5 text-accent-indigo" />}
+                        bg="#EEF2FF"
+                        text="정답 선택 시 자동 다음 문제"
+                      />
+                    )}
+                  </div>
+                </div>
 
-            {/* Keyboard shortcuts */}
-            <div
-              className="rounded-2xl bg-bg-surface p-5"
-              style={{ boxShadow: '0 2px 12px #1A191808' }}
-            >
-              <h3 className="font-display text-[16px] font-bold text-text-primary mb-4">
-                키보드 단축키
-              </h3>
-              <div className="flex flex-col gap-2.5">
-                <ShortcutRow keys="1 ~ 4" desc="보기 번호 선택" />
-                {hasTyping && (
-                  <ShortcutRow keys="Enter" desc="타이핑 답안 제출" />
-                )}
-                {engines.some(e => e.startsWith('listen')) && (
-                  <ShortcutRow keys="0" desc="발음 다시 듣기" />
-                )}
-                {timeMode === 'total' && (
-                  <ShortcutRow keys="← →" desc="이전/다음 문제 이동" />
-                )}
+                <div
+                  className="rounded-2xl bg-bg-surface p-4"
+                  style={{ boxShadow: '0 2px 12px #1A191808' }}
+                >
+                  <h3 className="font-display text-[14px] font-bold text-text-primary mb-3">
+                    키보드 단축키
+                  </h3>
+                  <div className="flex flex-col gap-2">
+                    <ShortcutRow keys="1~4" desc="보기 번호 선택" />
+                    {hasTyping && <ShortcutRow keys="Enter" desc="타이핑 답안 제출" />}
+                    {engines.some(e => e.startsWith('listen')) && <ShortcutRow keys="0" desc="다시 듣기" />}
+                    {timeMode === 'total' && <ShortcutRow keys="← →" desc="문제 이동" />}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

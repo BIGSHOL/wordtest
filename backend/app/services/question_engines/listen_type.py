@@ -5,7 +5,7 @@ Mastery name    : listen_and_type
 Card            : ListeningCard + TypingInput
 """
 from app.models.word import Word
-from app.services.question_engines.base import QuestionSpec, DistractorPool
+from app.services.question_engines.base import QuestionSpec, DistractorPool, make_typing_hint
 
 
 class ListenTypeEngine:
@@ -26,5 +26,5 @@ class ListenTypeEngine:
             correct_answer=word.english,
             choices=None,
             is_typing=True,
-            hint=word.english[0] + "_" * (len(word.english) - 1) if word.english else None,
+            hint=make_typing_hint(word.english),
         )

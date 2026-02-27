@@ -56,7 +56,6 @@ export const ListeningCard = memo(function ListeningCard({
           disabled={typingDisabled}
           hint={typingHint}
           isListenMode={true}
-          placeholder="영어 단어를 입력하세요"
         />
       )}
     </div>

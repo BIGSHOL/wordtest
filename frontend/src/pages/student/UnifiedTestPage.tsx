@@ -311,6 +311,7 @@ export function UnifiedTestPage() {
         timeMode={timeMode}
         perQuestionTime={perQuestionTime}
         questionTypes={briefingInfo?.questionTypes ?? undefined}
+        configName={briefingInfo?.configName ?? ''}
         onStart={handleStartExam}
       />
     );
@@ -391,6 +392,11 @@ export function UnifiedTestPage() {
         </button>
       </div>
     );
+  }
+
+  // Idle phase: blank screen while transitioning to briefing (prevents flash)
+  if (phase === 'idle') {
+    return <div className="min-h-screen bg-bg-cream" />;
   }
 
   // Loading between phases
@@ -540,7 +546,7 @@ export function UnifiedTestPage() {
               onChange: (text) => store.setLocalTypedAnswer(currentQuestionIndex, text),
               onSubmit: store.goNext,
               disabled: false,
-              hint: currentQuestion.hint,
+              hint: currentQuestion.hint || (currentQuestion.correct_answer ? currentQuestion.correct_answer.split(' ').map((w: string) => w[0] + '_'.repeat(w.length - 1)).join(' ') : null),
             } : undefined)}
           </div>
 
@@ -675,7 +681,7 @@ export function UnifiedTestPage() {
             onChange: (text) => store.setTypedAnswer(text),
             onSubmit: handleTypingSubmit,
             disabled: !!answerResult,
-            hint: currentQuestion.hint,
+            hint: currentQuestion.hint || (currentQuestion.correct_answer ? currentQuestion.correct_answer.split(' ').map((w: string) => w[0] + '_'.repeat(w.length - 1)).join(' ') : null),
           } : undefined)}
         </div>
 

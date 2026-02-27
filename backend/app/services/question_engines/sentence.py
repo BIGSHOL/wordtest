@@ -10,7 +10,7 @@ into sentence mode (used by mastery engine).
 import re
 import random
 from app.models.word import Word
-from app.services.question_engines.base import QuestionSpec, DistractorPool
+from app.services.question_engines.base import QuestionSpec, DistractorPool, make_typing_hint
 from app.services.question_engines.distractors import pick_english_distractors, shuffle_choices
 
 # ── Irregular verb table ──────────────────────────────────────────────────
@@ -309,6 +309,11 @@ def apply_sentence_overlay(spec: QuestionSpec) -> QuestionSpec | None:
     if not blank:
         return None
 
+    # Preserve hint; generate one for typing questions if missing
+    hint = spec.hint
+    if not hint and spec.is_typing and spec.correct_answer:
+        hint = make_typing_hint(spec.correct_answer)
+
     return QuestionSpec(
         question_type=spec.question_type,
         word=spec.word,
@@ -320,4 +325,5 @@ def apply_sentence_overlay(spec: QuestionSpec) -> QuestionSpec | None:
         sentence_en=ex_en,
         sentence_ko=ex_ko,
         emoji=spec.emoji,
+        hint=hint,
     )

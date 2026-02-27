@@ -29,6 +29,22 @@ class QuestionSpec:
     hint: str | None = None          # first-letter hint for typing questions
 
 
+def make_typing_hint(word: str) -> str | None:
+    """Generate typing hint: first letter of each word + underscores.
+
+    Single word:  'fill'               → 'f___'
+    Multi-word:   'for the first time' → 'f__ t__ f____ t___'
+    """
+    if not word:
+        return None
+    parts = word.split(' ')
+    hint_parts = []
+    for part in parts:
+        if part:
+            hint_parts.append(part[0] + '_' * (len(part) - 1))
+    return ' '.join(hint_parts)
+
+
 @dataclass
 class DistractorPool:
     """Pre-computed pools for distractor generation.

@@ -13,7 +13,8 @@ function cleanForTts(text: string): string {
 // ── Volume normalization via Compressor + Gain ───────────────────────────
 let audioCtx: AudioContext | null = null;
 let gainNode: GainNode | null = null;
-const TTS_GAIN = 1.5; // post-compressor boost
+const TTS_GAIN = 1.95; // post-compressor boost (+30%)
+const TTS_RATE = 0.75; // slower speech (75% speed)
 
 function getGainNode(): GainNode | null {
   try {
@@ -45,6 +46,7 @@ function getGainNode(): GainNode | null {
 
 /** Play audio through Compressor → Gain for normalized volume. */
 function playAmplified(audio: HTMLAudioElement): Promise<void> {
+  audio.playbackRate = TTS_RATE;
   const gain = getGainNode();
   if (!gain || !audioCtx) {
     // Fallback: play normally

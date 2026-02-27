@@ -61,7 +61,6 @@ export const AntonymCard = memo(function AntonymCard({
           disabled={typingDisabled}
           hint={typingHint}
           isListenMode={isListenMode}
-          placeholder="반의어를 입력하세요"
         />
       )}
     </div>
