@@ -74,11 +74,8 @@ async def list_students_endpoint(
     teacher: CurrentTeacher,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """List students with latest level info. Master sees all, teachers see own."""
-    if teacher.role == "master":
-        students = await list_all_students(db)
-    else:
-        students = await list_students_by_teacher(db, teacher.id)
+    """List all students with latest level info."""
+    students = await list_all_students(db)
 
     # Fetch latest completed test session per student in one query
     student_ids = [s.id for s in students]
