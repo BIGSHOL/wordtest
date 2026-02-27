@@ -23,8 +23,8 @@ import {
 
 // ── XP (per-question mode, levelup engine) ──────────────────────────────────
 
-function getLessonXp(book: number): number {
-  return 4 + book;
+function getLessonXp(book: number, numLevels: number = 15): number {
+  return (4 + book) * Math.max(1, Math.ceil(15 / numLevels));
 }
 
 export interface XpBreakdown {
@@ -527,7 +527,7 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
           consecutiveWrong: newConsecutiveWrong,
         });
         newXp = state.xp + xpChange.total;
-        const lessonXp = getLessonXp(state.currentBook);
+        const lessonXp = getLessonXp(state.currentBook, state.availableLevels.length);
 
         if (newXp >= lessonXp) {
           const nextLevels = state.availableLevels.filter(l => l > state.currentBook);
@@ -539,7 +539,7 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
           const prevLevels = state.availableLevels.filter(l => l < state.currentBook);
           if (prevLevels.length > 0) {
             newBook = prevLevels[prevLevels.length - 1];
-            newXp = Math.floor(getLessonXp(newBook) / 2);
+            newXp = Math.floor(getLessonXp(newBook, state.availableLevels.length) / 2);
             levelChanged = 'down';
             _prefetchLevel(state.sessionId!, newBook);
           } else {
@@ -650,7 +650,7 @@ export function useLevelupProgress() {
   return useUnifiedTestStore(useShallow(state => ({
     currentBook: state.currentBook,
     xp: state.xp,
-    lessonXp: getLessonXp(state.currentBook),
+    lessonXp: getLessonXp(state.currentBook, state.availableLevels.length),
     rank: wordLevelToRank(state.currentBook),
     totalAnswered: state.totalAnswered,
     questionCount: state.flatQuestions.length || state.questionCount,

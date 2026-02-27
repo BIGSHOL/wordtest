@@ -432,9 +432,14 @@ async def submit_batch_and_complete(
     }
 
 
-def _get_lesson_xp(book: int) -> int:
-    """XP needed to level up at a given book level."""
-    return 4 + book
+def _get_lesson_xp(book: int, num_levels: int = 15) -> int:
+    """XP needed to level up at a given book level.
+
+    Scales inversely with the number of available levels so that
+    small ranges (e.g. 2-3 books) require more answers per level-up.
+    """
+    import math
+    return (4 + book) * max(1, math.ceil(15 / num_levels))
 
 
 def _compute_xp_change(
@@ -493,7 +498,7 @@ def _simulate_xp_progression(
         )
         xp += xp_change
 
-        lesson_xp = _get_lesson_xp(current_book)
+        lesson_xp = _get_lesson_xp(current_book, len(available_levels))
 
         # Level up
         if xp >= lesson_xp:
@@ -506,7 +511,7 @@ def _simulate_xp_progression(
             prev_levels = [l for l in available_levels if l < current_book]
             if prev_levels:
                 current_book = prev_levels[-1]
-                xp = _get_lesson_xp(current_book) // 2
+                xp = _get_lesson_xp(current_book, len(available_levels)) // 2
             else:
                 xp = 0
 
