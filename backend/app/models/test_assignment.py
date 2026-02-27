@@ -16,8 +16,8 @@ class TestAssignment(Base):
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    test_config_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("test_configs.id", ondelete="CASCADE"), nullable=False
+    test_config_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("test_configs.id", ondelete="CASCADE"), nullable=True
     )
     student_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
@@ -33,6 +33,9 @@ class TestAssignment(Base):
     )
     assignment_type: Mapped[str] = mapped_column(
         String(20), nullable=False, default="mastery"
+    )
+    grammar_config_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("grammar_configs.id", ondelete="SET NULL"), nullable=True
     )
     engine_type: Mapped[Optional[str]] = mapped_column(
         String(20), nullable=True, default=None

@@ -7,11 +7,17 @@ import { memo, useState, useCallback } from 'react';
 import {
   BookOpen, Clock, MousePointerClick, Keyboard, Timer,
   ChevronLeft, ChevronRight, Send, Play, ArrowRight,
+  Volume2, Hash, CornerDownLeft,
 } from 'lucide-react';
-import { ENGINE_TO_SKILL, SKILL_AREA_OPTIONS } from '../../constants/engineLabels';
+import {
+  ENGINE_TO_SKILL, SKILL_AREA_OPTIONS,
+  ENGINE_DESCRIPTIONS, QUESTION_TYPE_OPTIONS,
+} from '../../constants/engineLabels';
 
 interface ExamBriefingProps {
   studentName: string;
+  studentSchool?: string;
+  studentGrade?: string;
   bookName: string | null;
   bookNameEnd: string | null;
   lessonStart: string | null;
@@ -109,8 +115,38 @@ function PageDots({ total, current }: { total: number; current: number }) {
   );
 }
 
+function GuideRow({ icon, bg, text }: { icon: React.ReactNode; bg: string; text: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div
+        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+        style={{ backgroundColor: bg }}
+      >
+        {icon}
+      </div>
+      <p className="font-display text-[14px] font-medium text-text-secondary">{text}</p>
+    </div>
+  );
+}
+
+function ShortcutRow({ keys, desc }: { keys: string; desc: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <kbd
+        className="inline-flex items-center justify-center min-w-[48px] h-8 px-2.5 rounded-md text-[13px] font-bold font-mono shrink-0"
+        style={{ backgroundColor: '#F3F4F6', color: '#374151', border: '1px solid #D1D5DB' }}
+      >
+        {keys}
+      </kbd>
+      <span className="font-display text-[14px] font-medium text-text-secondary">{desc}</span>
+    </div>
+  );
+}
+
 export const ExamBriefing = memo(function ExamBriefing({
   studentName,
+  studentSchool = '',
+  studentGrade = '',
   bookName,
   bookNameEnd,
   lessonStart,
@@ -168,7 +204,10 @@ export const ExamBriefing = memo(function ExamBriefing({
                   {rangeText}
                 </h1>
                 <p className="font-display text-sm font-medium text-text-secondary">
-                  {today} | {studentName}
+                  {today}
+                </p>
+                <p className="font-display text-sm font-medium text-text-secondary">
+                  {[studentName, studentSchool, studentGrade].filter(Boolean).join(' | ')}
                 </p>
               </div>
             </div>
@@ -191,9 +230,11 @@ export const ExamBriefing = memo(function ExamBriefing({
                 <div className="w-px h-14 bg-border-default" />
                 <div className="text-center">
                   <div className="font-display text-[48px] font-bold text-text-primary leading-none">
-                    {totalMinutes}
+                    {timeMode === 'per_question' ? perQuestionTime : totalMinutes}
                   </div>
-                  <div className="font-display text-sm font-medium text-text-tertiary mt-1.5">분</div>
+                  <div className="font-display text-sm font-medium text-text-tertiary mt-1.5">
+                    {timeMode === 'per_question' ? '초/문제' : '분'}
+                  </div>
                 </div>
               </div>
             </div>
@@ -236,112 +277,133 @@ export const ExamBriefing = memo(function ExamBriefing({
           </div>
         )}
 
-        {/* ── Step 1: Answer Guide ── */}
+        {/* ── Step 1: Comprehensive Guide ── */}
         {step === 1 && (
           <div className="flex flex-col gap-5 animate-fadeIn">
             <h2
-              className="font-display text-xl font-bold text-text-primary text-center pt-2"
+              className="font-display text-[24px] font-bold text-text-primary text-center pt-2"
               style={{ letterSpacing: -0.3 }}
             >
-              정답을 입력하는 방법을 알아보세요
+              정답 입력 방법
             </h2>
 
-            {/* Choice guide */}
-            <div
-              className="rounded-2xl bg-bg-surface p-5 flex items-center gap-5"
-              style={{ boxShadow: '0 2px 12px #1A191808' }}
-            >
-              <div
-                className="w-14 h-14 rounded-full flex items-center justify-center shrink-0"
-                style={{
-                  background: 'linear-gradient(180deg, #4F46E5, #7C3AED)',
-                  boxShadow: '0 4px 16px #4F46E530',
-                }}
-              >
-                <MousePointerClick className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h3 className="font-display text-[15px] font-bold text-text-primary mb-1">선택형 문제</h3>
-                <p className="font-display text-[13px] font-medium text-text-secondary">
-                  번호를 터치하여 답을 선택합니다
-                </p>
-              </div>
-            </div>
-
-            {/* Typing guide */}
-            {hasTyping && (
-              <div
-                className="rounded-2xl bg-bg-surface p-5 flex items-center gap-5"
-                style={{ boxShadow: '0 2px 12px #1A191808' }}
-              >
-                <div
-                  className="w-14 h-14 rounded-full flex items-center justify-center shrink-0"
-                  style={{
-                    background: 'linear-gradient(180deg, #4F46E5, #7C3AED)',
-                    boxShadow: '0 4px 16px #4F46E530',
-                  }}
-                >
-                  <Keyboard className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-display text-[15px] font-bold text-text-primary mb-1">타이핑 문제</h3>
-                  <p className="font-display text-[13px] font-medium text-text-secondary">
-                    밑줄에 맞게 타이핑합니다
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Button usage guide */}
+            {/* Question type guide — show only types included in this test */}
             <div
               className="rounded-2xl bg-bg-surface p-5"
               style={{ boxShadow: '0 2px 12px #1A191808' }}
             >
-              <h3 className="font-display text-[15px] font-bold text-text-primary mb-4">
-                버튼들의 쓰임새를 알아보세요
+              <h3 className="font-display text-[16px] font-bold text-text-primary mb-4">
+                출제 문제 유형
               </h3>
-              <div className="flex flex-col gap-3.5">
-                {timeMode === 'total' ? (
-                  <>
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-accent-indigo-light flex items-center justify-center shrink-0 mt-0.5">
-                        <div className="flex items-center gap-0.5">
-                          <ChevronLeft className="w-3.5 h-3.5 text-accent-indigo" />
-                          <ChevronRight className="w-3.5 h-3.5 text-accent-indigo" />
+              <div className="flex flex-col gap-3">
+                {engines.length > 0 ? (
+                  engines.map(engine => {
+                    const isType = ['listen_type', 'ko_type', 'antonym_type', 'sentence_type'].includes(engine);
+                    const isListen = engine.startsWith('listen');
+                    const desc = ENGINE_DESCRIPTIONS[engine] || engine;
+                    const opt = QUESTION_TYPE_OPTIONS.find(o => o.value === engine);
+                    return (
+                      <div key={engine} className="flex items-center gap-3">
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: isType ? '#FEF3C7' : isListen ? '#D1FAE5' : '#EEF2FF' }}
+                        >
+                          {isType ? (
+                            <Keyboard className="w-4 h-4" style={{ color: '#D97706' }} />
+                          ) : isListen ? (
+                            <Volume2 className="w-4 h-4" style={{ color: '#059669' }} />
+                          ) : (
+                            <MousePointerClick className="w-4 h-4" style={{ color: '#4F46E5' }} />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-display text-[14px] font-semibold text-text-primary">
+                            {opt?.label || engine}
+                          </span>
+                          <span className="font-display text-[13px] text-text-tertiary ml-2">
+                            {desc}
+                          </span>
                         </div>
                       </div>
-                      <p className="font-display text-[13px] font-medium text-text-secondary leading-relaxed pt-1.5">
-                        이전/다음 버튼으로 한 문제씩 이동합니다
-                      </p>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-accent-indigo-light flex items-center justify-center shrink-0 mt-0.5">
-                        <Send className="w-4 h-4 text-accent-indigo" />
-                      </div>
-                      <p className="font-display text-[13px] font-medium text-text-secondary leading-relaxed pt-1.5">
-                        문제를 다 풀면 제출 버튼을 터치하여 시험을 마칩니다
-                      </p>
-                    </div>
+                    );
+                  })
+                ) : (
+                  <p className="font-display text-[13px] text-text-secondary">
+                    선택형 문제가 출제됩니다
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* How to answer */}
+            <div
+              className="rounded-2xl bg-bg-surface p-5"
+              style={{ boxShadow: '0 2px 12px #1A191808' }}
+            >
+              <h3 className="font-display text-[16px] font-bold text-text-primary mb-4">
+                풀이 방법
+              </h3>
+              <div className="flex flex-col gap-3">
+                <GuideRow
+                  icon={<MousePointerClick className="w-4 h-4 text-accent-indigo" />}
+                  bg="#EEF2FF"
+                  text="선택형: 보기 번호를 터치하여 정답 선택"
+                />
+                {hasTyping && (
+                  <GuideRow
+                    icon={<Keyboard className="w-4 h-4" style={{ color: '#D97706' }} />}
+                    bg="#FEF3C7"
+                    text="타이핑형: 영어 단어를 직접 입력 후 Enter로 제출"
+                  />
+                )}
+                {engines.some(e => e.startsWith('listen')) && (
+                  <GuideRow
+                    icon={<Volume2 className="w-4 h-4" style={{ color: '#059669' }} />}
+                    bg="#D1FAE5"
+                    text="듣기형: 발음이 자동 재생되며, 다시 듣기 버튼으로 반복 가능"
+                  />
+                )}
+                {timeMode === 'total' ? (
+                  <>
+                    <GuideRow
+                      icon={<div className="flex items-center gap-0.5"><ChevronLeft className="w-3.5 h-3.5 text-accent-indigo" /><ChevronRight className="w-3.5 h-3.5 text-accent-indigo" /></div>}
+                      bg="#EEF2FF"
+                      text="이전/다음 버튼으로 자유롭게 이동 가능"
+                    />
+                    <GuideRow
+                      icon={<Send className="w-4 h-4 text-accent-indigo" />}
+                      bg="#EEF2FF"
+                      text="모두 풀었으면 제출 버튼을 눌러 시험 종료"
+                    />
                   </>
                 ) : (
-                  <>
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-accent-indigo-light flex items-center justify-center shrink-0 mt-0.5">
-                        <Timer className="w-4 h-4 text-accent-indigo" />
-                      </div>
-                      <p className="font-display text-[13px] font-medium text-text-secondary leading-relaxed pt-1.5">
-                        각 문제마다 제한 시간({timeText})이 있습니다
-                      </p>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-accent-indigo-light flex items-center justify-center shrink-0 mt-0.5">
-                        <ArrowRight className="w-4 h-4 text-accent-indigo" />
-                      </div>
-                      <p className="font-display text-[13px] font-medium text-text-secondary leading-relaxed pt-1.5">
-                        정답을 선택하면 자동으로 다음 문제로 넘어갑니다
-                      </p>
-                    </div>
-                  </>
+                  <GuideRow
+                    icon={<ArrowRight className="w-4 h-4 text-accent-indigo" />}
+                    bg="#EEF2FF"
+                    text="정답을 선택하면 자동으로 다음 문제로 이동"
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Keyboard shortcuts */}
+            <div
+              className="rounded-2xl bg-bg-surface p-5"
+              style={{ boxShadow: '0 2px 12px #1A191808' }}
+            >
+              <h3 className="font-display text-[16px] font-bold text-text-primary mb-4">
+                키보드 단축키
+              </h3>
+              <div className="flex flex-col gap-2.5">
+                <ShortcutRow keys="1 ~ 4" desc="보기 번호 선택" />
+                {hasTyping && (
+                  <ShortcutRow keys="Enter" desc="타이핑 답안 제출" />
+                )}
+                {engines.some(e => e.startsWith('listen')) && (
+                  <ShortcutRow keys="0" desc="발음 다시 듣기" />
+                )}
+                {timeMode === 'total' && (
+                  <ShortcutRow keys="← →" desc="이전/다음 문제 이동" />
                 )}
               </div>
             </div>

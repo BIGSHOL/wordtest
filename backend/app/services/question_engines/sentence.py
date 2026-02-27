@@ -273,7 +273,7 @@ class SentenceEngine:
         n_choices: int = 4,
     ) -> QuestionSpec:
         correct = word.english
-        distractors = pick_english_distractors(correct, pool.all_english, n_choices - 1)
+        distractors = pick_english_distractors(correct, pool, n_choices - 1, source_word=word)
 
         example = _pick_example(word)
         ex_en = example[0] if example else word.example_en

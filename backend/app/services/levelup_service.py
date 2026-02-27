@@ -43,6 +43,32 @@ from app.services.test_common import (
 
 SEGMENT_SIZE = 10  # Questions per level batch
 
+# Grade → recommended starting book level (교재 순서대로)
+# Levels 1-10: POWER VOCA 5000-01~10, Levels 11-15: 수능기출 01~05
+GRADE_TO_START_LEVEL: dict[str, int] = {
+    "초5": 1, "초6": 1,
+    "중1": 2,
+    "중2": 3,
+    "중3": 4,
+    "고1": 5,
+    "고2": 8,
+    "고3": 13,
+}
+
+
+def _normalize_grade(grade: str) -> str:
+    """Normalize variant grade formats to standard short form.
+
+    '초등5' → '초5', '중등1' → '중1', '고등2' → '고2', etc.
+    """
+    if not grade:
+        return ""
+    g = grade.strip()
+    for long, short in [("초등", "초"), ("중등", "중"), ("고등", "고")]:
+        if g.startswith(long):
+            return short + g[len(long):]
+    return g
+
 
 async def start_session(
     db: AsyncSession, code: str, allow_restart: bool = False
@@ -108,8 +134,13 @@ async def start_session(
     if not available_levels:
         raise ValueError("No words available after filtering")
 
-    # Start at the lowest level in range
-    start_level = available_levels[0]
+    # Grade-based starting level: find first available level >= student's recommended level
+    recommended = GRADE_TO_START_LEVEL.get(_normalize_grade(student.grade or ""), 1)
+    start_level = available_levels[-1]  # default: if above all, start at highest
+    for lvl in available_levels:
+        if lvl >= recommended:
+            start_level = lvl
+            break
     session.current_level = start_level
 
     # Generate initial question pool: current level + up to 4 more
@@ -141,6 +172,8 @@ async def start_session(
         "total_words": len(compatible),
         "question_count": config.question_count or 50,
         "student_name": student.name or "학생",
+        "student_school": student.school_name or "",
+        "student_grade": student.grade or "",
         "student_id": assignment.student_id,
         "engine_type": "levelup",
         "current_level": start_level,
@@ -216,11 +249,12 @@ async def fetch_level_questions(
     mastery_map = {m.word_id: m for m in mastery_result.scalars().all()}
 
     # Get unanswered words at target level (+ adjacent if needed)
+    # Prioritize harder words (longer, verbs, phrases)
     target_words = [
         w for w in filtered
         if w.level == target_level and w.id not in answered_word_ids
     ]
-    random.shuffle(target_words)
+    target_words.sort(key=_word_difficulty_score, reverse=True)
     batch = target_words[:batch_size]
 
     # Fill from adjacent levels if not enough
@@ -545,38 +579,116 @@ def _generate_multi_level_pool(
     timer_seconds: int,
     question_type_counts: dict[str, int] | None = None,
 ) -> list[dict]:
-    """Generate a multi-level question pool for initial serving."""
-    all_questions: list[dict] = []
+    """Generate a multi-level question pool for initial serving.
+
+    Uses weighted distribution: higher-level words get more representation.
+    Weight = level number, so level 10 gets 10x the share of level 1.
+    """
     available_levels = sorted(words_by_level.keys())
+    active_levels = [l for l in available_levels if l >= start_level]
 
-    # Find levels starting from start_level
-    for level in available_levels:
-        if level < start_level:
-            continue
-        if len(all_questions) >= max_levels * per_level:
-            break
+    if not active_levels:
+        return []
 
-        level_words = words_by_level[level]
-        random.shuffle(level_words)
-        batch = level_words[:per_level]
+    if question_type_counts:
+        # Exam mode: weighted distribution across all levels (harder words dominate)
+        total_needed = sum(question_type_counts.values())
+        pool_size = max(total_needed, total_needed * 2)
 
-        if not batch:
-            continue
+        combined_words = _weighted_word_selection(
+            words_by_level, active_levels, pool_size,
+        )
+        random.shuffle(combined_words)
 
-        # Build mastery list for this batch
-        batch_masteries = [
-            mastery_map[w.id] for w in batch
-            if w.id in mastery_map
+        pool_masteries = [
+            mastery_map[w.id] for w in combined_words if w.id in mastery_map
         ]
-
-        questions = generate_questions_for_words(
-            words=batch,
+        return generate_questions_for_words(
+            words=combined_words,
             all_words=all_words,
             question_types=question_types,
             timer_seconds=timer_seconds,
-            masteries=batch_masteries,
+            masteries=pool_masteries,
             question_type_counts=question_type_counts,
         )
-        all_questions.extend(questions)
 
-    return all_questions
+    # Adaptive mode: weighted level-by-level batching (harder words dominate)
+    total_budget = max_levels * per_level
+    combined_words = _weighted_word_selection(
+        words_by_level, active_levels, total_budget,
+    )
+
+    if not combined_words:
+        return []
+
+    batch_masteries = [
+        mastery_map[w.id] for w in combined_words if w.id in mastery_map
+    ]
+
+    return generate_questions_for_words(
+        words=combined_words,
+        all_words=all_words,
+        question_types=question_types,
+        timer_seconds=timer_seconds,
+        masteries=batch_masteries,
+    )
+
+
+def _word_difficulty_score(word: Word) -> float:
+    """General difficulty score for word pool selection. Higher = harder.
+
+    Balanced across question types — word length is a minor factor.
+    Primary factors: meaning complexity, POS difficulty, phrase/antonym.
+    """
+    score = 0.0
+    # Phrases / multi-word entries are harder
+    if ' ' in word.english:
+        score += 10
+    # Words with antonyms enable harder question types
+    if word.antonym:
+        score += 5
+    # Part of speech: verbs/adverbs are harder than nouns
+    pos = (word.part_of_speech or '').strip()
+    if pos in ('v', 'verb', '동사'):
+        score += 3
+    elif pos in ('adv', 'adverb', '부사'):
+        score += 4
+    elif pos in ('adj', 'adjective', '형용사'):
+        score += 2
+    # Korean meaning complexity (multiple meanings = harder to remember)
+    if word.korean:
+        import re
+        meaning_count = len(re.split(r'[,;]', word.korean))
+        score += min(meaning_count - 1, 3)  # up to +3 for multiple meanings
+    # Moderate word length bonus (reduced: secondary factor)
+    score += len(word.english) * 0.5
+    return score
+
+
+def _weighted_word_selection(
+    words_by_level: dict[int, list[Word]],
+    active_levels: list[int],
+    total_budget: int,
+) -> list[Word]:
+    """Select words with higher levels AND harder words getting priority.
+
+    Two-axis difficulty:
+    1. Level weight: level 10 gets 10x the share of level 1
+    2. Within each level: words sorted by difficulty score (hardest first)
+
+    Guarantees at least 1 word per level if available.
+    """
+    total_weight = sum(active_levels)
+    combined: list[Word] = []
+
+    for level in active_levels:
+        level_words = list(words_by_level.get(level, []))
+        if not level_words:
+            continue
+        # Sort by difficulty score descending: hardest words first
+        level_words.sort(key=_word_difficulty_score, reverse=True)
+        # Allocate proportionally by weight, minimum 1
+        allocation = max(1, round(total_budget * level / total_weight))
+        combined.extend(level_words[:allocation])
+
+    return combined

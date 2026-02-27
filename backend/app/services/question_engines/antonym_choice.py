@@ -26,7 +26,7 @@ class AntonymChoiceEngine:
     ) -> QuestionSpec:
         antonym = word.antonym
         distractors = pick_english_distractors(
-            antonym, pool.all_english, count=n_choices - 1
+            antonym, pool, count=n_choices - 1, source_word=word
         )
         choices = shuffle_choices(antonym, distractors)
         return QuestionSpec(

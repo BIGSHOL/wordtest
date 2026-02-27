@@ -45,8 +45,7 @@ export function TestSettingsPage() {
   // Selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  // Config
-  const [config, setConfig] = useState<TestConfigState>({
+  const INITIAL_CONFIG: TestConfigState = {
     timeMode: 'per_question',
     perQuestionTime: 10,
     customPerQuestionTime: '',
@@ -65,7 +64,10 @@ export function TestSettingsPage() {
     distributionMode: 'equal',
     manualCounts: {},
     configName: '',
-  });
+  };
+
+  // Config
+  const [config, setConfig] = useState<TestConfigState>(INITIAL_CONFIG);
 
   // Word count from API
   const [wordCount, setWordCount] = useState(0);
@@ -271,6 +273,7 @@ export function TestSettingsPage() {
     try {
       await testAssignmentService.createTestConfig(requestData);
       await refreshConfigs();
+      setConfig(INITIAL_CONFIG);
       setActiveTab('configs');
     } catch (error) {
       logger.error('Failed to create test config:', error);
@@ -341,6 +344,7 @@ export function TestSettingsPage() {
     try {
       await testAssignmentService.assignTest(requestData);
       setSelectedIds(new Set());
+      setConfig(INITIAL_CONFIG);
       await refreshAssignments();
       setActiveTab('status');
     } catch (error) {

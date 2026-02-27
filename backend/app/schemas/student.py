@@ -13,6 +13,7 @@ class CreateStudentRequest(BaseModel):
 
 
 class UpdateStudentRequest(BaseModel):
+    username: Optional[str] = None
     name: Optional[str] = None
     password: Optional[str] = None
     phone_number: Optional[str] = None

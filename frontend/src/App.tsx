@@ -39,6 +39,8 @@ const StudentMainPage = lazyRetry(() => import('./pages/student/MainPage'));
 const TestStartPage = lazyRetry(() => import('./pages/student/TestStartPage'));
 const UnifiedTestPage = lazyRetry(() => import('./pages/student/UnifiedTestPage'));
 const StudentReportPage = lazyRetry(() => import('./pages/student/StudentReportPage'));
+const GrammarSettingsPage = lazyRetry(() => import('./pages/teacher/GrammarSettingsPage'));
+const GrammarTestPage = lazyRetry(() => import('./pages/student/GrammarTestPage'));
 
 function PageLoader() {
   return (
@@ -108,6 +110,14 @@ function App() {
             }
           />
           <Route
+            path="/grammar-settings"
+            element={
+              <RouteGuard roles={['teacher']}>
+                <GrammarSettingsPage />
+              </RouteGuard>
+            }
+          />
+          <Route
             path="/statistics"
             element={
               <RouteGuard roles={['teacher']}>
@@ -168,6 +178,10 @@ function App() {
           <Route
             path="/unified-test"
             element={<UnifiedTestPage />}
+          />
+          <Route
+            path="/grammar-test"
+            element={<GrammarTestPage />}
           />
           {/* Default redirect */}
           <Route path="/" element={<Navigate to="/login" replace />} />

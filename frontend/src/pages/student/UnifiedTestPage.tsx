@@ -24,7 +24,6 @@ import { TimerBar } from '../../components/test/TimerBar';
 import { WordCard } from '../../components/test/WordCard';
 import { MeaningCard } from '../../components/test/MeaningCard';
 import { ChoiceButton } from '../../components/test/ChoiceButton';
-import { TypingInput } from '../../components/mastery/TypingInput';
 import { SentenceBlankCard } from '../../components/mastery/SentenceBlankCard';
 import { EmojiCard } from '../../components/test/EmojiCard';
 import { ListeningCard } from '../../components/test/ListeningCard';
@@ -301,6 +300,8 @@ export function UnifiedTestPage() {
     return (
       <ExamBriefing
         studentName={studentName}
+        studentSchool={briefingInfo?.studentSchool ?? ''}
+        studentGrade={briefingInfo?.studentGrade ?? ''}
         bookName={briefingInfo?.bookName ?? null}
         bookNameEnd={briefingInfo?.bookNameEnd ?? null}
         lessonStart={briefingInfo?.lessonStart ?? null}
@@ -412,10 +413,26 @@ export function UnifiedTestPage() {
   const totalQ = flatQuestions.length || questionCount;
 
   // Question card renderer (shared between modes)
-  const renderQuestionCard = () => {
+  // When typing props are provided, the card renders an inline typing input
+  const renderQuestionCard = (typingProps?: {
+    value: string;
+    onChange: (v: string) => void;
+    onSubmit: () => void;
+    disabled?: boolean;
+    hint?: string | null;
+  }) => {
+    const tp = isTyping && typingProps ? {
+      typingValue: typingProps.value,
+      onTypingChange: typingProps.onChange,
+      onTypingSubmit: typingProps.onSubmit,
+      typingDisabled: typingProps.disabled,
+      typingHint: typingProps.hint,
+      isListenMode: isListen,
+    } : {};
+
     // Listen questions: always use ListeningCard (hides word, shows headphones)
     if (isListen && !isSentence) {
-      return <ListeningCard english={currentQuestion.word.english} />;
+      return <ListeningCard english={currentQuestion.word.english} {...tp} />;
     }
 
     if (isSentence) {
@@ -426,6 +443,7 @@ export function UnifiedTestPage() {
           sentenceKo={currentQuestion.word.example_ko || undefined}
           sentenceEn={currentQuestion.word.example_en || undefined}
           stage={currentQuestion.stage}
+          {...tp}
         />
       );
     }
@@ -441,18 +459,18 @@ export function UnifiedTestPage() {
       case 'meaning_and_type':
       case 'ko_to_en':
       case 'ko_type':
-        return <MeaningCard korean={currentQuestion.word.korean || ''} />;
+        return <MeaningCard korean={currentQuestion.word.korean || ''} {...tp} />;
       case 'listen_and_type':
       case 'listen_to_meaning':
       case 'listen_en':
       case 'listen_ko':
       case 'listen_type':
-        return <ListeningCard english={currentQuestion.word.english} />;
+        return <ListeningCard english={currentQuestion.word.english} {...tp} />;
       case 'antonym_type':
       case 'antonym_choice':
       case 'antonym_and_type':
       case 'antonym_and_choice':
-        return <AntonymCard english={currentQuestion.word.english} korean={currentQuestion.word.korean ?? undefined} />;
+        return <AntonymCard english={currentQuestion.word.english} korean={currentQuestion.word.korean ?? undefined} {...tp} />;
       default:
         return <WordCard word={currentQuestion.word.english} />;
     }
@@ -516,19 +534,18 @@ export function UnifiedTestPage() {
             </p>
           </div>
 
-          <div className="w-full md:w-[640px]">{renderQuestionCard()}</div>
-
           <div className="w-full md:w-[640px]">
-            {isTyping ? (
-              <TypingInput
-                value={typedValue}
-                onChange={(text) => store.setLocalTypedAnswer(currentQuestionIndex, text)}
-                onSubmit={store.goNext}
-                disabled={false}
-                isListenMode={isListen}
-                hint={currentQuestion.hint}
-              />
-            ) : (
+            {renderQuestionCard(isTyping ? {
+              value: typedValue,
+              onChange: (text) => store.setLocalTypedAnswer(currentQuestionIndex, text),
+              onSubmit: store.goNext,
+              disabled: false,
+              hint: currentQuestion.hint,
+            } : undefined)}
+          </div>
+
+          {!isTyping && (
+            <div className="w-full md:w-[640px]">
               <div className="flex flex-col gap-3 w-full">
                 {currentQuestion.choices?.map((choice, i) => (
                   <ChoiceButton
@@ -540,8 +557,8 @@ export function UnifiedTestPage() {
                   />
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Navigation buttons */}
           <div className="w-full md:w-[640px] flex items-center justify-between pt-2">
@@ -652,19 +669,18 @@ export function UnifiedTestPage() {
 
       {/* Content */}
       <div className="flex-1 flex flex-col justify-center items-center gap-5 px-5 py-6 md:px-8">
-        <div className="w-full md:w-[640px]">{renderQuestionCard()}</div>
-
         <div className="w-full md:w-[640px]">
-          {isTyping ? (
-            <TypingInput
-              value={typedAnswer}
-              onChange={(text) => store.setTypedAnswer(text)}
-              onSubmit={handleTypingSubmit}
-              disabled={!!answerResult}
-              isListenMode={isListen}
-              hint={currentQuestion.hint}
-            />
-          ) : (
+          {renderQuestionCard(isTyping ? {
+            value: typedAnswer,
+            onChange: (text) => store.setTypedAnswer(text),
+            onSubmit: handleTypingSubmit,
+            disabled: !!answerResult,
+            hint: currentQuestion.hint,
+          } : undefined)}
+        </div>
+
+        {!isTyping && (
+          <div className="w-full md:w-[640px]">
             <div className="flex flex-col gap-3 w-full">
               {currentQuestion.choices?.map((choice, i) => (
                 <ChoiceButton
@@ -676,8 +692,8 @@ export function UnifiedTestPage() {
                 />
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Feedback banner */}
         {answerResult && (

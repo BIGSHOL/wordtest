@@ -61,12 +61,15 @@ async def get_student_by_id(db: AsyncSession, student_id: str) -> User | None:
 async def update_student(
     db: AsyncSession,
     student: User,
+    username: str | None = None,
     name: str | None = None,
     password: str | None = None,
     phone_number: str | None = None,
     school_name: str | None = None,
     grade: str | None = None,
 ) -> User:
+    if username is not None:
+        student.username = username
     if name is not None:
         student.name = name
     if password is not None:

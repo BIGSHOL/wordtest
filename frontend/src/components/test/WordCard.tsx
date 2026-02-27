@@ -16,7 +16,7 @@ export const WordCard = memo(function WordCard({ word }: WordCardProps) {
         boxShadow: '0 4px 24px #1A191812',
       }}
     >
-      <p className="font-display text-sm font-medium text-text-tertiary">
+      <p className="font-display text-[16px] font-semibold text-text-secondary">
         다음 영단어의 뜻은?
       </p>
       <h2 className="font-word text-[42px] md:text-[46px] font-bold text-text-primary" style={{ letterSpacing: -1 }}>

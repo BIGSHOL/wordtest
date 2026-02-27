@@ -46,7 +46,14 @@ export function StudentManagePage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const [newStudent, setNewStudent] = useState(EMPTY_NEW_STUDENT);
-  const [editData, setEditData] = useState({ name: '', password: '' });
+  const [editData, setEditData] = useState({
+    username: '',
+    name: '',
+    password: '',
+    school_name: '',
+    grade: '',
+    phone_number: '',
+  });
 
   // useMemo instead of useEffect + setState to prevent double rendering
   const filteredStudents = useMemo(() => {
@@ -116,17 +123,23 @@ export function StudentManagePage() {
 
   const handleUpdate = async (id: string) => {
     setError('');
-    const updates: { name?: string; password?: string } = {};
+    setModalError('');
+    const updates: Record<string, string | undefined> = {};
+    if (editData.username) updates.username = editData.username;
     if (editData.name) updates.name = editData.name;
     if (editData.password) updates.password = editData.password;
+    updates.phone_number = editData.phone_number || undefined;
+    updates.school_name = editData.school_name || undefined;
+    updates.grade = editData.grade || undefined;
 
     try {
       await studentService.updateStudent(id, updates);
       setEditingId(null);
-      setEditData({ name: '', password: '' });
+      setEditData({ username: '', name: '', password: '', school_name: '', grade: '', phone_number: '' });
       await loadStudents();
-    } catch {
-      setError('학생 정보 수정에 실패했습니다.');
+    } catch (err: unknown) {
+      const errObj = err as { response?: { data?: { detail?: string } } };
+      setModalError(errObj.response?.data?.detail || '학생 정보 수정에 실패했습니다.');
     }
   };
 
@@ -371,7 +384,14 @@ export function StudentManagePage() {
                             <button
                               onClick={() => {
                                 setEditingId(student.id);
-                                setEditData({ name: student.name, password: '' });
+                                setEditData({
+                                  username: student.username || '',
+                                  name: student.name,
+                                  password: '',
+                                  school_name: student.school_name || '',
+                                  grade: student.grade || '',
+                                  phone_number: student.phone_number || '',
+                                });
                               }}
                               className="p-1.5 text-text-secondary hover:bg-bg-muted rounded transition-colors"
                               title="수정"
@@ -398,40 +418,151 @@ export function StudentManagePage() {
 
         {/* Edit Form Modal */}
         {editingId && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-surface border border-border-subtle rounded-xl p-6 w-full max-w-md space-y-4">
-              <h2 className="text-lg font-semibold text-text-primary">학생 정보 수정</h2>
-              <div className="space-y-3">
-                <input
-                  type="text"
-                  placeholder="새 이름"
-                  value={editData.name}
-                  onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-border-subtle rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-                <input
-                  type="password"
-                  placeholder="새 비밀번호 (선택)"
-                  value={editData.password}
-                  onChange={(e) => setEditData({ ...editData, password: e.target.value })}
-                  className="w-full px-3 py-2 border border-border-subtle rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-              <div className="flex gap-2">
+          <div
+            className="fixed inset-0 flex items-center justify-center z-50"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) { setEditingId(null); setModalError(''); } }}
+          >
+            <div
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+              style={{ border: '1px solid #E8E8E6' }}
+            >
+              {/* Modal header */}
+              <div
+                className="flex items-center justify-between px-6 py-4"
+                style={{ borderBottom: '1px solid #E8E8E6', backgroundColor: '#FAFAF9' }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#2D9CAE' }} />
+                  <h2 className="text-[16px] font-bold text-text-primary">학생 정보 수정</h2>
+                </div>
                 <button
-                  onClick={() => handleUpdate(editingId)}
-                  className="flex-1 px-4 py-2 bg-teal text-white rounded-lg text-sm font-medium hover:bg-teal/90"
+                  onClick={() => { setEditingId(null); setModalError(''); }}
+                  className="p-1.5 rounded-lg text-text-tertiary hover:bg-bg-muted transition-colors"
                 >
-                  저장
+                  <X className="w-5 h-5" />
                 </button>
+              </div>
+
+              {/* Modal body */}
+              <div className="px-6 py-5 space-y-4">
+                {modalError && (
+                  <div
+                    className="px-4 py-3 rounded-lg text-sm font-medium"
+                    style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}
+                  >
+                    {modalError}
+                  </div>
+                )}
+
+                {/* 아이디 */}
+                <div>
+                  <label className="block text-[12px] font-semibold text-text-secondary mb-1.5">아이디</label>
+                  <input
+                    type="text"
+                    placeholder="로그인 아이디"
+                    value={editData.username}
+                    onChange={(e) => setEditData({ ...editData, username: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal bg-white"
+                    style={{ border: '1px solid #E8E8E6' }}
+                  />
+                </div>
+
+                {/* 이름 */}
+                <div>
+                  <label className="block text-[12px] font-semibold text-text-secondary mb-1.5">이름</label>
+                  <input
+                    type="text"
+                    placeholder="학생 이름"
+                    value={editData.name}
+                    onChange={(e) => setEditData({ ...editData, name: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal bg-white"
+                    style={{ border: '1px solid #E8E8E6' }}
+                  />
+                </div>
+
+                {/* 비밀번호 */}
+                <div>
+                  <label className="block text-[12px] font-semibold text-text-secondary mb-1.5">
+                    새 비밀번호 <span className="font-normal text-text-tertiary">(변경 시에만 입력)</span>
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="변경할 비밀번호"
+                    value={editData.password}
+                    onChange={(e) => setEditData({ ...editData, password: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal bg-white"
+                    style={{ border: '1px solid #E8E8E6' }}
+                  />
+                </div>
+
+                {/* Divider */}
+                <div style={{ borderTop: '1px solid #F0F0EE' }} />
+
+                {/* 학교 */}
+                <div>
+                  <label className="block text-[12px] font-semibold text-text-secondary mb-1.5">학교</label>
+                  <input
+                    type="text"
+                    placeholder="학교 이름"
+                    value={editData.school_name}
+                    onChange={(e) => setEditData({ ...editData, school_name: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal bg-white"
+                    style={{ border: '1px solid #E8E8E6' }}
+                  />
+                </div>
+
+                {/* 학년 */}
+                <div>
+                  <label className="block text-[12px] font-semibold text-text-secondary mb-1.5">학년</label>
+                  <select
+                    value={editData.grade}
+                    onChange={(e) => setEditData({ ...editData, grade: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal bg-white"
+                    style={{ border: '1px solid #E8E8E6' }}
+                  >
+                    <option value="">학년 선택</option>
+                    {GRADE_OPTIONS.map((g) => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 연락처 */}
+                <div>
+                  <label className="block text-[12px] font-semibold text-text-secondary mb-1.5">연락처</label>
+                  <input
+                    type="text"
+                    placeholder="010-0000-0000"
+                    value={editData.phone_number}
+                    onChange={(e) => setEditData({ ...editData, phone_number: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal bg-white"
+                    style={{ border: '1px solid #E8E8E6' }}
+                  />
+                </div>
+              </div>
+
+              {/* Modal footer */}
+              <div
+                className="flex items-center justify-end gap-3 px-6 py-4"
+                style={{ borderTop: '1px solid #E8E8E6', backgroundColor: '#FAFAF9' }}
+              >
                 <button
-                  onClick={() => {
-                    setEditingId(null);
-                    setEditData({ name: '', password: '' });
-                  }}
-                  className="flex-1 px-4 py-2 bg-bg-muted text-text-secondary rounded-lg text-sm font-medium hover:bg-bg-muted/80"
+                  type="button"
+                  onClick={() => { setEditingId(null); setModalError(''); }}
+                  className="px-5 py-2.5 rounded-lg text-[13px] font-semibold text-text-secondary transition-colors hover:bg-bg-muted"
+                  style={{ border: '1px solid #E8E8E6' }}
                 >
                   취소
+                </button>
+                <button
+                  onClick={() => handleUpdate(editingId)}
+                  className="px-5 py-2.5 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90"
+                  style={{
+                    background: 'linear-gradient(135deg, #2D9CAE 0%, #3DBDC8 100%)',
+                  }}
+                >
+                  저장하기
                 </button>
               </div>
             </div>

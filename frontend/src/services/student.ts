@@ -14,8 +14,12 @@ export interface CreateStudentRequest {
 }
 
 export interface UpdateStudentRequest {
+  username?: string;
   name?: string;
   password?: string;
+  phone_number?: string;
+  school_name?: string;
+  grade?: string;
 }
 
 export const studentService = {

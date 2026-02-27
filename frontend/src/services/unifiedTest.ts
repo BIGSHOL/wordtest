@@ -48,6 +48,8 @@ export interface StartLevelupResponse {
   total_words: number;
   question_count: number;
   student_name: string;
+  student_school: string;
+  student_grade: string;
   student_id: string;
   engine_type: 'levelup';
   current_level: number;
@@ -86,6 +88,8 @@ export interface StartLegacyResponse {
   total_words: number;
   question_count: number;
   student_name: string;
+  student_school: string;
+  student_grade: string;
   student_id: string;
   engine_type: 'legacy';
   per_question_time: number;

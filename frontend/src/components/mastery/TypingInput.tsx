@@ -1,9 +1,9 @@
 /**
- * Typing input component for stages 3 and 5.
+ * Typing input component for typing-mode questions.
+ * Renders as an underline-style input that integrates into question cards.
  * Auto-focus, Enter submit, IME handling, case-insensitive.
  */
 import { memo, useRef, useEffect, useCallback } from 'react';
-import { Keyboard } from 'lucide-react';
 
 interface TypingInputProps {
   value: string;
@@ -35,6 +35,14 @@ export const TypingInput = memo(function TypingInput({
     return () => clearTimeout(timer);
   }, []);
 
+  // Re-focus when value is cleared (new question)
+  useEffect(() => {
+    if (value === '' && !disabled) {
+      const timer = setTimeout(() => inputRef.current?.focus(), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [value, disabled]);
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       // In listen mode, 0 key = replay (handled by ListenCard global listener)
@@ -47,7 +55,7 @@ export const TypingInput = memo(function TypingInput({
         onSubmit();
       }
     },
-    [value, onSubmit],
+    [value, onSubmit, isListenMode],
   );
 
   const handleChange = useCallback(
@@ -59,17 +67,13 @@ export const TypingInput = memo(function TypingInput({
   );
 
   return (
-    <div className="flex flex-col items-center gap-3 w-full">
-      <div
-        className="flex items-center gap-3 w-full h-16 px-5 rounded-2xl bg-bg-surface transition-all"
-        style={{
-          border: `2px solid ${disabled ? '#E5E4E1' : '#4F46E5'}`,
-          boxShadow: disabled ? 'none' : '0 2px 12px #4F46E520',
-        }}
-      >
-        <Keyboard className="w-5 h-5 text-text-tertiary shrink-0" />
+    <div className="flex flex-col items-center gap-2 w-full mt-4">
+      <div className="flex items-center justify-center gap-1 w-full max-w-[320px]">
         {hint && (
-          <span className="text-lg font-bold text-indigo-500 shrink-0 select-none tracking-widest" style={{ fontFamily: 'monospace' }}>
+          <span
+            className="text-xl font-bold text-indigo-500 shrink-0 select-none tracking-widest"
+            style={{ fontFamily: 'monospace' }}
+          >
             {hint}
           </span>
         )}
@@ -90,13 +94,16 @@ export const TypingInput = memo(function TypingInput({
           }}
           disabled={disabled}
           placeholder={placeholder}
-          className="flex-1 font-word text-xl font-bold text-text-primary placeholder:text-text-tertiary placeholder:font-normal bg-transparent outline-none tracking-wide"
-          style={{ fontSize: 20 }}
+          className="w-full font-word text-[22px] font-bold text-center text-text-primary placeholder:text-text-tertiary placeholder:font-normal placeholder:text-[16px] bg-transparent outline-none tracking-wide pb-1"
+          style={{
+            borderBottom: `3px solid ${disabled ? '#D1D5DB' : '#4F46E5'}`,
+            borderBottomStyle: value ? 'solid' : 'dashed',
+          }}
         />
       </div>
       {!disabled && (
-        <p className="font-display text-xs text-text-tertiary">
-          Enter를 눌러 제출하세요
+        <p className="font-display text-xs text-text-tertiary mt-1">
+          Enter를 눌러 제출
         </p>
       )}
     </div>

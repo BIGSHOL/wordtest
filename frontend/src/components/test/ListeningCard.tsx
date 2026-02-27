@@ -1,15 +1,31 @@
 import { memo, useCallback } from 'react';
 import { Headphones, Volume2 } from 'lucide-react';
 import { speakWord } from '../../utils/tts';
+import { TypingInput } from '../mastery/TypingInput';
 
 interface ListeningCardProps {
   english: string;
+  /** Typing props - when provided, renders inline typing input */
+  typingValue?: string;
+  onTypingChange?: (value: string) => void;
+  onTypingSubmit?: () => void;
+  typingDisabled?: boolean;
+  typingHint?: string | null;
 }
 
-export const ListeningCard = memo(function ListeningCard({ english }: ListeningCardProps) {
+export const ListeningCard = memo(function ListeningCard({
+  english,
+  typingValue,
+  onTypingChange,
+  onTypingSubmit,
+  typingDisabled,
+  typingHint,
+}: ListeningCardProps) {
   const handleReplay = useCallback(() => {
     speakWord(english);
   }, [english]);
+
+  const isTyping = onTypingChange !== undefined && onTypingSubmit !== undefined;
 
   return (
     <div
@@ -19,11 +35,11 @@ export const ListeningCard = memo(function ListeningCard({ english }: ListeningC
         boxShadow: '0 4px 24px #1A191812',
       }}
     >
-      <p className="font-display text-sm font-medium text-text-tertiary">
-        발음을 듣고 알맞은 단어를 고르시오
+      <p className="font-display text-[16px] font-semibold text-text-secondary">
+        {isTyping ? '발음을 듣고 영어 단어를 입력하시오' : '발음을 듣고 알맞은 단어를 고르시오'}
       </p>
-      <div className="flex items-center justify-center" style={{ minHeight: 140 }}>
-        <Headphones className="w-24 h-24 text-accent-indigo opacity-30" strokeWidth={1.2} />
+      <div className="flex items-center justify-center" style={{ minHeight: isTyping ? 80 : 140 }}>
+        <Headphones className={`${isTyping ? 'w-16 h-16' : 'w-24 h-24'} text-accent-indigo opacity-30`} strokeWidth={1.2} />
       </div>
       <button
         onClick={handleReplay}
@@ -32,6 +48,17 @@ export const ListeningCard = memo(function ListeningCard({ english }: ListeningC
         <Volume2 className="w-[18px] h-[18px] text-accent-indigo" />
         <span className="font-display text-[13px] font-medium text-accent-indigo">다시 듣기</span>
       </button>
+      {isTyping && (
+        <TypingInput
+          value={typingValue ?? ''}
+          onChange={onTypingChange!}
+          onSubmit={onTypingSubmit!}
+          disabled={typingDisabled}
+          hint={typingHint}
+          isListenMode={true}
+          placeholder="영어 단어를 입력하세요"
+        />
+      )}
     </div>
   );
 });

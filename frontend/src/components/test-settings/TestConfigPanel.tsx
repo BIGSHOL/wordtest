@@ -389,9 +389,13 @@ function PageScope({
         <div className="flex flex-wrap gap-2">
           <OptionPill
             selected={config.engine === 'levelup'}
-            onClick={() => update({ engine: 'levelup' })}
+            onClick={() => {
+              if (config.timeMode !== 'total') update({ engine: 'levelup' });
+            }}
           >
-            레벨업 (적응형)
+            <span style={config.timeMode === 'total' ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}>
+              레벨업 (적응형)
+            </span>
           </OptionPill>
           <OptionPill
             selected={config.engine === 'legacy'}
@@ -400,6 +404,17 @@ function PageScope({
             레거시 (고정형)
           </OptionPill>
         </div>
+        {config.timeMode === 'total' && (
+          <div
+            className="flex items-center gap-2 rounded-lg mt-2"
+            style={{ backgroundColor: '#FFF8DC', padding: '8px 12px' }}
+          >
+            <Info className="w-3.5 h-3.5 shrink-0" style={{ color: '#B8860B' }} />
+            <span className="text-[10px] font-medium" style={{ color: '#B8860B' }}>
+              전체 시간 모드에서는 적응형 엔진을 사용할 수 없습니다
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Scope */}
@@ -559,7 +574,10 @@ function PageTime({
           </OptionPill>
           <OptionPill
             selected={config.timeMode === 'total'}
-            onClick={() => update({ timeMode: 'total' })}
+            onClick={() => update({
+              timeMode: 'total',
+              ...(config.engine === 'levelup' ? { engine: 'legacy' as const } : {}),
+            })}
           >
             전체 시간
           </OptionPill>

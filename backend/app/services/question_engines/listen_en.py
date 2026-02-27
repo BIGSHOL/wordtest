@@ -22,7 +22,7 @@ class ListenEnEngine:
         n_choices: int = 4,
     ) -> QuestionSpec:
         correct = word.english
-        distractors = pick_english_distractors(correct, pool.all_english, n_choices - 1)
+        distractors = pick_english_distractors(correct, pool, n_choices - 1, source_word=word)
         return QuestionSpec(
             question_type=self.question_type,
             word=word,

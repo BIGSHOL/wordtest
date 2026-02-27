@@ -522,6 +522,45 @@ def filter_compatible_words(
     return [w for w in words if any(e.can_generate(w) for e in engines)]
 
 
+# ── Type-Specific Difficulty Scoring ──────────────────────────────────────────
+
+_TYPING_TYPES = {"ko_type", "listen_type", "antonym_type", "sentence_type"}
+
+
+def _typing_difficulty(word: Word) -> float:
+    """Difficulty score for typing questions. Word length is dominant."""
+    score = len(word.english) * 3
+    if ' ' in word.english:
+        score += 15
+    return score
+
+
+def _choice_difficulty(word: Word) -> float:
+    """Difficulty score for choice questions. Meaning complexity is dominant."""
+    score = 0.0
+    # Multiple Korean meanings = harder to distinguish
+    if word.korean:
+        meaning_count = len(re.split(r'[,;]', word.korean))
+        score += meaning_count * 3
+    # POS complexity
+    pos = (word.part_of_speech or '').strip()
+    if pos in ('v', 'verb', '동사'):
+        score += 4
+    elif pos in ('adv', 'adverb', '부사'):
+        score += 5
+    elif pos in ('adj', 'adjective', '형용사'):
+        score += 3
+    # Antonym = more confusable with other words
+    if word.antonym:
+        score += 3
+    # Phrases are harder
+    if ' ' in word.english:
+        score += 5
+    # Minor word length factor
+    score += len(word.english) * 0.3
+    return score
+
+
 # ── Question Generation ──────────────────────────────────────────────────────
 
 def generate_questions_for_words(
@@ -606,24 +645,24 @@ def generate_questions_for_words(
     questions: list[dict] = []
 
     if question_type_counts:
-        # Allocate questions by specified count per type
-        # Use a shuffled copy of words as the pool, cycling through for each type
+        # Allocate questions by specified count per type.
+        # Each type gets a pool sorted by type-appropriate difficulty:
+        # - Typing types: longest/hardest-to-spell words first
+        # - Choice types: most meaning-complex words first
         word_pool = list(words)
-        word_index = 0
         for qtype, count in question_type_counts.items():
+            if qtype in _TYPING_TYPES:
+                type_pool = sorted(word_pool, key=_typing_difficulty, reverse=True)
+            else:
+                type_pool = sorted(word_pool, key=_choice_difficulty, reverse=True)
             generated = 0
-            start_index = word_index
-            pool_len = len(word_pool)
-            while generated < count and pool_len > 0:
-                word = word_pool[word_index % pool_len]
-                word_index += 1
+            for word in type_pool:
+                if generated >= count:
+                    break
                 q = _build_question(word, qtype)
                 if q is not None:
                     questions.append(q)
                     generated += 1
-                # Safety: stop if we've cycled through all words for this type
-                if word_index - start_index >= pool_len:
-                    break
     else:
         # Default round-robin logic
         for i, word in enumerate(words):
@@ -632,7 +671,29 @@ def generate_questions_for_words(
             if q is not None:
                 questions.append(q)
 
+    # Sort questions by type then difficulty (level ascending within each type)
+    questions.sort(key=lambda q: (
+        _QUESTION_TYPE_ORDER.get(q["question_type"], 99),
+        q["word"]["level"],
+    ))
+
     return questions
+
+
+# Defines the display order of question types for sorted output
+_QUESTION_TYPE_ORDER = {
+    "en_to_ko": 0,
+    "ko_to_en": 1,
+    "listen_en": 2,
+    "listen_ko": 3,
+    "listen_type": 4,
+    "ko_type": 5,
+    "emoji": 6,
+    "sentence": 7,
+    "sentence_type": 8,
+    "antonym_choice": 9,
+    "antonym_type": 10,
+}
 
 
 # ── Answer Checking ──────────────────────────────────────────────────────────

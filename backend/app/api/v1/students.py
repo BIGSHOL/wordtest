@@ -14,6 +14,7 @@ from app.services.student import (
     get_student_by_username,
     create_student,
     list_all_students,
+    list_students_by_teacher,
     get_student_by_id,
     update_student,
     delete_student,
@@ -73,8 +74,11 @@ async def list_students_endpoint(
     teacher: CurrentTeacher,
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
-    """List all students (regardless of teacher), with latest level info."""
-    students = await list_all_students(db)
+    """List students with latest level info. Master sees all, teachers see own."""
+    if teacher.role == "master":
+        students = await list_all_students(db)
+    else:
+        students = await list_students_by_teacher(db, teacher.id)
 
     # Fetch latest completed test session per student in one query
     student_ids = [s.id for s in students]
@@ -169,9 +173,19 @@ async def update_student_endpoint(
             detail="Student not found",
         )
 
+    # Check username uniqueness if changing
+    if student_in.username and student_in.username != student.username:
+        existing = await get_student_by_username(db, student_in.username)
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="이미 사용 중인 아이디입니다",
+            )
+
     updated = await update_student(
         db,
         student,
+        username=student_in.username,
         name=student_in.name,
         password=student_in.password,
         phone_number=student_in.phone_number,

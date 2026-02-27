@@ -11,6 +11,7 @@ import {
   ClipboardList,
   LogOut,
   UserCog,
+  GraduationCap,
 } from 'lucide-react';
 
 interface TeacherLayoutProps {
@@ -20,7 +21,8 @@ interface TeacherLayoutProps {
 const baseNavItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: '대시보드' },
   { to: '/students', icon: Users, label: '학생 관리' },
-  { to: '/test-settings', icon: Settings, label: '테스트 설정' },
+  { to: '/test-settings', icon: Settings, label: '단어 테스트' },
+  { to: '/grammar-settings', icon: GraduationCap, label: '문법 테스트' },
   { to: '/words', icon: Database, label: '데이터베이스' },
   { to: '/test-results', icon: ClipboardList, label: '테스트 결과' },
   { to: '/statistics', icon: TrendingUp, label: '통계' },

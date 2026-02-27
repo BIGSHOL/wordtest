@@ -17,6 +17,7 @@ from app.models.learning_session import LearningSession
 from app.models.learning_answer import LearningAnswer
 from app.core.timezone import now_kst
 from app.services.question_engines import resolve_name
+from app.services.levelup_service import GRADE_TO_START_LEVEL, _normalize_grade
 from app.services.test_common import (
     get_assignment_and_config,
     get_student,
@@ -92,9 +93,15 @@ async def start_session(
     if len(compatible) < 4:
         raise ValueError("Not enough compatible words for the selected question types (minimum 4)")
 
+    # Filter out words below student's grade level
+    min_level = GRADE_TO_START_LEVEL.get(_normalize_grade(student.grade or ""), 1)
+    grade_filtered = [w for w in compatible if w.level >= min_level]
+    if len(grade_filtered) < 4:
+        grade_filtered = compatible  # fallback: use all if too few remain
+
     # Sort words: easy → hard (level ASC, lesson ASC) - already sorted from DB
     # Select question_count words evenly distributed across the range
-    selected_words = _select_distributed_words(compatible, question_count)
+    selected_words = _select_distributed_words(grade_filtered, question_count)
 
     # Generate ALL questions at once
     questions = generate_questions_for_words(
@@ -115,6 +122,8 @@ async def start_session(
         "total_words": len(questions),
         "question_count": len(questions),
         "student_name": student.name or "학생",
+        "student_school": student.school_name or "",
+        "student_grade": student.grade or "",
         "student_id": assignment.student_id,
         "engine_type": "legacy",
         "per_question_time": timer_seconds,

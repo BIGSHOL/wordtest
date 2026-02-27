@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { BookOpen, Hash, AlertCircle, Loader2, Play, RotateCcw, BarChart3, AlertTriangle, LogIn } from 'lucide-react';
 import { useUnifiedTestStore } from '../../stores/unifiedTestStore';
 import { unifiedTestService } from '../../services/unifiedTest';
+import { useGrammarTestStore } from '../../stores/grammarTestStore';
 
 const CODE_LENGTH = 8;
 const CODE_CHARS = /[^A-Z0-9]/g;
@@ -18,6 +19,7 @@ export function TestStartPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const store = useUnifiedTestStore();
+  const grammarStore = useGrammarTestStore();
   const [testCode, setTestCode] = useState('');
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +51,12 @@ export function TestStartPage() {
       const engine = check.engine_type;
 
       // 2. Start the appropriate engine
+      if (engine === 'grammar') {
+        await grammarStore.startGrammar(code);
+        navigate('/grammar-test', { replace: true });
+        return;
+      }
+
       if (engine === 'levelup') {
         await store.startLevelup(code);
       } else {
@@ -284,7 +292,6 @@ export function TestStartPage() {
               onCompositionEnd={(e) => { composingRef.current = false; handleCodeChange((e.target as HTMLInputElement).value); }}
               onKeyDown={(e) => e.key === 'Enter' && testCode.length === CODE_LENGTH && handleStartByCode(testCode)}
               className="font-display text-[15px] text-text-primary placeholder:text-text-tertiary bg-transparent outline-none w-full tracking-[0.2em] font-semibold uppercase"
-              maxLength={CODE_LENGTH}
             />
           </div>
           {error && (

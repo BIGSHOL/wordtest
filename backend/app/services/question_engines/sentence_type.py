@@ -5,7 +5,7 @@ Mastery name    : sentence_and_type
 Card            : SentenceBlankCard + TypingInput
 
 Combines sentence blank context with typing input.
-Shows first letter + underscores as hint (like other typing engines).
+Shows first letter + underscores as hint.
 """
 from app.models.word import Word
 from app.services.question_engines.base import QuestionSpec, DistractorPool

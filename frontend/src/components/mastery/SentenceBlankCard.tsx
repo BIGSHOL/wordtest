@@ -2,7 +2,7 @@
  * Sentence fill-in-the-blank card for higher-level words.
  * Shows English sentence with ____ and Korean translation with highlighted word.
  */
-import { memo } from 'react';
+import { memo, useRef, useEffect, useCallback } from 'react';
 import { BookOpen, Volume2 } from 'lucide-react';
 import { speakSentence } from '../../utils/tts';
 
@@ -17,6 +17,13 @@ interface SentenceBlankCardProps {
   sentenceEn?: string;
   /** Stage number for prompt text */
   stage: number;
+  /** Typing props - when provided, renders inline typing input in the blank */
+  typingValue?: string;
+  onTypingChange?: (value: string) => void;
+  onTypingSubmit?: () => void;
+  typingDisabled?: boolean;
+  typingHint?: string | null;
+  isListenMode?: boolean;
 }
 
 const STAGE_PROMPTS: Record<number, string> = {
@@ -106,9 +113,55 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
   sentenceKo,
   sentenceEn,
   stage,
+  typingValue,
+  onTypingChange,
+  onTypingSubmit,
+  typingDisabled,
+  typingHint,
+  isListenMode,
 }: SentenceBlankCardProps) {
   // Split sentence around ____ and render with highlight
   const parts = sentenceBlank.split('____');
+  const isTyping = onTypingChange !== undefined && onTypingSubmit !== undefined;
+
+  const inputRef = useRef<HTMLInputElement>(null);
+  const composingRef = useRef(false);
+
+  useEffect(() => {
+    if (isTyping && !typingDisabled) {
+      const timer = setTimeout(() => inputRef.current?.focus(), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isTyping, typingDisabled]);
+
+  useEffect(() => {
+    if (isTyping && typingValue === '' && !typingDisabled) {
+      const timer = setTimeout(() => inputRef.current?.focus(), 50);
+      return () => clearTimeout(timer);
+    }
+  }, [isTyping, typingValue, typingDisabled]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (isListenMode && e.key === '0') {
+        e.preventDefault();
+        return;
+      }
+      if (e.key === 'Enter' && !composingRef.current && (typingValue ?? '').trim().length > 0) {
+        e.preventDefault();
+        onTypingSubmit?.();
+      }
+    },
+    [typingValue, onTypingSubmit, isListenMode],
+  );
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (composingRef.current) return;
+      onTypingChange?.(e.target.value);
+    },
+    [onTypingChange],
+  );
 
   return (
     <div
@@ -122,21 +175,63 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
       </div>
 
       {/* Prompt */}
-      <p className="font-display text-sm font-medium text-text-tertiary text-center">
+      <p className="font-display text-[16px] font-semibold text-text-secondary text-center">
         {STAGE_PROMPTS[stage] || '빈칸에 들어갈 단어는?'}
       </p>
 
-      {/* Sentence with blank */}
+      {/* Sentence with blank or inline input */}
       <p className="font-word text-[20px] md:text-[22px] font-medium text-text-primary leading-relaxed text-center px-2">
         {parts[0]}
-        <span
-          className="inline-block min-w-[60px] border-b-[3px] border-accent-indigo mx-1 text-center"
-          style={{ borderBottomStyle: 'dashed' }}
-        >
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        </span>
+        {isTyping ? (
+          <span className="inline-flex items-end mx-1">
+            {typingHint && (
+              <span className="text-[20px] font-bold text-indigo-500 select-none" style={{ fontFamily: 'monospace' }}>
+                {typingHint}
+              </span>
+            )}
+            <input
+              ref={inputRef}
+              type="text"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              value={typingValue ?? ''}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              onCompositionStart={() => { composingRef.current = true; }}
+              onCompositionEnd={(e) => {
+                composingRef.current = false;
+                onTypingChange?.((e.target as HTMLInputElement).value);
+              }}
+              disabled={typingDisabled}
+              placeholder="..."
+              className="font-word text-[20px] md:text-[22px] font-bold text-accent-indigo placeholder:text-text-tertiary bg-transparent outline-none text-center"
+              style={{
+                borderBottom: `3px solid ${typingDisabled ? '#D1D5DB' : '#4F46E5'}`,
+                borderBottomStyle: (typingValue ?? '') ? 'solid' : 'dashed',
+                width: `${Math.max(4, (typingValue ?? '').length + 2)}ch`,
+                minWidth: '80px',
+              }}
+            />
+          </span>
+        ) : (
+          <span
+            className="inline-block min-w-[60px] border-b-[3px] border-accent-indigo mx-1 text-center"
+            style={{ borderBottomStyle: 'dashed' }}
+          >
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+          </span>
+        )}
         {parts[1]}
       </p>
+
+      {/* Enter hint */}
+      {isTyping && !typingDisabled && (
+        <p className="font-display text-xs text-text-tertiary">
+          Enter를 눌러 제출
+        </p>
+      )}
 
       {/* Korean sentence with word highlighted in bold */}
       {sentenceKo && (

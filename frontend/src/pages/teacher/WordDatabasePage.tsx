@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { TeacherLayout } from '../../components/layout/TeacherLayout';
 import { wordService, type Word, type CreateWordRequest, type LessonInfo } from '../../services/word';
-import { Search, Plus, Pencil, Trash2, X, Upload, Volume2, BookOpen, ChevronDown } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, X, Upload, Volume2, BookOpen, ChevronDown, Database, GraduationCap } from 'lucide-react';
 import { logger } from '../../utils/logger';
 import { getLevelRank } from '../../types/rank';
 import { speakWord, speakSentence } from '../../utils/tts';
+import { GrammarDatabasePanel } from '../../components/grammar/GrammarDatabasePanel';
 
 const ITEMS_PER_PAGE = 10;
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -40,7 +41,10 @@ const emptyForm: WordFormData = {
   category: '',
 };
 
+type DbTab = 'words' | 'grammar';
+
 export function WordDatabasePage() {
+  const [activeTab, setActiveTab] = useState<DbTab>('words');
   const [words, setWords] = useState<Word[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -247,6 +251,35 @@ export function WordDatabasePage() {
 
   return (
     <TeacherLayout>
+      {/* Tab switcher */}
+      <div className="flex items-center gap-1 mb-6 border-b border-border-subtle">
+        <button
+          onClick={() => setActiveTab('words')}
+          className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-colors -mb-px ${
+            activeTab === 'words'
+              ? 'border-teal text-teal'
+              : 'border-transparent text-text-tertiary hover:text-text-secondary'
+          }`}
+        >
+          <Database className="w-4 h-4" />
+          단어 데이터베이스
+        </button>
+        <button
+          onClick={() => setActiveTab('grammar')}
+          className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold border-b-2 transition-colors -mb-px ${
+            activeTab === 'grammar'
+              ? 'border-accent-indigo text-accent-indigo'
+              : 'border-transparent text-text-tertiary hover:text-text-secondary'
+          }`}
+        >
+          <GraduationCap className="w-4 h-4" />
+          문법 데이터베이스
+        </button>
+      </div>
+
+      {activeTab === 'grammar' ? (
+        <GrammarDatabasePanel />
+      ) : (
       <div className="space-y-6">
         {/* Top Bar */}
         <div className="flex items-start justify-between">
@@ -721,6 +754,7 @@ export function WordDatabasePage() {
           )}
         </div>
       </div>
+      )}
     </TeacherLayout>
   );
 }
