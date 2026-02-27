@@ -141,11 +141,6 @@ export function UnifiedTestPage() {
       playSound('wrong');
     }
 
-    // Level change sounds (levelup engine)
-    const levelChanged = useUnifiedTestStore.getState().levelChanged;
-    if (levelChanged === 'up') playSound('lvlup');
-    else if (levelChanged === 'down') playSound('lvldown');
-
     // Auto-advance after delay
     const timer = setTimeout(() => {
       store.nextQuestion();
