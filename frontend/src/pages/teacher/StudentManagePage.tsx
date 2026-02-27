@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import type { User } from '../../types/auth';
 import { studentService } from '../../services/student';
 import { getLevelRank } from '../../types/rank';
-import { Search, UserPlus, Pencil, Trash2, FileText, X } from 'lucide-react';
+import { Search, UserPlus, Pencil, Trash2, FileText, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Helper function moved outside component to prevent recreation on every render
 function formatDate(dateString: string) {
@@ -21,6 +21,8 @@ const GRADE_OPTIONS = [
   '중1', '중2', '중3',
   '고1', '고2', '고3',
 ];
+
+const PAGE_SIZE = 10;
 
 const EMPTY_NEW_STUDENT = {
   username: '',
@@ -43,6 +45,7 @@ export function StudentManagePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
+  const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const [newStudent, setNewStudent] = useState(EMPTY_NEW_STUDENT);
@@ -68,6 +71,17 @@ export function StudentManagePage() {
         s.school_name?.toLowerCase().includes(query)
     );
   }, [searchQuery, students]);
+
+  // Reset page when filter/search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredStudents.length / PAGE_SIZE));
+  const paginatedStudents = filteredStudents.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
 
   useEffect(() => {
     loadStudents();
@@ -178,10 +192,16 @@ export function StudentManagePage() {
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === filteredStudents.length) {
-      setSelectedIds(new Set());
+    const pageIds = paginatedStudents.map((s) => s.id);
+    const allSelected = pageIds.every((id) => selectedIds.has(id));
+    if (allSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        pageIds.forEach((id) => next.delete(id));
+        return next;
+      });
     } else {
-      setSelectedIds(new Set(filteredStudents.map((s) => s.id)));
+      setSelectedIds((prev) => new Set([...prev, ...pageIds]));
     }
   };
 
@@ -272,7 +292,7 @@ export function StudentManagePage() {
           {/* Table */}
           {isLoading ? (
             <div className="p-8 text-center text-text-secondary">로딩 중...</div>
-          ) : filteredStudents.length === 0 ? (
+          ) : paginatedStudents.length === 0 ? (
             <div className="p-8 text-center text-text-secondary">
               {searchQuery ? '검색 결과가 없습니다.' : '등록된 학생이 없습니다.'}
             </div>
@@ -284,7 +304,7 @@ export function StudentManagePage() {
                     <th className="px-4 text-center" style={{ width: '40px' }}>
                       <input
                         type="checkbox"
-                        checked={filteredStudents.length > 0 && selectedIds.size === filteredStudents.length}
+                        checked={paginatedStudents.length > 0 && paginatedStudents.every((s) => selectedIds.has(s.id))}
                         onChange={toggleSelectAll}
                         className="w-4 h-4 rounded border-border-subtle text-teal focus:ring-teal/20 cursor-pointer accent-[#2D9CAE]"
                       />
@@ -317,7 +337,7 @@ export function StudentManagePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredStudents.map((student) => {
+                  {paginatedStudents.map((student) => {
                     const rankInfo = student.latest_level ? getLevelRank(student.latest_level) : null;
                     return (
                       <tr
@@ -412,6 +432,44 @@ export function StudentManagePage() {
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-6 py-3 border-t border-border-subtle">
+              <span className="text-xs text-text-tertiary">
+                {filteredStudents.length}명 중 {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filteredStudents.length)}명
+              </span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="p-1.5 rounded-lg text-text-secondary hover:bg-bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
+                      page === currentPage
+                        ? 'bg-teal text-white'
+                        : 'text-text-secondary hover:bg-bg-muted'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="p-1.5 rounded-lg text-text-secondary hover:bg-bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           )}
         </div>
