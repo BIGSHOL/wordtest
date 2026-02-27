@@ -123,7 +123,7 @@ export function UnifiedTestPage() {
   // ── Per-question: timer warning sound ──────────────────────────────
   useEffect(() => {
     if (timeMode !== 'per_question' || phase !== 'testing' || hasAnswer) return;
-    if (perQTimer.secondsLeft === 3) {
+    if (perQTimer.secondsLeft === 5) {
       playSound('timer', { volume: 0.5 });
     }
   }, [perQTimer.secondsLeft, timeMode, phase, hasAnswer]);
