@@ -436,42 +436,61 @@ export function StudentManagePage() {
           )}
 
           {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-6 py-3 border-t border-border-subtle">
-              <span className="text-xs text-text-tertiary">
-                {filteredStudents.length}명 중 {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filteredStudents.length)}명
-              </span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="p-1.5 rounded-lg text-text-secondary hover:bg-bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+          {totalPages > 1 && (() => {
+            // Build compact page list: 1 ... 4 5 [6] 7 8 ... 31
+            const pages: (number | '...')[] = [];
+            const delta = 2; // pages around current
+            const left = Math.max(2, currentPage - delta);
+            const right = Math.min(totalPages - 1, currentPage + delta);
+            pages.push(1);
+            if (left > 2) pages.push('...');
+            for (let i = left; i <= right; i++) pages.push(i);
+            if (right < totalPages - 1) pages.push('...');
+            if (totalPages > 1) pages.push(totalPages);
+
+            return (
+              <div className="flex items-center justify-between px-6 py-3 border-t border-border-subtle">
+                <span className="text-xs text-text-tertiary">
+                  {filteredStudents.length}명 중 {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filteredStudents.length)}명
+                </span>
+                <div className="flex items-center gap-1">
                   <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
-                      page === currentPage
-                        ? 'bg-teal text-white'
-                        : 'text-text-secondary hover:bg-bg-muted'
-                    }`}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="p-1.5 rounded-lg text-text-secondary hover:bg-bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
-                    {page}
+                    <ChevronLeft className="w-4 h-4" />
                   </button>
-                ))}
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={currentPage === totalPages}
-                  className="p-1.5 rounded-lg text-text-secondary hover:bg-bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                  {pages.map((page, idx) =>
+                    page === '...' ? (
+                      <span key={`dots-${idx}`} className="w-8 h-8 flex items-center justify-center text-xs text-text-tertiary">
+                        ...
+                      </span>
+                    ) : (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
+                          page === currentPage
+                            ? 'bg-teal text-white'
+                            : 'text-text-secondary hover:bg-bg-muted'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  )}
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-1.5 rounded-lg text-text-secondary hover:bg-bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         {/* Edit Form Modal */}
