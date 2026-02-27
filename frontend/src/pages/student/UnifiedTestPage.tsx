@@ -25,6 +25,7 @@ import { WordCard } from '../../components/test/WordCard';
 import { MeaningCard } from '../../components/test/MeaningCard';
 import { ChoiceButton } from '../../components/test/ChoiceButton';
 import { SentenceBlankCard } from '../../components/mastery/SentenceBlankCard';
+import { TypingInput } from '../../components/mastery/TypingInput';
 import { EmojiCard } from '../../components/test/EmojiCard';
 import { ListeningCard } from '../../components/test/ListeningCard';
 import { AntonymCard } from '../../components/test/AntonymCard';
@@ -419,29 +420,30 @@ export function UnifiedTestPage() {
   const totalQ = flatQuestions.length || questionCount;
 
   // Question card renderer (shared between modes)
-  // When typing props are provided, the card renders an inline typing input
-  const renderQuestionCard = (typingProps?: {
+  // Cards only show the question prompt; TypingInput is rendered separately below.
+  // Exception: SentenceBlankCard renders inline letter-boxes when typing props are provided.
+  const renderQuestionCard = (sentenceTypingProps?: {
     value: string;
     onChange: (v: string) => void;
     onSubmit: () => void;
     disabled?: boolean;
     hint?: string | null;
   }) => {
-    const tp = isTyping && typingProps ? {
-      typingValue: typingProps.value,
-      onTypingChange: typingProps.onChange,
-      onTypingSubmit: typingProps.onSubmit,
-      typingDisabled: typingProps.disabled,
-      typingHint: typingProps.hint,
-      isListenMode: isListen,
-    } : {};
-
     // Listen questions: always use ListeningCard (hides word, shows headphones)
     if (isListen && !isSentence) {
-      return <ListeningCard english={currentQuestion.word.english} {...tp} />;
+      return <ListeningCard english={currentQuestion.word.english} />;
     }
 
     if (isSentence) {
+      // Sentence typing: pass typing props for inline letter-boxes inside the card
+      const tp = isTyping && sentenceTypingProps ? {
+        typingValue: sentenceTypingProps.value,
+        onTypingChange: sentenceTypingProps.onChange,
+        onTypingSubmit: sentenceTypingProps.onSubmit,
+        typingDisabled: sentenceTypingProps.disabled,
+        typingHint: sentenceTypingProps.hint,
+        isListenMode: isListen,
+      } : {};
       return (
         <SentenceBlankCard
           sentenceBlank={currentQuestion.sentence_blank!}
@@ -465,18 +467,18 @@ export function UnifiedTestPage() {
       case 'meaning_and_type':
       case 'ko_to_en':
       case 'ko_type':
-        return <MeaningCard korean={currentQuestion.word.korean || ''} {...tp} />;
+        return <MeaningCard korean={currentQuestion.word.korean || ''} />;
       case 'listen_and_type':
       case 'listen_to_meaning':
       case 'listen_en':
       case 'listen_ko':
       case 'listen_type':
-        return <ListeningCard english={currentQuestion.word.english} {...tp} />;
+        return <ListeningCard english={currentQuestion.word.english} />;
       case 'antonym_type':
       case 'antonym_choice':
       case 'antonym_and_type':
       case 'antonym_and_choice':
-        return <AntonymCard english={currentQuestion.word.english} korean={currentQuestion.word.korean ?? undefined} {...tp} />;
+        return <AntonymCard english={currentQuestion.word.english} korean={currentQuestion.word.korean ?? undefined} />;
       default:
         return <WordCard word={currentQuestion.word.english} />;
     }
@@ -541,17 +543,26 @@ export function UnifiedTestPage() {
           </div>
 
           <div className="w-full md:w-[640px]">
-            {renderQuestionCard(isTyping ? {
+            {renderQuestionCard(isTyping && isSentence ? {
               value: typedValue,
               onChange: (text) => store.setLocalTypedAnswer(currentQuestionIndex, text),
               onSubmit: store.goNext,
               disabled: false,
-              hint: currentQuestion.hint || (currentQuestion.correct_answer ? currentQuestion.correct_answer.split(' ').map((w: string) => w[0] + '_'.repeat(w.length - 1)).join(' ') : null),
+              hint: currentQuestion.hint,
             } : undefined)}
           </div>
 
-          {!isTyping && (
-            <div className="w-full md:w-[640px]">
+          <div className="w-full md:w-[640px]">
+            {isTyping && !isSentence ? (
+              <TypingInput
+                value={typedValue}
+                onChange={(text) => store.setLocalTypedAnswer(currentQuestionIndex, text)}
+                onSubmit={store.goNext}
+                disabled={false}
+                isListenMode={isListen}
+                hint={currentQuestion.hint}
+              />
+            ) : !isTyping ? (
               <div className="flex flex-col gap-3 w-full">
                 {currentQuestion.choices?.map((choice, i) => (
                   <ChoiceButton
@@ -563,8 +574,8 @@ export function UnifiedTestPage() {
                   />
                 ))}
               </div>
-            </div>
-          )}
+            ) : null}
+          </div>
 
           {/* Navigation buttons */}
           <div className="w-full md:w-[640px] flex items-center justify-between pt-2">
@@ -676,17 +687,26 @@ export function UnifiedTestPage() {
       {/* Content */}
       <div className="flex-1 flex flex-col justify-center items-center gap-5 px-5 py-6 md:px-8">
         <div className="w-full md:w-[640px]">
-          {renderQuestionCard(isTyping ? {
+          {renderQuestionCard(isTyping && isSentence ? {
             value: typedAnswer,
             onChange: (text) => store.setTypedAnswer(text),
             onSubmit: handleTypingSubmit,
             disabled: !!answerResult,
-            hint: currentQuestion.hint || (currentQuestion.correct_answer ? currentQuestion.correct_answer.split(' ').map((w: string) => w[0] + '_'.repeat(w.length - 1)).join(' ') : null),
+            hint: currentQuestion.hint,
           } : undefined)}
         </div>
 
-        {!isTyping && (
-          <div className="w-full md:w-[640px]">
+        <div className="w-full md:w-[640px]">
+          {isTyping && !isSentence ? (
+            <TypingInput
+              value={typedAnswer}
+              onChange={(text) => store.setTypedAnswer(text)}
+              onSubmit={handleTypingSubmit}
+              disabled={!!answerResult}
+              isListenMode={isListen}
+              hint={currentQuestion.hint}
+            />
+          ) : !isTyping ? (
             <div className="flex flex-col gap-3 w-full">
               {currentQuestion.choices?.map((choice, i) => (
                 <ChoiceButton
@@ -698,8 +718,8 @@ export function UnifiedTestPage() {
                 />
               ))}
             </div>
-          </div>
-        )}
+          ) : null}
+        </div>
 
         {/* Feedback banner */}
         {answerResult && (
