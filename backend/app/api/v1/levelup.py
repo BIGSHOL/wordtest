@@ -46,7 +46,7 @@ async def check_test_code(
         )
     )
     assignment = result.scalar_one_or_none()
-    if not assignment:
+    if not assignment or assignment.status == "deactivated":
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Invalid or inactive test code",

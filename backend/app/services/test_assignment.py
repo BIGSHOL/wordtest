@@ -307,6 +307,27 @@ async def reset_assignment(
     return True
 
 
+async def unassign_assignment(
+    db: AsyncSession, assignment_id: str, teacher_id: str
+) -> bool:
+    """Deactivate an assignment. Results stay, code becomes invalid."""
+    result = await db.execute(
+        select(TestAssignment).where(
+            TestAssignment.id == assignment_id,
+            TestAssignment.teacher_id == teacher_id,
+        )
+    )
+    assignment = result.scalar_one_or_none()
+    if not assignment:
+        return False
+    if assignment.status == "deactivated":
+        return False
+
+    assignment.status = "deactivated"
+    await db.commit()
+    return True
+
+
 async def delete_assignment(
     db: AsyncSession, assignment_id: str, teacher_id: str
 ) -> bool:

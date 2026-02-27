@@ -97,6 +97,10 @@ export const testAssignmentService = {
     await api.patch(`/api/v1/test-assignments/${id}/reset`);
   },
 
+  async unassignStudent(id: string): Promise<void> {
+    await api.patch(`/api/v1/test-assignments/${id}/unassign`);
+  },
+
   async createTestConfig(data: CreateTestConfigRequest): Promise<TestConfigItem> {
     const response = await api.post<TestConfigItem>('/api/v1/test-configs', data);
     return response.data;

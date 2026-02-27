@@ -494,12 +494,17 @@ export function TestSettingsPage() {
             onClose={() => setAssignModalConfig(null)}
             config={assignModalConfig}
             students={students}
-            existingAssignmentStudentIds={
-              new Set(
-                assignments
-                  .filter(a => a.test_config_id === assignModalConfig.id)
-                  .map(a => a.student_id)
-              )
+            existingAssignments={
+              assignments
+                .filter(a => a.test_config_id === assignModalConfig.id)
+                .map(a => ({
+                  assignment_id: a.id,
+                  student_id: a.student_id,
+                  status: a.status as 'pending' | 'in_progress' | 'completed' | 'deactivated',
+                  learning_session_id: a.learning_session_id,
+                  test_session_id: a.test_session_id,
+                  assignment_type: a.assignment_type,
+                }))
             }
             onAssigned={async () => {
               setAssignModalConfig(null);
