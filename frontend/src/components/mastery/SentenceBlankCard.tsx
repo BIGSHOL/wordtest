@@ -240,8 +240,8 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
         </p>
       )}
 
-      {/* TTS button for sentence */}
-      {sentenceEn && (
+      {/* TTS button — only for listening mode (sentence_type doesn't need it) */}
+      {isListenMode && sentenceEn && (
         <button
           onClick={() => speakSentence(sentenceEn)}
           className="flex items-center gap-2 rounded-full bg-accent-indigo-light px-4 py-2 mt-1 active:scale-95 transition-transform"
