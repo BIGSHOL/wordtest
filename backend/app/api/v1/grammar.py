@@ -36,11 +36,18 @@ router = APIRouter(prefix="/grammar", tags=["grammar"])
 
 @router.get("/books")
 async def list_books(db: AsyncSession = Depends(get_db)):
-    """List all grammar books."""
+    """List all grammar books. Auto-seeds if empty."""
     result = await db.execute(
         select(GrammarBook).order_by(GrammarBook.level)
     )
-    books = result.scalars().all()
+    books = list(result.scalars().all())
+    if not books:
+        await grammar_service.seed_books_and_chapters(db)
+        await db.commit()
+        result = await db.execute(
+            select(GrammarBook).order_by(GrammarBook.level)
+        )
+        books = list(result.scalars().all())
     return [GrammarBookResponse.model_validate(b) for b in books]
 
 
@@ -146,7 +153,15 @@ async def list_configs(
     if current_user.role != "teacher":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teachers only")
     configs = await grammar_service.list_configs(db, current_user.id)
-    return [GrammarConfigResponse.model_validate(c) for c in configs]
+    config_ids = [c.id for c in configs]
+    counts = await grammar_service.get_config_assignment_counts(db, config_ids)
+    return [
+        {
+            **GrammarConfigResponse.model_validate(c).model_dump(),
+            "assignment_count": counts.get(c.id, 0),
+        }
+        for c in configs
+    ]
 
 
 @router.delete("/configs/{config_id}")
@@ -187,6 +202,18 @@ async def assign_grammar(
 
     await db.commit()
     return {"assignments": assignments}
+
+
+@router.get("/assignments")
+async def list_grammar_assignments(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List grammar test assignments for the current teacher."""
+    if current_user.role != "teacher":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teachers only")
+    assignments = await grammar_service.list_assignments(db, current_user.id)
+    return assignments
 
 
 # ── Student Session ─────────────────────────────────────────────────────

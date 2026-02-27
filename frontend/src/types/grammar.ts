@@ -37,6 +37,21 @@ export interface GrammarConfig {
   question_types: string | null;
   question_type_counts: string | null;
   is_active: boolean;
+  assignment_count?: number;
+  created_at?: string;
+}
+
+export interface GrammarAssignmentItem {
+  id: string;
+  student_id: string;
+  student_name: string;
+  student_school: string | null;
+  student_grade: string | null;
+  test_code: string;
+  config_name: string | null;
+  status: string;
+  assigned_at: string | null;
+  completed_at: string | null;
 }
 
 export interface GrammarQuestion {

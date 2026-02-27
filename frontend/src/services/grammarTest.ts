@@ -5,6 +5,7 @@ import type {
   GrammarChapter,
   GrammarConfig,
   GrammarAssignment,
+  GrammarAssignmentItem,
   GrammarQuestionBrowse,
   StartGrammarResponse,
   GrammarAnswerResult,
@@ -72,6 +73,11 @@ export const grammarTestService = {
       `/api/v1/grammar/configs/${configId}/assign`,
       { student_ids: studentIds },
     );
+    return res.data;
+  },
+
+  async listAssignments(): Promise<GrammarAssignmentItem[]> {
+    const res = await api.get<GrammarAssignmentItem[]>('/api/v1/grammar/assignments');
     return res.data;
   },
 
