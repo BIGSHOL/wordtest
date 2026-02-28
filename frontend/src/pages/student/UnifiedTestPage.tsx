@@ -47,7 +47,7 @@ export function UnifiedTestPage() {
     briefingInfo, studentName,
     questionCount, perQuestionTime, totalTimeSeconds,
     isLoading, isComplete, finalResult,
-    selectedAnswer, typedAnswer, answerResult,
+    selectedAnswer, answerResult,
     error,
   } = store;
 
