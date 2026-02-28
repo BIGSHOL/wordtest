@@ -457,14 +457,20 @@ class TestSentence:
 
     # ── New: phrasal verb / idiom matching ──────────────────────────────
 
-    def test_blank_phrasal_verb(self):
-        """Phrasal verb with ~ should blank the first content word."""
+    def test_blank_phrasal_verb_with_tilde(self):
+        """Phrase with ~ should blank only the verb, keeping prepositions visible."""
         assert make_sentence_blank(
             "She took part in the competition.", "take part in ~"
         ) == "She ____ part in the competition."
 
+    def test_blank_phrasal_verb_standalone(self):
+        """Standalone phrasal verb (no ~) should blank the entire phrase."""
+        assert make_sentence_blank(
+            "The flowers gave off a fragrant perfume.", "give off"
+        ) == "The flowers ____ a fragrant perfume."
+
     def test_blank_be_pattern(self):
-        """be-verb pattern should match inflected 'is/was/are'."""
+        """be-verb pattern with ~ should blank only the verb."""
         assert make_sentence_blank(
             "He is good at math.", "be good at ~"
         ) == "He ____ good at math."

@@ -142,8 +142,14 @@ def _try_exact(sentence: str, word: str) -> str | None:
     return None
 
 
-def _try_phrase_match(sentence: str, phrase: str) -> str | None:
-    """Try matching first content word of a phrase using irregular forms."""
+def _try_phrase_match(sentence: str, phrase: str, blank_all: bool = True) -> str | None:
+    """Try matching content words of a phrase.
+
+    When blank_all=True (standalone phrasal verbs like "give off"),
+    blanks all consecutive content tokens as one ____.
+    When blank_all=False (phrases with ~ like "go to ~"),
+    blanks only the first content word for context.
+    """
     tokens = phrase.split()
     content_tokens = []
     for t in tokens:
@@ -155,10 +161,20 @@ def _try_phrase_match(sentence: str, phrase: str) -> str | None:
     if not content_tokens:
         return None
 
-    # Try each content word, prefer matching with following context
+    # Blank all consecutive content tokens as a single unit
+    if blank_all and len(content_tokens) >= 2:
+        parts = []
+        for t in content_tokens:
+            p = _build_word_re(t.lower().strip())
+            parts.append(r'\b' + p + r'\b')
+        full_pat = re.compile(r'\s+'.join(parts), re.IGNORECASE)
+        m = full_pat.search(sentence)
+        if m:
+            return sentence[:m.start()] + '____' + sentence[m.end():]
+
+    # Blank only first content word (with context for disambiguation)
     for i, token in enumerate(content_tokens):
         word_pat = _build_word_re(token.lower().strip())
-        # Try with next context word for disambiguation
         if i + 1 < len(content_tokens):
             next_tok = content_tokens[i + 1].lower().strip()
             next_re = _token_re(next_tok)
@@ -167,13 +183,10 @@ def _try_phrase_match(sentence: str, phrase: str) -> str | None:
                     r'\b' + word_pat + r'\b\s+' + r'\b' + next_re + r'\b',
                     re.IGNORECASE,
                 )
-                m = ctx_pat.search(sentence)
-                if m:
-                    # Replace only the first word part
+                if ctx_pat.search(sentence):
                     single = re.compile(r'\b' + word_pat + r'\b', re.IGNORECASE)
                     return single.sub('____', sentence, count=1)
 
-        # Fallback: match single word
         single = re.compile(r'\b' + word_pat + r'\b', re.IGNORECASE)
         if single.search(sentence):
             return single.sub('____', sentence, count=1)
@@ -224,7 +237,10 @@ def make_sentence_blank(sentence: str, target_word: str) -> str | None:
             return result
 
     # Phase 3: phrase token matching
-    result = _try_phrase_match(sentence, cleaned)
+    # Standalone phrasal verbs (no ~) blank entire phrase: "give off" → "gave off" → ____
+    # Phrases with ~ blank only verb, keep prepositions: "go to ~" → "went" → ____
+    blank_all = '~' not in target_word
+    result = _try_phrase_match(sentence, cleaned, blank_all=blank_all)
     if result:
         return result
 

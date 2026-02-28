@@ -32,10 +32,19 @@ export function useTimer(totalSeconds: number, onTimeout?: () => void): UseTimer
   const [paused, setPaused] = useState(false);
   const onTimeoutRef = useRef(onTimeout);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutFiredRef = useRef(false);
   onTimeoutRef.current = onTimeout;
 
   const fraction = totalSeconds > 0 ? secondsLeft / totalSeconds : 0;
   const urgency = getUrgency(fraction);
+
+  // Fire timeout callback AFTER "0" is rendered on screen
+  useEffect(() => {
+    if (secondsLeft === 0 && !paused && timeoutFiredRef.current) {
+      timeoutFiredRef.current = false;
+      onTimeoutRef.current?.();
+    }
+  }, [secondsLeft, paused]);
 
   // Start/stop interval based on paused state
   useEffect(() => {
@@ -56,7 +65,7 @@ export function useTimer(totalSeconds: number, onTimeout?: () => void): UseTimer
             clearInterval(intervalRef.current);
             intervalRef.current = null;
           }
-          onTimeoutRef.current?.();
+          timeoutFiredRef.current = true;
           return 0;
         }
         return prev - 1;
@@ -72,6 +81,7 @@ export function useTimer(totalSeconds: number, onTimeout?: () => void): UseTimer
   }, [paused]);
 
   const reset = useCallback(() => {
+    timeoutFiredRef.current = false;
     setSecondsLeft(totalSeconds);
     setPaused(false);
   }, [totalSeconds]);
