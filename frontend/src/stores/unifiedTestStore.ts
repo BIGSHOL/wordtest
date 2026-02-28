@@ -42,7 +42,7 @@ function computeXpChange(params: {
   combo: number;
   consecutiveWrong: number;
 }): XpBreakdown {
-  const { isCorrect, questionLevel, currentBook, timeTaken, combo, consecutiveWrong } = params;
+  const { isCorrect, questionLevel, currentBook, combo, consecutiveWrong } = params;
   if (isCorrect) {
     const base = questionLevel < currentBook
       ? Math.max(4, currentBook)
