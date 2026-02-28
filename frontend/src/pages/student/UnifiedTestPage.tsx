@@ -307,7 +307,7 @@ export function UnifiedTestPage() {
         bookNameEnd={briefingInfo?.bookNameEnd ?? null}
         lessonStart={briefingInfo?.lessonStart ?? null}
         lessonEnd={briefingInfo?.lessonEnd ?? null}
-        questionCount={flatQuestions.length || questionCount}
+        questionCount={questionCount || flatQuestions.length}
         totalTimeSeconds={totalTimeSeconds}
         timeMode={timeMode}
         perQuestionTime={perQuestionTime}
@@ -417,7 +417,7 @@ export function UnifiedTestPage() {
   const isTyping = isTypingQuestion(questionType);
   const isListen = isListenQuestion(questionType);
   const isSentence = currentQuestion.context_mode === 'sentence' && currentQuestion.sentence_blank;
-  const totalQ = flatQuestions.length || questionCount;
+  const totalQ = questionCount || flatQuestions.length;
 
   // Question card renderer (shared between modes)
   // Cards only show the question prompt; TypingInput is rendered separately below.
