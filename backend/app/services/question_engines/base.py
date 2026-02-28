@@ -6,10 +6,20 @@ QuestionEngine - Protocol that all engine modules implement
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
 from app.models.word import Word
+
+
+def clean_english_for_typing(text: str) -> str:
+    """Strip annotations (~, ..., parenthesized, quoted) from English text for typing questions."""
+    cleaned = re.sub(r'\(.*?\)', '', text)
+    cleaned = re.sub(r'".*?"', '', cleaned)
+    cleaned = cleaned.replace('~', '').replace('...', '').replace('\u2026', '')
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    return cleaned
 
 
 @dataclass
@@ -34,10 +44,15 @@ def make_typing_hint(word: str) -> str | None:
 
     Single word:  'fill'               → 'f___'
     Multi-word:   'for the first time' → 'f__ t__ f____ t___'
+
+    Special characters (~, ..., parenthesized text) are stripped first.
     """
     if not word:
         return None
-    parts = word.split(' ')
+    cleaned = clean_english_for_typing(word)
+    if not cleaned:
+        return None
+    parts = cleaned.split(' ')
     hint_parts = []
     for part in parts:
         if part:

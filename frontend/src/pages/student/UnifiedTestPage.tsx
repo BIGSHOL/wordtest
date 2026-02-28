@@ -144,7 +144,7 @@ export function UnifiedTestPage() {
     // Auto-advance after delay
     const timer = setTimeout(() => {
       store.nextQuestion();
-    }, 1500);
+    }, 800);
     return () => clearTimeout(timer);
   }, [answerResult, timeMode]);
 

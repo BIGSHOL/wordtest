@@ -456,13 +456,22 @@ def edit_distance(s1: str, s2: str) -> int:
     return prev_row[-1]
 
 
+def _strip_typing_annotations(s: str) -> str:
+    """Strip special characters (~, ..., parenthesized) for typing comparison."""
+    import re as _re
+    s = _re.sub(r'\(.*?\)', '', s)
+    s = s.replace('~', '').replace('...', '').replace('\u2026', '').replace('\u200B', '')
+    return _re.sub(r'\s+', ' ', s).strip().lower()
+
+
 def check_typing_answer(submitted: str, correct: str) -> tuple[bool, bool]:
     """Check a typed answer against the correct answer.
 
     Returns (is_correct, is_almost) tuple.
+    Special characters (~, ...) are stripped from both sides.
     """
-    submitted_clean = submitted.strip().lower()
-    correct_clean = correct.strip().lower()
+    submitted_clean = _strip_typing_annotations(submitted)
+    correct_clean = _strip_typing_annotations(correct)
     if submitted_clean == correct_clean:
         return (True, False)
     dist = edit_distance(submitted_clean, correct_clean)

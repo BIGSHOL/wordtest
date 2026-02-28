@@ -13,54 +13,67 @@ function cleanForTts(text: string): string {
 // ── Volume normalization via Compressor + Gain ───────────────────────────
 let audioCtx: AudioContext | null = null;
 let gainNode: GainNode | null = null;
+let compressorNode: DynamicsCompressorNode | null = null;
 const TTS_GAIN = 1.95; // post-compressor boost (+30%)
 const TTS_RATE = 0.75; // slower speech (75% speed)
 
-function getGainNode(): GainNode | null {
+/** Track which audio elements already have a MediaElementSource attached. */
+const connectedElements = new WeakSet<HTMLAudioElement>();
+
+function ensureAudioGraph(): boolean {
   try {
     if (!audioCtx) audioCtx = new AudioContext();
     if (!gainNode) {
-      // Compressor: auto-levels volume differences between sources
-      const compressor = audioCtx.createDynamicsCompressor();
-      compressor.threshold.value = -30; // start compressing at -30dB
-      compressor.knee.value = 20;       // soft knee for natural sound
-      compressor.ratio.value = 8;       // 8:1 compression ratio
-      compressor.attack.value = 0.003;  // fast attack for speech
-      compressor.release.value = 0.15;  // smooth release
+      compressorNode = audioCtx.createDynamicsCompressor();
+      compressorNode.threshold.value = -30;
+      compressorNode.knee.value = 20;
+      compressorNode.ratio.value = 8;
+      compressorNode.attack.value = 0.003;
+      compressorNode.release.value = 0.15;
 
       gainNode = audioCtx.createGain();
       gainNode.gain.value = TTS_GAIN;
 
-      // Chain: source → compressor → gain → speakers
-      compressor.connect(gainNode);
+      compressorNode.connect(gainNode);
       gainNode.connect(audioCtx.destination);
-
-      // Store compressor ref on gainNode for source connection
-      (gainNode as any)._compressor = compressor;
     }
-    return gainNode;
+    return true;
   } catch {
-    return null;
+    return false;
+  }
+}
+
+/** Connect audio element to Web Audio graph (only once per element). */
+function connectToGraph(audio: HTMLAudioElement): boolean {
+  if (!audioCtx || !compressorNode || connectedElements.has(audio)) return connectedElements.has(audio);
+  try {
+    const source = audioCtx.createMediaElementSource(audio);
+    source.connect(compressorNode);
+    connectedElements.add(audio);
+    return true;
+  } catch {
+    // Already connected or other error — mark as connected
+    connectedElements.add(audio);
+    return true;
   }
 }
 
 /** Play audio through Compressor → Gain for normalized volume. */
 function playAmplified(audio: HTMLAudioElement): Promise<void> {
   audio.playbackRate = TTS_RATE;
-  const gain = getGainNode();
-  if (!gain || !audioCtx) {
-    // Fallback: play normally
-    return audio.play().catch(() => {});
+
+  if (!ensureAudioGraph() || !audioCtx) {
+    // Web Audio unavailable — play directly (no volume boost)
+    return audio.play().catch((e) => { console.warn('[TTS] play failed:', e.message); });
   }
-  if (audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
-  try {
-    const source = audioCtx.createMediaElementSource(audio);
-    const compressor = (gain as any)._compressor as AudioNode | undefined;
-    source.connect(compressor || gain);
-  } catch {
-    // Already connected — ignore InvalidStateError
+
+  // Resume suspended AudioContext (requires prior user gesture)
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().catch(() => {});
   }
-  return audio.play().catch(() => {});
+
+  connectToGraph(audio);
+  return audio.play().catch((e) => { console.warn('[TTS] play failed:', e.message); });
 }
 
 // Preloaded audio cache: word → HTMLAudioElement (ready to play instantly)
@@ -275,7 +288,7 @@ export async function speakSentence(text: string) {
   const cached = sentenceCache.get(text);
   if (cached) {
     cached.currentTime = 0;
-    await playAmplified(cached).catch(() => {});
+    await playAmplified(cached);
     return;
   }
 

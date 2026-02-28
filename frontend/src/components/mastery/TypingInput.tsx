@@ -21,6 +21,9 @@ interface TypingInputProps {
   isListenMode?: boolean;
 }
 
+/** Zero-width space placeholder — preserves string length so positional mapping stays intact. */
+const PH = '\u200B';
+
 /** Parse hint into position types and metadata */
 function parseHint(hint: string | null | undefined) {
   if (!hint) return { chars: [] as Array<'hint' | 'input' | 'space'>, hintChars: new Map<number, string>(), inputPositions: [] as number[], totalLen: 4 };
@@ -61,12 +64,16 @@ export const TypingInput = memo(function TypingInput({
   /** Extract user-typed characters from full value */
   const getUserInput = useCallback((val: string): string => {
     if (!val) return '';
-    return inputPositions.map(pos => val[pos] || '').join('');
+    return inputPositions.map(pos => {
+      const ch = val[pos];
+      return (!ch || ch === PH) ? '' : ch;
+    }).join('');
   }, [inputPositions]);
 
-  /** Reconstruct full value from user input characters */
+  /** Reconstruct full value from user input characters.
+   *  Uses PH (zero-width space) for unfilled slots so string length === totalLen. */
   const buildValue = useCallback((userInput: string): string => {
-    const result: string[] = new Array(totalLen).fill('');
+    const result: string[] = new Array(totalLen).fill(PH);
     hintChars.forEach((ch, pos) => { result[pos] = ch; });
     chars.forEach((type, pos) => { if (type === 'space') result[pos] = ' '; });
     for (let i = 0; i < userInput.length && i < inputPositions.length; i++) {
@@ -77,20 +84,26 @@ export const TypingInput = memo(function TypingInput({
 
   const userInput = getUserInput(value);
 
-  // Focus management
-  useEffect(() => {
-    if (!disabled) {
-      const t = setTimeout(() => inputRef.current?.focus(), 100);
-      return () => clearTimeout(t);
+  // Focus management — aggressively keep hidden input focused
+  const focusInput = useCallback(() => {
+    if (!disabled && inputRef.current && document.activeElement !== inputRef.current) {
+      inputRef.current.focus({ preventScroll: true });
     }
   }, [disabled]);
 
   useEffect(() => {
-    if (userInput.length === 0 && !disabled) {
-      const t = setTimeout(() => inputRef.current?.focus(), 50);
+    if (!disabled) {
+      const t = setTimeout(focusInput, 100);
       return () => clearTimeout(t);
     }
-  }, [userInput.length, disabled]);
+  }, [disabled, focusInput]);
+
+  useEffect(() => {
+    if (userInput.length === 0 && !disabled) {
+      const t = setTimeout(focusInput, 50);
+      return () => clearTimeout(t);
+    }
+  }, [userInput.length, disabled, focusInput]);
 
   // Reset hidden input when question changes
   useEffect(() => {
@@ -144,15 +157,39 @@ export const TypingInput = memo(function TypingInput({
     if (raw) appendChars(raw);
   }, [appendChars]);
 
+  // Re-focus hidden input when container or its children lose focus
+  const handleContainerBlur = useCallback((e: React.FocusEvent) => {
+    if (disabled || composingRef.current) return;
+    // Small delay to allow focus to settle on new target
+    setTimeout(() => {
+      if (composingRef.current) return; // Don't interfere with composition
+      if (inputRef.current && document.activeElement !== inputRef.current) {
+        inputRef.current.focus({ preventScroll: true });
+      }
+    }, 10);
+  }, [disabled]);
+
+  // Redirect any key press on the container to the hidden input
+  const handleContainerKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (disabled) return;
+    if (document.activeElement !== inputRef.current) {
+      inputRef.current?.focus({ preventScroll: true });
+    }
+  }, [disabled]);
+
   // Compute cursor position (next input slot index)
   const nextInputIdx = userInput.length < userSlots ? inputPositions[userInput.length] : -1;
 
   return (
     <div className="flex flex-col items-center gap-2 w-full mt-3">
+      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
       <div
         className="relative flex justify-center flex-wrap cursor-text"
         style={{ gap: 4 }}
-        onClick={() => !disabled && inputRef.current?.focus()}
+        tabIndex={-1}
+        onClick={focusInput}
+        onBlur={handleContainerBlur}
+        onKeyDown={handleContainerKeyDown}
       >
         {/* Hidden input overlay for keyboard capture */}
         <input

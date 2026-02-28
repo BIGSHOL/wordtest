@@ -5,7 +5,7 @@ Mastery name    : antonym_and_type
 Card            : AntonymCard + TypingInput
 """
 from app.models.word import Word
-from app.services.question_engines.base import QuestionSpec, DistractorPool, make_typing_hint
+from app.services.question_engines.base import QuestionSpec, DistractorPool, make_typing_hint, clean_english_for_typing
 
 
 class AntonymTypeEngine:
@@ -20,12 +20,12 @@ class AntonymTypeEngine:
         pool: DistractorPool,
         n_choices: int = 4,
     ) -> QuestionSpec:
-        antonym = word.antonym
+        antonym = clean_english_for_typing(word.antonym or '')
         return QuestionSpec(
             question_type=self.question_type,
             word=word,
             correct_answer=antonym,
             choices=None,
             is_typing=True,
-            hint=make_typing_hint(antonym),
+            hint=make_typing_hint(word.antonym or ''),
         )

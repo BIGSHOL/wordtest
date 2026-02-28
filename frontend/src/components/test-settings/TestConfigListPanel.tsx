@@ -132,26 +132,42 @@ export function TestConfigListPanel({ configs, onAssign, onDelete }: Props) {
                       <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
                         {formatTime(config)}
                       </td>
-                      <td className="text-xs text-text-secondary px-2 max-w-[200px]">
-                        <div className="flex flex-wrap items-center gap-1">
-                          {config.question_types ? (
-                            config.question_types.split(',').map((type) => {
-                              const trimmedType = type.trim();
-                              const style = QTYPE_BADGES[trimmedType];
-                              if (style) {
-                                return (
+                      <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
+                        <div className="flex items-center gap-1">
+                          {config.question_types ? (() => {
+                            const types = config.question_types!.split(',').map(t => t.trim());
+                            const maxShow = 2;
+                            const visible = types.slice(0, maxShow);
+                            const remaining = types.length - maxShow;
+                            return (
+                              <>
+                                {visible.map((trimmedType) => {
+                                  const style = QTYPE_BADGES[trimmedType];
+                                  if (style) {
+                                    return (
+                                      <span
+                                        key={trimmedType}
+                                        className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
+                                        style={{ backgroundColor: style.bg, color: style.color }}
+                                      >
+                                        {style.label}
+                                      </span>
+                                    );
+                                  }
+                                  return <span key={trimmedType} className="text-[9px]">{trimmedType}</span>;
+                                })}
+                                {remaining > 0 && (
                                   <span
-                                    key={trimmedType}
                                     className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
-                                    style={{ backgroundColor: style.bg, color: style.color }}
+                                    style={{ backgroundColor: '#F0F0EE', color: '#6D6C6A' }}
+                                    title={types.slice(maxShow).map(t => QTYPE_BADGES[t]?.label ?? t).join(', ')}
                                   >
-                                    {style.label}
+                                    +{remaining}
                                   </span>
-                                );
-                              }
-                              return <span key={trimmedType} className="text-[9px]">{trimmedType}</span>;
-                            })
-                          ) : (
+                                )}
+                              </>
+                            );
+                          })() : (
                             '-'
                           )}
                         </div>

@@ -108,6 +108,9 @@ function highlightKorean(sentenceKo: string, korean: string): React.ReactNode {
   return sentenceKo;
 }
 
+/** Zero-width space placeholder — preserves string length so positional mapping stays intact. */
+const PH = '\u200B';
+
 /** Parse hint into position types and metadata */
 function parseHint(hint: string | null | undefined) {
   if (!hint) return { chars: [] as Array<'hint' | 'input' | 'space'>, hintChars: new Map<number, string>(), inputPositions: [] as number[], totalLen: 4 };
@@ -157,12 +160,16 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
   /** Extract user-typed characters from full value */
   const getUserInput = useCallback((val: string): string => {
     if (!val) return '';
-    return inputPositions.map(pos => val[pos] || '').join('');
+    return inputPositions.map(pos => {
+      const ch = val[pos];
+      return (!ch || ch === PH) ? '' : ch;
+    }).join('');
   }, [inputPositions]);
 
-  /** Reconstruct full value from user input characters */
+  /** Reconstruct full value from user input characters.
+   *  Uses PH (zero-width space) for unfilled slots so string length === totalLen. */
   const buildValue = useCallback((userInput: string): string => {
-    const result: string[] = new Array(totalLen).fill('');
+    const result: string[] = new Array(totalLen).fill(PH);
     hintChars.forEach((ch, pos) => { result[pos] = ch; });
     chars.forEach((type, pos) => { if (type === 'space') result[pos] = ' '; });
     for (let i = 0; i < userInput.length && i < inputPositions.length; i++) {
@@ -262,16 +269,28 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
         {STAGE_PROMPTS[stage] || '빈칸에 들어갈 단어는?'}
       </p>
 
-      {/* Sentence with inline letter boxes */}
+      {/* Sentence with dashed blank */}
       <div
         className="font-word text-[20px] md:text-[22px] font-medium text-text-primary text-center px-2"
-        style={{ lineHeight: '2.2' }}
+        style={{ lineHeight: '2' }}
       >
         {parts[0]}
-        {isTyping ? (
-          <span
-            className="relative inline-flex items-center cursor-text"
-            style={{ gap: 2, verticalAlign: 'baseline', margin: '0 4px', flexWrap: 'wrap', justifyContent: 'center' }}
+        <span
+          className="inline-block min-w-[60px] border-b-[3px] border-accent-indigo mx-1 text-center"
+          style={{ borderBottomStyle: 'dashed' }}
+        >
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        </span>
+        {parts[1]}
+      </div>
+
+      {/* Letter boxes — rendered below sentence, same design as standalone TypingInput */}
+      {isTyping && (
+        <div className="flex flex-col items-center gap-2 w-full mt-1">
+          <div
+            className="relative flex justify-center flex-wrap cursor-text"
+            style={{ gap: 4 }}
+            tabIndex={-1}
             onClick={() => !typingDisabled && inputRef.current?.focus()}
           >
             {/* Hidden input for keyboard capture */}
@@ -284,8 +303,8 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
               autoCapitalize="off"
               spellCheck={false}
               disabled={typingDisabled}
-              className="absolute inset-0 opacity-0"
-              style={{ fontSize: 16, caretColor: 'transparent', zIndex: 10 }}
+              className="absolute inset-0 opacity-0 z-10"
+              style={{ fontSize: 16, caretColor: 'transparent' }}
               onKeyDown={handleKeyDown}
               onCompositionStart={() => { composingRef.current = true; }}
               onCompositionEnd={handleCompositionEnd}
@@ -294,7 +313,7 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
             {/* Letter boxes */}
             {chars.map((type, i) => {
               if (type === 'space') {
-                return <span key={i} style={{ display: 'inline-block', width: 8 }} />;
+                return <div key={i} style={{ width: 12 }} />;
               }
 
               const isHintBox = type === 'hint';
@@ -304,60 +323,50 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
               const isCursor = i === nextInputIdx && !typingDisabled;
 
               return (
-                <span
+                <div
                   key={i}
-                  className="inline-flex items-center justify-center select-none"
+                  className="relative flex items-center justify-center select-none"
                   style={{
-                    width: 22,
-                    height: 28,
-                    borderRadius: 4,
+                    width: 36,
+                    height: 44,
+                    borderRadius: 8,
                     backgroundColor: isHintBox ? '#EEF2FF' : char ? '#FAFAF9' : '#FFFFFF',
                     border: isCursor
                       ? '2px solid #4F46E5'
                       : isHintBox
-                        ? '1.5px solid #C7D2FE'
+                        ? '2px solid #C7D2FE'
                         : char
-                          ? '1px solid #D1D5DB'
-                          : '1px dashed #D1D5DB',
+                          ? '1.5px solid #D1D5DB'
+                          : '1.5px dashed #D1D5DB',
                     fontFamily: "'Pretendard Variable', 'Pretendard', monospace",
-                    fontSize: 14,
+                    fontSize: 20,
                     fontWeight: 700,
                     color: isHintBox ? '#4F46E5' : '#1A1918',
-                    position: 'relative',
+                    transition: 'border-color 0.15s, background-color 0.15s',
                   }}
                 >
                   {char}
                   {isCursor && (
-                    <span
+                    <div
+                      className="absolute"
                       style={{
-                        position: 'absolute',
                         width: 2,
-                        height: 14,
+                        height: 20,
                         backgroundColor: '#4F46E5',
                         animation: 'letterBlink 1s step-end infinite',
                       }}
                     />
                   )}
-                </span>
+                </div>
               );
             })}
-          </span>
-        ) : (
-          <span
-            className="inline-block min-w-[60px] border-b-[3px] border-accent-indigo mx-1 text-center"
-            style={{ borderBottomStyle: 'dashed' }}
-          >
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-          </span>
-        )}
-        {parts[1]}
-      </div>
-
-      {/* Enter hint */}
-      {isTyping && !typingDisabled && userPart.length < userSlots && (
-        <p className="font-display text-xs text-text-tertiary">
-          Enter를 눌러 제출
-        </p>
+          </div>
+          {!typingDisabled && userPart.length < userSlots && (
+            <p className="font-display text-xs text-text-tertiary">
+              Enter를 눌러 제출
+            </p>
+          )}
+        </div>
       )}
 
       <style>{`

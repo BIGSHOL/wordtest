@@ -437,7 +437,7 @@ export function TestSettingsPage() {
         {/* Tab: 테스트 출제 */}
         {activeTab === 'create' && (
           <div className="flex gap-6 items-start">
-            <div className="w-[880px] shrink-0">
+            <div className="flex-1 min-w-0">
               <TestConfigPanel
                 config={config}
                 onConfigChange={setConfig}
@@ -452,7 +452,7 @@ export function TestSettingsPage() {
                 onToggleAll={handleToggleAll}
               />
             </div>
-            <div className="flex-1 min-w-0 sticky top-4">
+            <div className="w-[280px] shrink-0 sticky top-4">
               <ConfigPreviewPanel
                 config={config}
                 selectedStudentCount={selectedIds.size}

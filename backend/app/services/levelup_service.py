@@ -110,7 +110,7 @@ async def start_session(
     # Parse question types from config
     question_types = _parse_question_types(config.question_types)
     timer_seconds = config.per_question_time_seconds or 10
-    total_time = config.total_time_override_seconds or (config.question_count or 50) * timer_seconds
+    total_time = config.total_time_override_seconds or config.question_count * timer_seconds
 
     # Parse question_type_counts if available
     question_type_counts = None
@@ -170,7 +170,7 @@ async def start_session(
         "assignment_id": assignment.id,
         "questions": initial_questions,
         "total_words": len(compatible),
-        "question_count": config.question_count or 50,
+        "question_count": config.question_count,
         "student_name": student.name or "학생",
         "student_school": student.school_name or "",
         "student_grade": student.grade or "",
@@ -582,22 +582,23 @@ def _generate_multi_level_pool(
 ) -> list[dict]:
     """Generate a multi-level question pool for initial serving.
 
-    Uses weighted distribution: higher-level words get more representation.
-    Weight = level number, so level 10 gets 10x the share of level 1.
+    Limits active levels to max_levels from start_level.
+    Adaptive mode uses current-level-heavy distribution (most words at starting level).
+    Exam mode uses wider distribution across all available levels.
     """
     available_levels = sorted(words_by_level.keys())
-    active_levels = [l for l in available_levels if l >= start_level]
+    all_active = [l for l in available_levels if l >= start_level]
 
-    if not active_levels:
+    if not all_active:
         return []
 
     if question_type_counts:
-        # Exam mode: weighted distribution across all levels (harder words dominate)
+        # Exam mode: use ALL available levels with weighted distribution
         total_needed = sum(question_type_counts.values())
         pool_size = max(total_needed, total_needed * 2)
 
         combined_words = _weighted_word_selection(
-            words_by_level, active_levels, pool_size,
+            words_by_level, all_active, pool_size,
         )
         random.shuffle(combined_words)
 
@@ -613,10 +614,11 @@ def _generate_multi_level_pool(
             question_type_counts=question_type_counts,
         )
 
-    # Adaptive mode: weighted level-by-level batching (harder words dominate)
+    # Adaptive mode: cap to max_levels from start, current-level-heavy distribution
+    active_levels = all_active[:max_levels]
     total_budget = max_levels * per_level
-    combined_words = _weighted_word_selection(
-        words_by_level, active_levels, total_budget,
+    combined_words = _adaptive_word_selection(
+        words_by_level, active_levels, total_budget, start_level,
     )
 
     if not combined_words:
@@ -666,6 +668,38 @@ def _word_difficulty_score(word: Word) -> float:
     return score
 
 
+def _adaptive_word_selection(
+    words_by_level: dict[int, list[Word]],
+    active_levels: list[int],
+    total_budget: int,
+    start_level: int,
+) -> list[Word]:
+    """Select words for adaptive mode: current level gets most words, fewer at higher levels.
+
+    Distribution (5 levels): ~50% current, ~25% next, ~12% next, ~8%, ~5%
+    This ensures the student sees mostly appropriate-difficulty words
+    with some probing into harder levels.
+    """
+    # Inverse weighting: distance from start = less weight
+    weights = {}
+    for level in active_levels:
+        dist = level - start_level  # 0, 1, 2, 3, 4 ...
+        weights[level] = max(1, 8 - dist * 2)  # 8, 6, 4, 2, 1 ...
+
+    total_weight = sum(weights.values())
+    combined: list[Word] = []
+
+    for level in active_levels:
+        level_words = list(words_by_level.get(level, []))
+        if not level_words:
+            continue
+        level_words.sort(key=_word_difficulty_score, reverse=True)
+        allocation = max(1, round(total_budget * weights[level] / total_weight))
+        combined.extend(level_words[:allocation])
+
+    return combined
+
+
 def _weighted_word_selection(
     words_by_level: dict[int, list[Word]],
     active_levels: list[int],
@@ -673,6 +707,7 @@ def _weighted_word_selection(
 ) -> list[Word]:
     """Select words with higher levels AND harder words getting priority.
 
+    Used for exam mode where all levels should be tested.
     Two-axis difficulty:
     1. Level weight: level 10 gets 10x the share of level 1
     2. Within each level: words sorted by difficulty score (hardest first)

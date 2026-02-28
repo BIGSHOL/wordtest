@@ -3,7 +3,7 @@
  * Features: pagination (10/20/50/100), refactored columns with engine + time display.
  */
 import { useState, useEffect } from 'react';
-import { Trash2, RotateCcw, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Trash2, RotateCcw, ChevronLeft, ChevronRight, Search, Check, Copy } from 'lucide-react';
 import type { TestAssignmentItem } from '../../services/testAssignment';
 import { QTYPE_BADGES, TEST_ENGINE_BADGES } from '../../constants/engineLabels';
 
@@ -41,6 +41,13 @@ const PAGE_SIZE = 10;
 export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewResult }: Props) {
   const [page, setPage] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const handleCopyCode = async (code: string) => {
+    await navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 1500);
+  };
 
   // Reset page when data or search changes
   useEffect(() => setPage(0), [assignments.length, searchQuery]);
@@ -133,9 +140,20 @@ export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewRe
                         {schoolGrade}
                       </td>
                       <td className="px-2 whitespace-nowrap">
-                        <span className="text-xs font-bold" style={{ color: '#4F46E5', letterSpacing: 1 }}>
-                          {item.test_code}
-                        </span>
+                        <button
+                          onClick={() => item.test_code && handleCopyCode(item.test_code)}
+                          className="flex items-center gap-1.5 group"
+                          title="클릭하여 복사"
+                        >
+                          <span className="text-xs font-bold" style={{ color: '#4F46E5', letterSpacing: 1 }}>
+                            {item.test_code}
+                          </span>
+                          {copiedCode === item.test_code ? (
+                            <Check className="w-3 h-3" style={{ color: '#2D9CAE' }} />
+                          ) : (
+                            <Copy className="w-3 h-3 text-text-tertiary opacity-0 group-hover:opacity-100 transition-opacity" />
+                          )}
+                        </button>
                       </td>
                       <td className="px-2 whitespace-nowrap">
                         <span
@@ -151,26 +169,42 @@ export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewRe
                       <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
                         {formatTimeDisplay(item)}
                       </td>
-                      <td className="text-xs text-text-secondary px-2 max-w-[200px]">
-                        <div className="flex flex-wrap items-center gap-1">
-                          {item.question_types ? (
-                            item.question_types.split(',').map((type) => {
-                              const trimmedType = type.trim();
-                              const badge = QTYPE_BADGES[trimmedType];
-                              if (badge) {
-                                return (
+                      <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
+                        <div className="flex items-center gap-1">
+                          {item.question_types ? (() => {
+                            const types = item.question_types!.split(',').map(t => t.trim());
+                            const maxShow = 2;
+                            const visible = types.slice(0, maxShow);
+                            const remaining = types.length - maxShow;
+                            return (
+                              <>
+                                {visible.map((trimmedType) => {
+                                  const badge = QTYPE_BADGES[trimmedType];
+                                  if (badge) {
+                                    return (
+                                      <span
+                                        key={trimmedType}
+                                        className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
+                                        style={{ backgroundColor: badge.bg, color: badge.color }}
+                                      >
+                                        {badge.label}
+                                      </span>
+                                    );
+                                  }
+                                  return <span key={trimmedType} className="text-[9px]">{trimmedType}</span>;
+                                })}
+                                {remaining > 0 && (
                                   <span
-                                    key={trimmedType}
                                     className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
-                                    style={{ backgroundColor: badge.bg, color: badge.color }}
+                                    style={{ backgroundColor: '#F0F0EE', color: '#6D6C6A' }}
+                                    title={types.slice(maxShow).map(t => QTYPE_BADGES[t]?.label ?? t).join(', ')}
                                   >
-                                    {badge.label}
+                                    +{remaining}
                                   </span>
-                                );
-                              }
-                              return <span key={trimmedType} className="text-[9px]">{trimmedType}</span>;
-                            })
-                          ) : (
+                                )}
+                              </>
+                            );
+                          })() : (
                             '-'
                           )}
                         </div>

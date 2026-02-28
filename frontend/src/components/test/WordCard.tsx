@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { Volume2 } from 'lucide-react';
 import { speakWord } from '../../utils/tts';
 
@@ -7,6 +7,14 @@ interface WordCardProps {
 }
 
 export const WordCard = memo(function WordCard({ word }: WordCardProps) {
+  // Auto-shrink font for long expressions to keep them on one line
+  const fontSize = useMemo(() => {
+    const len = word.length;
+    if (len <= 12) return 42;
+    if (len <= 20) return 32;
+    if (len <= 30) return 24;
+    return 20;
+  }, [word]);
 
   return (
     <div
@@ -19,7 +27,10 @@ export const WordCard = memo(function WordCard({ word }: WordCardProps) {
       <p className="font-display text-[16px] font-semibold text-text-secondary">
         다음 영단어의 뜻은?
       </p>
-      <h2 className="font-word text-[42px] md:text-[46px] font-bold text-text-primary" style={{ letterSpacing: -1 }}>
+      <h2
+        className="font-word font-bold text-text-primary text-center"
+        style={{ fontSize, letterSpacing: -1, wordBreak: 'keep-all' }}
+      >
         {word}
       </h2>
       <button
