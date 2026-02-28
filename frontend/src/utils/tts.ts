@@ -15,7 +15,7 @@ let audioCtx: AudioContext | null = null;
 let gainNode: GainNode | null = null;
 let compressorNode: DynamicsCompressorNode | null = null;
 const TTS_GAIN = 1.95; // post-compressor boost (+30%)
-const TTS_RATE = 0.75; // slower speech (75% speed)
+const TTS_RATE = 0.92; // slight client-side slowdown (server handles -10% natively)
 
 /** Track which audio elements already have a MediaElementSource attached. */
 const connectedElements = new WeakSet<HTMLAudioElement>();

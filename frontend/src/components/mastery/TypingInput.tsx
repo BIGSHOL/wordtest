@@ -61,6 +61,13 @@ export const TypingInput = memo(function TypingInput({
   const { chars, hintChars, inputPositions, totalLen } = useMemo(() => parseHint(hint), [hint]);
   const userSlots = inputPositions.length;
 
+  /** O(1) lookup: position → input index (avoids indexOf in render loop) */
+  const inputPosMap = useMemo(() => {
+    const map = new Map<number, number>();
+    inputPositions.forEach((pos, idx) => map.set(pos, idx));
+    return map;
+  }, [inputPositions]);
+
   /** Extract user-typed characters from full value */
   const getUserInput = useCallback((val: string): string => {
     if (!val) return '';
@@ -105,10 +112,10 @@ export const TypingInput = memo(function TypingInput({
     }
   }, [userInput.length, disabled, focusInput]);
 
-  // Reset hidden input when question changes
+  // Reset hidden input when question changes (hint changes = new question)
   useEffect(() => {
     if (inputRef.current) inputRef.current.value = '';
-  }, [value]);
+  }, [hint]);
 
   const appendChars = useCallback((raw: string) => {
     const english = koreanToEnglish(raw);
@@ -217,8 +224,8 @@ export const TypingInput = memo(function TypingInput({
 
           const isHint = type === 'hint';
           const hintLetter = hintChars.get(i) || '';
-          // For input positions, find which user char fills this slot
-          const inputIdx = type === 'input' ? inputPositions.indexOf(i) : -1;
+          // For input positions, find which user char fills this slot (O(1) map lookup)
+          const inputIdx = type === 'input' ? (inputPosMap.get(i) ?? -1) : -1;
           const char = isHint ? hintLetter : (inputIdx >= 0 ? userInput[inputIdx] || '' : '');
           const isCursor = i === nextInputIdx && !disabled;
 

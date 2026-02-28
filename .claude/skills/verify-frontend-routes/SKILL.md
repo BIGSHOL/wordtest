@@ -34,6 +34,9 @@ description: 프론트엔드 Route-Page-Nav-Store-Service 간 참조 일관성�
 | `frontend/src/pages/teacher/StudentResultPage.tsx` | 학생 결과 페이지 |
 | `frontend/src/pages/teacher/MasteryReportPage.tsx` | 마스터리 리포트 페이지 |
 | `frontend/src/pages/teacher/ProfilePage.tsx` | 프로필 페이지 |
+| `frontend/src/pages/teacher/GrammarSettingsPage.tsx` | 문법 테스트 설정 페이지 |
+| `frontend/src/pages/teacher/AllTestResultsPage.tsx` | 전체 테스트 결과 페이지 |
+| `frontend/src/pages/teacher/TeacherManagePage.tsx` | 선생님 관리 페이지 (마스터 전용) |
 | `frontend/src/pages/student/MainPage.tsx` | 학생 메인 페이지 |
 | `frontend/src/pages/student/TestStartPage.tsx` | 테스트 시작 페이지 |
 | `frontend/src/pages/student/UnifiedTestPage.tsx` | 통합 테스트 페이지 (레벨업/레거시 공용) |

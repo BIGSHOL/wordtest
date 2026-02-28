@@ -22,6 +22,43 @@ def has_tilde(text: str) -> bool:
     return text.strip().startswith('~')
 
 
+def _split_meanings(text: str) -> set[str]:
+    """Split a meaning string into individual meaning parts.
+
+    "제시간에, 늦지 않게, 시간 맞춰" → {"제시간에", "늦지 않게", "시간 맞춰"}
+    """
+    import re
+    parts = re.split(r'[,;/·、]', text)
+    return {p.strip().lower() for p in parts if p.strip()}
+
+
+def _is_too_similar(candidate: str, correct: str) -> bool:
+    """Check if candidate meaning is too similar to correct answer.
+
+    Returns True if:
+    - Any individual meaning part overlaps between candidate and correct
+    - One is a substring of the other (after stripping separators)
+    """
+    c = candidate.strip()
+    t = correct.strip()
+    if not c or not t:
+        return False
+
+    # Split into individual meanings and check overlap
+    c_parts = _split_meanings(c)
+    t_parts = _split_meanings(t)
+    if c_parts & t_parts:
+        return True
+
+    # Check substring relationship on the raw strings (lowercased)
+    c_low = c.lower()
+    t_low = t.lower()
+    if c_low in t_low or t_low in c_low:
+        return True
+
+    return False
+
+
 # ── Confusion scoring ────────────────────────────────────────────────────
 
 _EN_SUFFIXES = (
@@ -132,20 +169,22 @@ def pick_korean_distractors(
 
     # No word info -> legacy flat behavior
     if not source_word or not pool.all_words:
-        same_type = [k for k in pool.all_korean if k != correct and has_tilde(k) == correct_has_tilde]
+        same_type = [k for k in pool.all_korean if k != correct and not _is_too_similar(k, correct) and has_tilde(k) == correct_has_tilde]
         if len(same_type) >= count:
             return _pick_confusing(same_type, correct, count, scorer)
-        other = [k for k in pool.all_korean if k != correct and has_tilde(k) != correct_has_tilde]
+        other = [k for k in pool.all_korean if k != correct and not _is_too_similar(k, correct) and has_tilde(k) != correct_has_tilde]
         combined = same_type + other
         return _pick_confusing(combined, correct, min(count, len(combined)), scorer)
 
     target_level = source_word.level
     target_pos = source_word.part_of_speech
 
-    # Build base candidates: different word, same tilde pattern
+    # Build base candidates: different word, same tilde pattern, not too similar
     base = [
         w for w in pool.all_words
-        if w.korean and w.korean != correct and has_tilde(w.korean) == correct_has_tilde
+        if w.korean and w.korean != correct
+        and not _is_too_similar(w.korean, correct)
+        and has_tilde(w.korean) == correct_has_tilde
     ]
 
     # Tier 1: Same level +/-1, same POS
@@ -175,7 +214,7 @@ def pick_korean_distractors(
         return result
 
     # Tier 5: Any word (ignore tilde pattern)
-    all_candidates = [w.korean for w in pool.all_words if w.korean and w.korean != correct]
+    all_candidates = [w.korean for w in pool.all_words if w.korean and w.korean != correct and not _is_too_similar(w.korean, correct)]
     result = _pick_confusing(all_candidates, correct, count, scorer)
     return result
 
@@ -204,20 +243,22 @@ def pick_english_distractors(
 
     # No word info -> legacy flat behavior
     if not source_word or not pool.all_words:
-        same_type = [e for e in pool.all_english if e != correct and is_phrase(e) == is_correct_phrase]
+        same_type = [e for e in pool.all_english if e != correct and not _is_too_similar(e, correct) and is_phrase(e) == is_correct_phrase]
         if len(same_type) >= count:
             return _pick_confusing(same_type, correct, count, scorer)
-        other = [e for e in pool.all_english if e != correct and is_phrase(e) != is_correct_phrase]
+        other = [e for e in pool.all_english if e != correct and not _is_too_similar(e, correct) and is_phrase(e) != is_correct_phrase]
         combined = same_type + other
         return _pick_confusing(combined, correct, min(count, len(combined)), scorer)
 
     target_level = source_word.level
     target_pos = source_word.part_of_speech
 
-    # Build base candidates: different word, same phrase pattern
+    # Build base candidates: different word, same phrase pattern, not too similar
     base = [
         w for w in pool.all_words
-        if w.english and w.english != correct and is_phrase(w.english) == is_correct_phrase
+        if w.english and w.english != correct
+        and not _is_too_similar(w.english, correct)
+        and is_phrase(w.english) == is_correct_phrase
     ]
 
     # Tier 1: Same level +/-1, same POS
@@ -247,7 +288,7 @@ def pick_english_distractors(
         return result
 
     # Tier 5: Any word (ignore phrase pattern)
-    all_candidates = [w.english for w in pool.all_words if w.english and w.english != correct]
+    all_candidates = [w.english for w in pool.all_words if w.english and w.english != correct and not _is_too_similar(w.english, correct)]
     result = _pick_confusing(all_candidates, correct, count, scorer)
     return result
 

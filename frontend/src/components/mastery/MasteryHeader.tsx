@@ -247,21 +247,6 @@ export const MasteryHeader = memo(function MasteryHeader({
                     >
                       +{xpPopup.breakdown.base}
                     </span>
-                    {/* Speed bonus */}
-                    {xpPopup.breakdown.speed > 0 && (
-                      <span
-                        style={{
-                          fontFamily: "'Bangers', cursive",
-                          fontSize: '16px',
-                          color: '#FDE047',
-                          WebkitTextStroke: '1px #CA8A04',
-                          textShadow: '0 1px 3px rgba(202,138,4,0.5)',
-                          letterSpacing: '0.5px',
-                        }}
-                      >
-                        +{xpPopup.breakdown.speed}
-                      </span>
-                    )}
                     {/* Combo bonus */}
                     {xpPopup.breakdown.combo > 0 && (
                       <span

@@ -122,7 +122,7 @@ async def _generate_edge_tts(text: str, voice: str) -> tuple[bytes, str] | None:
     try:
         import edge_tts
         edge_voice = _resolve_edge_voice(voice)
-        communicate = edge_tts.Communicate(text, edge_voice)
+        communicate = edge_tts.Communicate(text, edge_voice, rate="-8%")
 
         audio_chunks = []
         async for chunk in communicate.stream():

@@ -76,9 +76,31 @@ function wordBounds(text: string, start: number, end: number): [number, number] 
   return [s, e];
 }
 
+/** Strip common Korean grammatical suffixes to extract the semantic root */
+function stripKoSuffix(word: string): string {
+  // Order matters: longer suffixes first
+  const suffixes = [
+    '시키다', '되다', '하다', '짓다', '받다', '치다',
+    '스럽다', '롭다', '답다',
+    '시킨', '시킬', '시켜', '되는', '되어', '되면', '되고',
+    '하는', '하여', '하면', '하고', '하지', '하게',
+    '한다', '했다', '할까', '해서', '해야',
+    '한', '할', '해', '히', '게', '이', '의',
+  ];
+  for (const s of suffixes) {
+    if (word.endsWith(s) && word.length > s.length) {
+      return word.slice(0, -s.length);
+    }
+  }
+  return word;
+}
+
 /** Highlight the Korean word meaning within the Korean sentence */
 function highlightKorean(sentenceKo: string, korean: string): React.ReactNode {
-  const meanings = korean.split(/[,、·]/).map(m => m.trim()).filter(m => m.length >= 2);
+  const meanings = korean.split(/[,、·;/]/).map(m => m.trim()).filter(m => m.length >= 2);
+  const HL = (s: number, e: number) => (
+    <>{sentenceKo.slice(0, s)}<span className="font-bold" style={{ color: '#4F46E5' }}>{sentenceKo.slice(s, e)}</span>{sentenceKo.slice(e)}</>
+  );
 
   // Strategy 1: Direct substring match (handles 하다-verbs, etc.)
   for (const meaning of meanings) {
@@ -87,7 +109,7 @@ function highlightKorean(sentenceKo: string, korean: string): React.ReactNode {
       const idx = sentenceKo.indexOf(stem);
       if (idx !== -1) {
         const [s, e] = wordBounds(sentenceKo, idx, idx + stem.length);
-        return <>{sentenceKo.slice(0, s)}<span className="font-bold" style={{ color: '#4F46E5' }}>{sentenceKo.slice(s, e)}</span>{sentenceKo.slice(e)}</>;
+        return HL(s, e);
       }
     }
   }
@@ -99,13 +121,40 @@ function highlightKorean(sentenceKo: string, korean: string): React.ReactNode {
       const match = jamoMatch(sentenceKo, stem);
       if (match) {
         const [s, e] = wordBounds(sentenceKo, match[0], match[1]);
-        return <>{sentenceKo.slice(0, s)}<span className="font-bold" style={{ color: '#4F46E5' }}>{sentenceKo.slice(s, e)}</span>{sentenceKo.slice(e)}</>;
+        return HL(s, e);
       }
     }
   }
 
-  // Fallback: no match found
-  return sentenceKo;
+  // Strategy 3: Suffix-stripped root matching
+  // Compare stripped roots of meanings with stripped roots of sentence words
+  const meaningRoots = meanings.map(m => stripKoSuffix(m)).filter(r => r.length >= 2);
+  const sentenceWords = sentenceKo.split(' ');
+  let pos = 0;
+  for (const sw of sentenceWords) {
+    const swRoot = stripKoSuffix(sw);
+    if (swRoot.length >= 2) {
+      for (const mRoot of meaningRoots) {
+        // Check if roots share a common prefix (>= 2 chars)
+        const minLen = Math.min(mRoot.length, swRoot.length);
+        if (minLen >= 2 && mRoot.slice(0, minLen) === swRoot.slice(0, minLen)) {
+          const [s, e] = wordBounds(sentenceKo, pos, pos + sw.length);
+          return HL(s, e);
+        }
+        // Also try jamo match on roots
+        const jm = jamoMatch(swRoot, mRoot.slice(0, Math.min(mRoot.length, 3)));
+        if (jm) {
+          const [s, e] = wordBounds(sentenceKo, pos, pos + sw.length);
+          return HL(s, e);
+        }
+      }
+    }
+    pos += sw.length + 1; // +1 for space
+  }
+
+  // Fallback: no match found — show meaning as inline hint
+  const hint = meanings[0] || korean;
+  return <>{sentenceKo} <span className="font-bold" style={{ color: '#4F46E5' }}>({hint})</span></>;
 }
 
 /** Zero-width space placeholder — preserves string length so positional mapping stays intact. */

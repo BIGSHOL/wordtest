@@ -24,7 +24,7 @@ import {
 // ── XP (per-question mode, levelup engine) ──────────────────────────────────
 
 function getLessonXp(book: number, numLevels: number = 15): number {
-  return (4 + book) * Math.max(1, Math.ceil(15 / numLevels));
+  return (4 + book) * Math.max(1, Math.ceil(15 / numLevels)) * 4;
 }
 
 export interface XpBreakdown {
@@ -47,14 +47,8 @@ function computeXpChange(params: {
     const base = questionLevel < currentBook
       ? Math.max(4, currentBook)
       : 8 + currentBook * 2;
-    let speed = 0;
-    if (timeTaken <= 1) speed = 5;
-    else if (timeTaken <= 2) speed = 4;
-    else if (timeTaken <= 3) speed = 3;
-    else if (timeTaken <= 5) speed = 2;
-    else if (timeTaken <= 8) speed = 1;
     const comboBonus = combo >= 3 ? Math.min(Math.floor(combo / 5) + 1, 5) : 0;
-    return { base, speed, combo: comboBonus, total: base + speed + comboBonus };
+    return { base, speed: 0, combo: comboBonus, total: base + comboBonus };
   } else {
     let penalty: number;
     if (consecutiveWrong >= 2) penalty = -(8 + currentBook);

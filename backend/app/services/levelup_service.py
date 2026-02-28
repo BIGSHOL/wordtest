@@ -474,7 +474,7 @@ def _get_lesson_xp(book: int, num_levels: int = 15) -> int:
     small ranges (e.g. 2-3 books) require more answers per level-up.
     """
     import math
-    return (4 + book) * max(1, math.ceil(15 / num_levels))
+    return (4 + book) * max(1, math.ceil(15 / num_levels)) * 4
 
 
 def _compute_xp_change(

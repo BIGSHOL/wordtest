@@ -37,6 +37,11 @@ description: 문제 생성 파이프라인의 외래어 필터링, 중복 제거
 | `backend/app/services/question_engines/ko_type.py` | 한영 타이핑 문제 엔진 |
 | `backend/app/services/question_engines/emoji.py` | 이모지 문제 엔진 |
 | `backend/app/services/question_engines/sentence.py` | 예문 빈칸 문제 엔진 |
+| `backend/app/services/question_engines/sentence_type.py` | 예문 타이핑 문제 엔진 |
+| `backend/app/services/question_engines/antonym_choice.py` | 반의어 선택 문제 엔진 |
+| `backend/app/services/question_engines/antonym_type.py` | 반의어 타이핑 문제 엔진 |
+| `backend/app/services/question_engines/distractors.py` | 선택지(오답) 생성 유틸 |
+| `backend/app/services/question_engines/report.py` | 리포트용 문제 엔진 |
 | `backend/app/services/emoji_engine.py` | 이모지 매핑 엔진 |
 
 ## Workflow
@@ -140,7 +145,7 @@ Grep pattern="get_engine|ENGINES" path="backend/app/services/question_engines/__
 ```
 
 **PASS 기준:** 레지스트리에 등록된 엔진이 실제 파일과 일치:
-- `en_to_ko`, `ko_to_en`, `listen_en`, `listen_ko`, `listen_type`, `ko_type`, `emoji`, `sentence`
+- `en_to_ko`, `ko_to_en`, `listen_en`, `listen_ko`, `listen_type`, `ko_type`, `emoji`, `sentence`, `sentence_type`, `antonym_choice`, `antonym_type`, `report`
 
 **FAIL:** 레지스트리에 없는 엔진 타입이 config에서 사용되면 런타임 에러 발생.
 
@@ -168,3 +173,4 @@ Grep pattern="get_engine|ENGINES" path="backend/app/services/question_engines/__
 2. **distractor pool에는 외래어 포함 가능** — `question_engines/distractors.py`의 선택지 풀에 외래어가 포함되는 것은 정상. 정답 단어만 필터링하면 됨.
 3. **report_engine.py, auth.py 등 비문제 서비스** — 문제 생성과 무관한 서비스 파일에 외래어 필터가 없는 것은 정상.
 4. **emoji_engine.py** — 이모지 매핑 전용 유틸로, 외래어 필터링과 무관.
+5. **question_engines/report.py** — 진단/커버리지 리포트 전용 모듈로, 엔진 레지스트리(`__init__.py`)에 등록할 필요 없음.
