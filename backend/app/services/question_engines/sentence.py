@@ -8,7 +8,6 @@ Also provides apply_sentence_overlay() for converting any QuestionSpec
 into sentence mode (used by mastery engine).
 """
 import re
-import random
 from app.models.word import Word
 from app.services.question_engines.base import QuestionSpec, DistractorPool, make_typing_hint
 from app.services.question_engines.distractors import pick_english_distractors, shuffle_choices
@@ -266,7 +265,8 @@ def _pick_example(word: Word) -> tuple[str, str] | None:
             if make_sentence_blank(ex.example_en, word.english) is not None
         ]
         if usable:
-            chosen = random.choice(usable)
+            # Pick the shortest (easiest) sentence
+            chosen = min(usable, key=lambda ex: len(ex.example_en))
             return (chosen.example_en, chosen.example_ko)
 
     # Fallback to legacy columns
