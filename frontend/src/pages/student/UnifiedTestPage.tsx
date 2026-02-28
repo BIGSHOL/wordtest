@@ -61,6 +61,10 @@ export function UnifiedTestPage() {
   const questionStartTime = useRef(Date.now());
   const prevPhaseRef = useRef<typeof phase>('idle');
 
+  // Local typing state — avoids full-page re-render on every keystroke
+  const [localTyped, setLocalTyped] = useState('');
+  const localTypedRef = useRef('');
+
   // ══════════════════════════════════════════════════════════════════════
   // ── Timers ─────────────────────────────────────────────────────────
   // ══════════════════════════════════════════════════════════════════════
@@ -69,6 +73,9 @@ export function UnifiedTestPage() {
   const handleTotalTimeout = useCallback(() => {
     const s = useUnifiedTestStore.getState();
     if (s.phase === 'testing' && s.timeMode === 'total') {
+      if (localTypedRef.current) {
+        store.setLocalTypedAnswer(s.currentQuestionIndex, localTypedRef.current);
+      }
       store.submitAllAnswers();
     }
   }, []);
@@ -217,6 +224,31 @@ export function UnifiedTestPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [phase, timeMode, currentQuestionIndex, flatQuestions, answerResult]);
 
+  // ── Typing state sync ──────────────────────────────────────────────
+  // Per-question mode: reset on new question
+  // Exam mode: save current → store, load new from store
+  const prevQIndexRef = useRef(currentQuestionIndex);
+  useEffect(() => {
+    if (prevQIndexRef.current !== currentQuestionIndex) {
+      // Exam mode: persist previous question's typing to store
+      if (timeMode === 'total' && localTypedRef.current) {
+        store.setLocalTypedAnswer(prevQIndexRef.current, localTypedRef.current);
+      }
+      prevQIndexRef.current = currentQuestionIndex;
+    }
+    // Load value for the new question
+    const newVal = timeMode === 'total'
+      ? (localTypedAnswers[currentQuestionIndex] ?? '')
+      : '';
+    setLocalTyped(newVal);
+    localTypedRef.current = newVal;
+  }, [currentQuestionIndex, timeMode]);
+
+  const handleTypingChange = useCallback((text: string) => {
+    setLocalTyped(text);
+    localTypedRef.current = text;
+  }, []);
+
   // ── Handlers ───────────────────────────────────────────────────────
 
   const handleExit = useCallback(() => {
@@ -241,18 +273,22 @@ export function UnifiedTestPage() {
     store.submitAnswer(timeTaken);
   }, [answerResult]);
 
-  // Per-question: typing submit
+  // Per-question: typing submit — sync local state to store first
   const handleTypingSubmit = useCallback(() => {
     if (answerResult) return;
+    store.setTypedAnswer(localTypedRef.current);
     const timeTaken = (Date.now() - questionStartTime.current) / 1000;
     store.submitAnswer(timeTaken);
   }, [answerResult]);
 
-  // Exam mode: submit confirmation
+  // Exam mode: submit confirmation — sync current typing to store first
   const handleSubmitConfirm = useCallback(() => {
+    if (localTypedRef.current) {
+      store.setLocalTypedAnswer(currentQuestionIndex, localTypedRef.current);
+    }
     setShowSubmitDialog(false);
     store.submitAllAnswers();
-  }, []);
+  }, [currentQuestionIndex]);
 
   // Exam mode: answered indexes for navigator
   const answeredIndexes = useMemo(() => {
@@ -487,7 +523,6 @@ export function UnifiedTestPage() {
   // ── EXAM MODE (total time) ────────────────────────────────────────
   if (timeMode === 'total') {
     const selectedChoice = localAnswers[currentQuestionIndex] ?? null;
-    const typedValue = localTypedAnswers[currentQuestionIndex] ?? '';
 
     return (
       <div className="min-h-screen bg-bg-cream flex flex-col">
@@ -544,8 +579,8 @@ export function UnifiedTestPage() {
 
           <div className="w-full md:w-[640px]">
             {renderQuestionCard(isTyping && isSentence ? {
-              value: typedValue,
-              onChange: (text) => store.setLocalTypedAnswer(currentQuestionIndex, text),
+              value: localTyped,
+              onChange: handleTypingChange,
               onSubmit: store.goNext,
               disabled: false,
               hint: currentQuestion.hint,
@@ -555,8 +590,8 @@ export function UnifiedTestPage() {
           <div className="w-full md:w-[640px]">
             {isTyping && !isSentence ? (
               <TypingInput
-                value={typedValue}
-                onChange={(text) => store.setLocalTypedAnswer(currentQuestionIndex, text)}
+                value={localTyped}
+                onChange={handleTypingChange}
                 onSubmit={store.goNext}
                 disabled={false}
                 isListenMode={isListen}
@@ -688,8 +723,8 @@ export function UnifiedTestPage() {
       <div className="flex-1 flex flex-col justify-center items-center gap-5 px-5 py-6 md:px-8">
         <div className="w-full md:w-[640px]">
           {renderQuestionCard(isTyping && isSentence ? {
-            value: typedAnswer,
-            onChange: (text) => store.setTypedAnswer(text),
+            value: localTyped,
+            onChange: handleTypingChange,
             onSubmit: handleTypingSubmit,
             disabled: !!answerResult,
             hint: currentQuestion.hint,
@@ -699,8 +734,8 @@ export function UnifiedTestPage() {
         <div className="w-full md:w-[640px]">
           {isTyping && !isSentence ? (
             <TypingInput
-              value={typedAnswer}
-              onChange={(text) => store.setTypedAnswer(text)}
+              value={localTyped}
+              onChange={handleTypingChange}
               onSubmit={handleTypingSubmit}
               disabled={!!answerResult}
               isListenMode={isListen}

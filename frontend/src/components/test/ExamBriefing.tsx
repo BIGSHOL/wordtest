@@ -449,24 +449,22 @@ export const ExamBriefing = memo(function ExamBriefing({
         <div className="flex flex-col items-center gap-4 mt-2">
           <PageDots total={TOTAL_STEPS} current={step} />
           <div className="flex items-center gap-3">
-            {step > 0 && (
               <button
                 onClick={goPrev}
-                className="flex items-center gap-1.5 font-display text-sm font-semibold text-text-tertiary px-4 py-2.5 rounded-xl transition-colors hover:bg-gray-100"
+                disabled={step === 0}
+                className={`flex items-center gap-1.5 font-display text-sm font-semibold text-text-tertiary px-4 py-2.5 rounded-xl transition-colors hover:bg-gray-100 ${step === 0 ? 'invisible' : ''}`}
               >
                 <ChevronLeft className="w-4 h-4" />
                 이전
               </button>
-            )}
-            {step < TOTAL_STEPS - 1 && (
               <button
                 onClick={goNext}
-                className="flex items-center gap-1.5 font-display text-sm font-semibold text-accent-indigo bg-accent-indigo-light px-5 py-2.5 rounded-xl transition-colors hover:opacity-80"
+                disabled={step >= TOTAL_STEPS - 1}
+                className={`flex items-center gap-1.5 font-display text-sm font-semibold text-accent-indigo bg-accent-indigo-light px-5 py-2.5 rounded-xl transition-colors hover:opacity-80 ${step >= TOTAL_STEPS - 1 ? 'invisible' : ''}`}
               >
                 다음
                 <ChevronRight className="w-4 h-4" />
               </button>
-            )}
           </div>
         </div>
       </div>
