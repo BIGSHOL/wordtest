@@ -12,7 +12,7 @@ import { GRAMMAR_TYPE_LABELS } from '../../types/grammar';
 import { logger } from '../../utils/logger';
 import {
   BookOpen, Users, Check, ChevronRight, ChevronLeft,
-  Clock, Hash, Send, Loader2, Trash2, Copy, CheckCircle2,
+  Clock, Send, Loader2, Trash2, Copy, CheckCircle2,
   ListChecks, Search, Info, Plus, X,
 } from 'lucide-react';
 

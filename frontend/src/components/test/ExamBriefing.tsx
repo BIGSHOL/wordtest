@@ -5,9 +5,9 @@
  */
 import { memo, useState, useCallback } from 'react';
 import {
-  BookOpen, Clock, MousePointerClick, Keyboard, Timer,
+  BookOpen, Clock, MousePointerClick, Keyboard,
   ChevronLeft, ChevronRight, Send, Play, ArrowRight,
-  Volume2, Hash, CornerDownLeft,
+  Volume2,
 } from 'lucide-react';
 import {
   ENGINE_TO_SKILL, SKILL_AREA_OPTIONS,
@@ -163,9 +163,6 @@ export const ExamBriefing = memo(function ExamBriefing({
   const [step, setStep] = useState(0);
   const today = formatKoreanDate(new Date());
   const rangeText = formatRange(bookName, bookNameEnd, lessonStart, lessonEnd);
-  const timeText = timeMode === 'total'
-    ? `${perQuestionTime}초`
-    : `${perQuestionTime}초/문제`;
   const totalMinutes = timeMode === 'total'
     ? Math.ceil(totalTimeSeconds / 60)
     : Math.ceil((perQuestionTime * questionCount) / 60);

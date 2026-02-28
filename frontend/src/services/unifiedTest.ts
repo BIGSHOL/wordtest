@@ -137,7 +137,7 @@ export interface LegacyBatchSubmitResult {
 // ── API Service ─────────────────────────────────────────────────────────────
 
 export interface CheckCodeResponse {
-  engine_type: 'levelup' | 'legacy';
+  engine_type: 'levelup' | 'legacy' | 'grammar';
   status: string;
   assignment_id: string;
 }

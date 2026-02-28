@@ -158,7 +158,7 @@ export const TypingInput = memo(function TypingInput({
   }, [appendChars]);
 
   // Re-focus hidden input when container or its children lose focus
-  const handleContainerBlur = useCallback((e: React.FocusEvent) => {
+  const handleContainerBlur = useCallback((_e: React.FocusEvent) => {
     if (disabled || composingRef.current) return;
     // Small delay to allow focus to settle on new target
     setTimeout(() => {
@@ -170,7 +170,7 @@ export const TypingInput = memo(function TypingInput({
   }, [disabled]);
 
   // Redirect any key press on the container to the hidden input
-  const handleContainerKeyDown = useCallback((e: React.KeyboardEvent) => {
+  const handleContainerKeyDown = useCallback((_e: React.KeyboardEvent) => {
     if (disabled) return;
     if (document.activeElement !== inputRef.current) {
       inputRef.current?.focus({ preventScroll: true });
