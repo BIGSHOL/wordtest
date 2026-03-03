@@ -303,6 +303,51 @@ export function UnifiedTestPage() {
     return set;
   }, [flatQuestions, localAnswers, localTypedAnswers]);
 
+  // Prompt text per question type (must be above early returns to satisfy Rules of Hooks)
+  const questionPrompt = useMemo(() => {
+    if (!currentQuestion) return '';
+    const qt = currentQuestion.question_type || 'en_to_ko';
+    const typing = isTypingQuestion(qt);
+    const sentence = currentQuestion.context_mode === 'sentence' && currentQuestion.sentence_blank;
+    if (sentence) {
+      return typing ? '빈칸에 들어갈 영단어를 입력하시오' : '빈칸에 들어갈 영단어를 고르시오';
+    }
+    switch (qt) {
+      case 'en_to_ko':
+      case 'word_to_meaning':
+        return '다음 영단어의 뜻을 고르시오';
+      case 'ko_to_en':
+      case 'meaning_to_word':
+        return '알맞은 영단어를 고르시오';
+      case 'ko_type':
+      case 'meaning_and_type':
+        return '알맞은 영단어를 입력하시오';
+      case 'listen_en':
+        return '발음을 듣고 알맞은 영단어를 고르시오';
+      case 'listen_ko':
+      case 'listen_to_meaning':
+        return '발음을 듣고 알맞은 뜻을 고르시오';
+      case 'listen_type':
+      case 'listen_and_type':
+        return '발음을 듣고 영단어를 입력하시오';
+      case 'emoji':
+      case 'emoji_to_word':
+        return '이모지에 해당하는 영단어를 고르시오';
+      case 'sentence':
+        return '빈칸에 들어갈 영단어를 고르시오';
+      case 'sentence_type':
+        return '빈칸에 들어갈 영단어를 입력하시오';
+      case 'antonym_choice':
+      case 'antonym_and_choice':
+        return '다음 단어의 반의어를 고르시오';
+      case 'antonym_type':
+      case 'antonym_and_type':
+        return '다음 단어의 반의어를 입력하시오';
+      default:
+        return '다음 영단어의 뜻을 고르시오';
+    }
+  }, [currentQuestion]);
+
   // ══════════════════════════════════════════════════════════════════════
   // ── Shared Phase Rendering ─────────────────────────────────────────
   // ══════════════════════════════════════════════════════════════════════
@@ -454,49 +499,6 @@ export function UnifiedTestPage() {
   const isListen = isListenQuestion(questionType);
   const isSentence = currentQuestion.context_mode === 'sentence' && currentQuestion.sentence_blank;
   const totalQ = questionCount || flatQuestions.length;
-
-  // Prompt text per question type
-  const questionPrompt = useMemo(() => {
-    // Sentence context overrides
-    if (isSentence) {
-      if (isTyping) return '\uBE48\uCE78\uC5D0 \uB4E4\uC5B4\uAC08 \uC601\uB2E8\uC5B4\uB97C \uC785\uB825\uD558\uC2DC\uC624';
-      return '\uBE48\uCE78\uC5D0 \uB4E4\uC5B4\uAC08 \uC601\uB2E8\uC5B4\uB97C \uACE0\uB974\uC2DC\uC624';
-    }
-    switch (questionType) {
-      case 'en_to_ko':
-      case 'word_to_meaning':
-        return '\uB2E4\uC74C \uC601\uB2E8\uC5B4\uC758 \uB73B\uC744 \uACE0\uB974\uC2DC\uC624';
-      case 'ko_to_en':
-      case 'meaning_to_word':
-        return '\uC54C\uB9DE\uC740 \uC601\uB2E8\uC5B4\uB97C \uACE0\uB974\uC2DC\uC624';
-      case 'ko_type':
-      case 'meaning_and_type':
-        return '\uC54C\uB9DE\uC740 \uC601\uB2E8\uC5B4\uB97C \uC785\uB825\uD558\uC2DC\uC624';
-      case 'listen_en':
-        return '\uBC1C\uC74C\uC744 \uB4E3\uACE0 \uC54C\uB9DE\uC740 \uC601\uB2E8\uC5B4\uB97C \uACE0\uB974\uC2DC\uC624';
-      case 'listen_ko':
-      case 'listen_to_meaning':
-        return '\uBC1C\uC74C\uC744 \uB4E3\uACE0 \uC54C\uB9DE\uC740 \uB73B\uC744 \uACE0\uB974\uC2DC\uC624';
-      case 'listen_type':
-      case 'listen_and_type':
-        return '\uBC1C\uC74C\uC744 \uB4E3\uACE0 \uC601\uB2E8\uC5B4\uB97C \uC785\uB825\uD558\uC2DC\uC624';
-      case 'emoji':
-      case 'emoji_to_word':
-        return '\uC774\uBAA8\uC9C0\uC5D0 \uD574\uB2F9\uD558\uB294 \uC601\uB2E8\uC5B4\uB97C \uACE0\uB974\uC2DC\uC624';
-      case 'sentence':
-        return '\uBE48\uCE78\uC5D0 \uB4E4\uC5B4\uAC08 \uC601\uB2E8\uC5B4\uB97C \uACE0\uB974\uC2DC\uC624';
-      case 'sentence_type':
-        return '\uBE48\uCE78\uC5D0 \uB4E4\uC5B4\uAC08 \uC601\uB2E8\uC5B4\uB97C \uC785\uB825\uD558\uC2DC\uC624';
-      case 'antonym_choice':
-      case 'antonym_and_choice':
-        return '\uB2E4\uC74C \uB2E8\uC5B4\uC758 \uBC18\uC758\uC5B4\uB97C \uACE0\uB974\uC2DC\uC624';
-      case 'antonym_type':
-      case 'antonym_and_type':
-        return '\uB2E4\uC74C \uB2E8\uC5B4\uC758 \uBC18\uC758\uC5B4\uB97C \uC785\uB825\uD558\uC2DC\uC624';
-      default:
-        return '\uB2E4\uC74C \uC601\uB2E8\uC5B4\uC758 \uB73B\uC744 \uACE0\uB974\uC2DC\uC624';
-    }
-  }, [questionType, isSentence, isTyping]);
 
   // Question card renderer (shared between modes)
   // Cards only show the question prompt; TypingInput is rendered separately below.
