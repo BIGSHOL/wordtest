@@ -487,16 +487,11 @@ def _compute_xp_change(
     """Compute XP change for a single answer (no speed bonus in exam mode)."""
     if is_correct:
         base = max(4, current_book) if question_level < current_book else 8 + current_book * 2
-        # No speed bonus in exam mode
         combo_bonus = min(combo // 5 + 1, 5) if combo >= 3 else 0
         return base + combo_bonus
     else:
-        if consecutive_wrong >= 2:
-            return -(8 + current_book)
-        elif consecutive_wrong >= 1:
-            return -(5 + current_book)
-        else:
-            return -(3 + current_book)
+        # Wrong answer: 0 points (no penalty, no level down)
+        return 0
 
 
 def _simulate_xp_progression(
@@ -504,7 +499,11 @@ def _simulate_xp_progression(
     available_levels: list[int],
     starting_level: int,
 ) -> int:
-    """Simulate XP-based level progression from batch results."""
+    """Simulate XP-based level progression from batch results.
+
+    Level-up requires: XP >= threshold AND 5+ consecutive correct in current book.
+    Wrong answers give 0 XP (no penalty, no level down).
+    """
     if not available_levels:
         return starting_level
 
@@ -512,6 +511,7 @@ def _simulate_xp_progression(
     xp = 0
     combo = 0
     consecutive_wrong = 0
+    book_streak = 0  # consecutive correct in current book
 
     for r in results:
         is_correct = r["is_correct"]
@@ -520,9 +520,11 @@ def _simulate_xp_progression(
         if is_correct:
             combo += 1
             consecutive_wrong = 0
+            book_streak += 1
         else:
             combo = 0
             consecutive_wrong += 1
+            book_streak = 0
 
         xp_change = _compute_xp_change(
             is_correct=is_correct,
@@ -535,20 +537,14 @@ def _simulate_xp_progression(
 
         lesson_xp = _get_lesson_xp(current_book, len(available_levels))
 
-        # Level up
-        if xp >= lesson_xp:
+        # Level up: XP threshold met AND 5+ consecutive correct in this book
+        if xp >= lesson_xp and book_streak >= 5:
             next_levels = [l for l in available_levels if l > current_book]
             if next_levels:
                 current_book = next_levels[0]
                 xp = 0
-        # Level down
-        elif xp < 0:
-            prev_levels = [l for l in available_levels if l < current_book]
-            if prev_levels:
-                current_book = prev_levels[-1]
-                xp = _get_lesson_xp(current_book, len(available_levels)) // 2
-            else:
-                xp = 0
+                book_streak = 0
+        # No level down — wrong answers give 0 XP
 
     return current_book
 

@@ -42,7 +42,7 @@ function computeXpChange(params: {
   combo: number;
   consecutiveWrong: number;
 }): XpBreakdown {
-  const { isCorrect, questionLevel, currentBook, combo, consecutiveWrong } = params;
+  const { isCorrect, questionLevel, currentBook, combo } = params;
   if (isCorrect) {
     const base = questionLevel < currentBook
       ? Math.max(4, currentBook)
@@ -50,11 +50,8 @@ function computeXpChange(params: {
     const comboBonus = combo >= 3 ? Math.min(Math.floor(combo / 5) + 1, 5) : 0;
     return { base, speed: 0, combo: comboBonus, total: base + comboBonus };
   } else {
-    let penalty: number;
-    if (consecutiveWrong >= 2) penalty = -(8 + currentBook);
-    else if (consecutiveWrong >= 1) penalty = -(5 + currentBook);
-    else penalty = -(3 + currentBook);
-    return { base: penalty, speed: 0, combo: 0, total: penalty };
+    // Wrong answer: 0 points (no penalty, no level down)
+    return { base: 0, speed: 0, combo: 0, total: 0 };
   }
 }
 
@@ -141,6 +138,7 @@ export interface UnifiedTestStore {
   answerResult: AnswerResult | null;
   feedbackQuestion: UnifiedQuestion | null;
   consecutiveWrong: number;
+  bookStreak: number; // consecutive correct answers in current book (need ≥5 to level up)
   isSubmitting: boolean;
 
   // Shared progress
@@ -232,6 +230,7 @@ const initialState = {
   answerResult: null as AnswerResult | null,
   feedbackQuestion: null as UnifiedQuestion | null,
   consecutiveWrong: 0,
+  bookStreak: 0,
   isSubmitting: false,
 
   totalAnswered: 0,
@@ -312,6 +311,7 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
         localAnswers: {},
         localTypedAnswers: {},
         xp: 0,
+        bookStreak: 0,
         briefingInfo: {
           bookName: response.book_name ?? null,
           bookNameEnd: response.book_name_end ?? null,
@@ -520,9 +520,10 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
       const newConsecutiveWrong = result.is_correct ? 0 : state.consecutiveWrong + 1;
       const newTotalAnswered = state.totalAnswered + 1;
 
-      // Level-Up: XP
+      // Level-Up: XP + book streak
       let newXp = state.xp;
       let newBook = state.currentBook;
+      let newBookStreak = result.is_correct ? state.bookStreak + 1 : 0;
       let xpChange: XpBreakdown | null = null;
       let levelChanged: 'up' | 'down' | null = null;
 
@@ -538,23 +539,16 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
         newXp = state.xp + xpChange.total;
         const lessonXp = getLessonXp(state.currentBook, state.availableLevels.length);
 
-        if (newXp >= lessonXp) {
+        // Level up: XP threshold met AND at least 5 consecutive correct in this book
+        if (newXp >= lessonXp && newBookStreak >= 5) {
           const nextLevels = state.availableLevels.filter(l => l > state.currentBook);
           if (nextLevels.length > 0) {
             newBook = nextLevels[0]; newXp = 0; levelChanged = 'up';
+            newBookStreak = 0; // reset streak for new book
             _prefetchLevel(state.sessionId!, newBook);
-          }
-        } else if (newXp < 0) {
-          const prevLevels = state.availableLevels.filter(l => l < state.currentBook);
-          if (prevLevels.length > 0) {
-            newBook = prevLevels[prevLevels.length - 1];
-            newXp = Math.floor(getLessonXp(newBook, state.availableLevels.length) / 2);
-            levelChanged = 'down';
-            _prefetchLevel(state.sessionId!, newBook);
-          } else {
-            newXp = 0;
           }
         }
+        // No level down — wrong answers give 0 XP so XP never goes negative
       }
 
       set({
@@ -565,6 +559,7 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
         bestCombo: newBestCombo,
         correctCount: newCorrectCount,
         consecutiveWrong: newConsecutiveWrong,
+        bookStreak: newBookStreak,
         totalAnswered: newTotalAnswered,
         xp: newXp,
         currentBook: newBook,
