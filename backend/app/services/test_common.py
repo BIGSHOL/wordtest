@@ -656,17 +656,17 @@ def generate_questions_for_words(
     if question_type_counts:
         # Allocate questions by specified count per type.
         # Each word is used AT MOST ONCE across all types to avoid repetition.
-        # If not enough unique words, allow reuse as fallback.
+        # For restrictive types (emoji, antonym, sentence), search the full
+        # teacher range (all_words) when the main pool lacks compatible words.
         word_pool = list(words)
+        pool_ids = {w.id for w in word_pool}
         used_word_ids: set[str] = set()
         for qtype, count in question_type_counts.items():
             engine = get_engine(qtype)
-            if qtype in _TYPING_TYPES:
-                type_pool = sorted(word_pool, key=_typing_difficulty, reverse=True)
-            else:
-                type_pool = sorted(word_pool, key=_choice_difficulty, reverse=True)
+            sort_key = _typing_difficulty if qtype in _TYPING_TYPES else _choice_difficulty
+            type_pool = sorted(word_pool, key=sort_key, reverse=True)
             generated = 0
-            # Pass 1: prefer unused words that CAN generate this type natively
+            # Pass 1: unused words from main pool
             for word in type_pool:
                 if generated >= count:
                     break
@@ -679,23 +679,78 @@ def generate_questions_for_words(
                     questions.append(q)
                     used_word_ids.add(word.id)
                     generated += 1
-            # Pass 2: reuse already-used words that CAN generate this type
+            # Pass 2: pull compatible words from full range (all_words)
             if generated < count:
-                for word in type_pool:
+                extended = sorted(
+                    [w for w in all_words if w.id not in pool_ids and engine.can_generate(w)],
+                    key=sort_key, reverse=True,
+                )
+                for word in extended:
                     if generated >= count:
                         break
-                    if word.id not in used_word_ids:
-                        continue  # already tried in pass 1
-                    if not engine.can_generate(word):
+                    if word.id in used_word_ids:
                         continue
+                    q = _build_question(word, qtype)
+                    if q is not None:
+                        questions.append(q)
+                        used_word_ids.add(word.id)
+                        generated += 1
+            # Pass 3: reuse already-used words if still not enough
+            if generated < count:
+                all_compatible = sorted(
+                    [w for w in word_pool + all_words if engine.can_generate(w)],
+                    key=sort_key, reverse=True,
+                )
+                seen = set()
+                for word in all_compatible:
+                    if generated >= count:
+                        break
+                    if word.id in seen:
+                        continue
+                    seen.add(word.id)
+                    if word.id not in used_word_ids:
+                        continue  # already tried in pass 1/2
                     q = _build_question(word, qtype)
                     if q is not None:
                         questions.append(q)
                         generated += 1
     else:
-        # Default round-robin logic
-        for i, word in enumerate(words):
-            qtype = question_types[i % len(question_types)]
+        # Smart round-robin: reserve compatible words for restrictive types,
+        # then assign remaining words to general types.
+        engines_map = {qt: get_engine(qt) for qt in question_types}
+        # Identify restrictive types (not all words can generate them)
+        restrictive = {
+            qt for qt in question_types
+            if sum(1 for w in words if engines_map[qt].can_generate(w)) < len(words)
+        }
+        # Reserve: for each restrictive type, pick compatible words
+        reserved: dict[str, list[Word]] = {qt: [] for qt in restrictive}
+        reserved_ids: set[str] = set()
+        per_type = max(1, len(words) // len(question_types)) if question_types else 1
+        for qt in restrictive:
+            compatible = [w for w in words if engines_map[qt].can_generate(w)]
+            # Also search all_words for more compatible words
+            pool_ids = {w.id for w in words}
+            extra = [w for w in all_words if w.id not in pool_ids and engines_map[qt].can_generate(w)]
+            combined = compatible + extra
+            for w in combined[:per_type]:
+                reserved[qt].append(w)
+                reserved_ids.add(w.id)
+        # Build questions: restrictive types use reserved words, others use remaining
+        remaining = [w for w in words if w.id not in reserved_ids]
+        general_types = [qt for qt in question_types if qt not in restrictive]
+        # Generate restrictive type questions
+        for qt in restrictive:
+            for word in reserved[qt]:
+                q = _build_question(word, qt)
+                if q is not None:
+                    questions.append(q)
+        # Generate general type questions via round-robin
+        for i, word in enumerate(remaining):
+            if general_types:
+                qtype = general_types[i % len(general_types)]
+            else:
+                qtype = question_types[i % len(question_types)]
             q = _build_question(word, qtype)
             if q is not None:
                 questions.append(q)
