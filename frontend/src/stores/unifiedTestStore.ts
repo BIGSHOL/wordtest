@@ -268,7 +268,9 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
         } as User);
       }
 
-      // Group questions by word level
+      const tm = response.time_mode || 'per_question';
+
+      // Group questions by word level (for adaptive per_question mode)
       const pools: Record<number, UnifiedQuestion[]> = {};
       const indexes: Record<number, number> = {};
       for (const q of response.questions) {
@@ -277,14 +279,18 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
         pools[level].push(q);
       }
 
-      // Flatten by level ascending
-      const sortedLevels = [...response.available_levels].sort((a, b) => a - b);
-      const flat: UnifiedQuestion[] = [];
-      for (const level of sortedLevels) {
-        if (pools[level]) flat.push(...pools[level]);
+      // Exam (total) mode: preserve backend's configured type order
+      // Adaptive (per_question) mode: flatten by level ascending
+      let flat: UnifiedQuestion[];
+      if (tm === 'total') {
+        flat = [...response.questions];
+      } else {
+        const sortedLevels = [...response.available_levels].sort((a, b) => a - b);
+        flat = [];
+        for (const level of sortedLevels) {
+          if (pools[level]) flat.push(...pools[level]);
+        }
       }
-
-      const tm = response.time_mode || 'per_question';
 
       set({
         engineType: 'levelup',

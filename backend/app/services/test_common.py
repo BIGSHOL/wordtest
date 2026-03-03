@@ -660,29 +660,34 @@ def generate_questions_for_words(
         word_pool = list(words)
         used_word_ids: set[str] = set()
         for qtype, count in question_type_counts.items():
+            engine = get_engine(qtype)
             if qtype in _TYPING_TYPES:
                 type_pool = sorted(word_pool, key=_typing_difficulty, reverse=True)
             else:
                 type_pool = sorted(word_pool, key=_choice_difficulty, reverse=True)
             generated = 0
-            # Pass 1: prefer unused words
+            # Pass 1: prefer unused words that CAN generate this type natively
             for word in type_pool:
                 if generated >= count:
                     break
                 if word.id in used_word_ids:
+                    continue
+                if not engine.can_generate(word):
                     continue
                 q = _build_question(word, qtype)
                 if q is not None:
                     questions.append(q)
                     used_word_ids.add(word.id)
                     generated += 1
-            # Pass 2: allow reuse only if pool exhausted
+            # Pass 2: reuse already-used words that CAN generate this type
             if generated < count:
                 for word in type_pool:
                     if generated >= count:
                         break
                     if word.id not in used_word_ids:
-                        continue  # already tried
+                        continue  # already tried in pass 1
+                    if not engine.can_generate(word):
+                        continue
                     q = _build_question(word, qtype)
                     if q is not None:
                         questions.append(q)
