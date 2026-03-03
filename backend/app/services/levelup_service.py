@@ -147,7 +147,7 @@ async def start_session(
     mastery_map = {m.word_id: m for m in masteries}
     initial_questions = _generate_multi_level_pool(
         words_by_level=words_by_level,
-        all_words=all_words,
+        all_words=filtered,
         mastery_map=mastery_map,
         start_level=start_level,
         max_levels=5,
@@ -274,7 +274,7 @@ async def fetch_level_questions(
 
     questions = generate_questions_for_words(
         words=batch,
-        all_words=all_words,
+        all_words=filtered,
         question_types=question_types,
         timer_seconds=timer_seconds,
         masteries=list(mastery_map.values()),

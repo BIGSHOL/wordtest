@@ -106,7 +106,7 @@ async def start_session(
     # Generate ALL questions at once
     questions = generate_questions_for_words(
         words=selected_words,
-        all_words=all_words,
+        all_words=filtered,
         question_types=question_types,
         timer_seconds=timer_seconds,
         masteries=masteries,
