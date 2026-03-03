@@ -128,7 +128,7 @@ EMOJI_MAP: dict[str, str] = {
     "leaf": "🍃",
     "mountain": "⛰️",
     "volcano": "🌋",
-    "ocean": "🌊",
+    # "ocean" excluded — 🌊 is wave, not ocean
     "island": "🏝️",
     "desert": "🏜️",
     "lightning": "⚡",
@@ -139,7 +139,7 @@ EMOJI_MAP: dict[str, str] = {
     "comet": "☄️",
     "cactus": "🌵",
     "bamboo": "🎋",
-    "forest": "🌲",
+    # "forest" excluded — 🌲 is a single tree, confusable with "tree" 🌳
     "river": "🏞️",
 
     # ── Objects ──
@@ -297,7 +297,7 @@ EMOJI_MAP: dict[str, str] = {
     "sing": "🎙️",
     "cook": "👨‍🍳",
     "write": "✍️",
-    "pray": "🙏",
+    # "pray" excluded — 🙏 ambiguous (pray vs high-five vs thank you)
     "wave": "🌊",
     "clap": "👏",
     "hug": "🤗",
@@ -380,6 +380,121 @@ EMOJI_MAP: dict[str, str] = {
     # "rainbow" excluded — duplicate with Nature section
     "sparkle": "✨",
     "hundred": "💯",
+
+    # ── Animals (expansion) ──
+    "bat": "🦇",
+    "buffalo": "🐃",
+    "caterpillar": "🐛",
+    "donkey": "🫏",
+    "hamster": "🐹",
+    "pigeon": "🕊️",
+    "raccoon": "🦝",
+    "seal": "🦭",
+
+    # ── Food (expansion) ──
+    "dumpling": "🥟",
+    "ginger": "🫚",
+    "pear": "🍐",
+
+    # ── Clothing (expansion) ──
+    "boots": "👢",
+    "cap": "🧢",
+    "helmet": "⛑️",
+    "purse": "👛",
+    "ribbon": "🎀",
+    "shorts": "🩳",
+    "slipper": "🥿",
+    "socks": "🧦",
+    "sunglasses": "🕶️",
+    "vest": "🦺",
+    "wallet": "👝",
+
+    # ── Body (expansion) ──
+    "blood": "🩸",
+    "leg": "🦵",
+    "lung": "🫁",
+    "thumb": "👍",
+
+    # ── Nature & Weather (expansion) ──
+    "blizzard": "🌨️",
+    "coral": "🪸",
+    "fog": "🌫️",
+    "iceberg": "🧊",
+    "jungle": "🌴",
+    "meadow": "🌾",
+    "storm": "⛈️",
+    "typhoon": "🌀",
+
+    # ── Places (expansion) ──
+    "cabin": "🛖",
+    "cemetery": "🪦",
+    "playground": "🛝",
+    "shrine": "⛩️",
+
+    # ── Objects (expansion) ──
+    "cart": "🛒",
+    "fan": "🪭",
+    "flashlight": "🔦",
+    "fork": "🍴",
+    "gem": "💎",
+    "headphone": "🎧",
+    "hook": "🪝",
+    "jar": "🫙",
+    "lantern": "🏮",
+    "luggage": "🧳",
+    "pan": "🍳",
+    "plate": "🍽️",
+    "ruler": "📏",
+    "speaker": "🔊",
+    "spoon": "🥄",
+    "teapot": "🫖",
+    "vase": "🏺",
+
+    # ── Emotions (expansion) ──
+    "ashamed": "🫣",
+    "bored": "😑",
+    "calm": "😌",
+    "confused": "😕",
+    "delighted": "😃",
+    "exhausted": "😫",
+    "frustrated": "😤",
+    "furious": "🤬",
+    "gloomy": "😞",
+    "grateful": "🙏",
+    "relieved": "😮‍💨",
+    "restless": "😣",
+    "terrified": "😱",
+
+    # ── Sports & Actions (expansion) ──
+    "cycling": "🚴",
+    "hike": "🥾",
+    "juggle": "🤹",
+    "snowboard": "🏂",
+    "wrestle": "🤼",
+
+    # ── Celebrations (expansion) ──
+    "carnival": "🎪",
+    "graduation": "🎓",
+    "parade": "🎊",
+    "wedding": "💒",
+
+    # ── Medical (expansion) ──
+    "crutch": "🩼",
+    "vaccine": "💉",
+    "wheelchair": "🦽",
+
+    # ── People (expansion) ──
+    "bride": "👰",
+    "detective": "🕵️",
+    "firefighter": "👨‍🚒",
+    "groom": "🤵",
+    "guard": "💂",
+    "nurse": "👩‍⚕️",
+    "vampire": "🧛",
+
+    # ── Transport (expansion) ──
+    "ferry": "⛴️",
+    "sled": "🛷",
 }
 
 # ─── Polysemy Blacklist ──────────────────────────────────────────────────────
@@ -405,6 +520,15 @@ _POLYSEMY_BLOCK: dict[str, list[str]] = {
     "wave": ["손을 흔들"],                           # 🌊 only for 물결/파도
     "cool": ["시원한"],                              # 😎 only for 멋진
     "book": ["예약"],                                # 📖 only for 책
+    "bat": ["방망이", "배트", "치다"],                 # 🦇 only for 박쥐
+    "seal": ["봉인", "밀봉", "인장", "직인", "도장"],  # 🦭 only for 물개
+    "cap": ["뚜껑", "상한", "마개"],                   # 🧢 only for 모자
+    "fan": ["팬", "열광자", "지지자", "선풍기"],        # 🪭 only for 부채
+    "groom": ["손질", "돌보", "길들"],                 # 🤵 only for 신랑
+    "thumb": ["대충", "훑어"],                         # 👍 only for 엄지
+    "speaker": ["연설자", "발표자", "화자"],            # 🔊 only for 스피커
+    "plate": ["접시", "판"],                           # 🍽️ only for 접시 (block 번호판/명판)
+    "fork": ["갈림", "분기"],                          # 🍴 only for 포크
 }
 
 # Build reverse map for quick lookup

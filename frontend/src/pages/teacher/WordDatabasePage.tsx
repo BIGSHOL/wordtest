@@ -61,6 +61,7 @@ export function WordDatabasePage() {
   const [lessonOptions, setLessonOptions] = useState<LessonInfo[]>([]);
   const [posFilter, setPosFilter] = useState<string>('');
   const [posOptions, setPosOptions] = useState<string[]>([]);
+  const [emojiFilter, setEmojiFilter] = useState<boolean | null>(null);
 
   const fetchWords = async () => {
     try {
@@ -72,6 +73,7 @@ export function WordDatabasePage() {
         book_name?: string;
         lesson?: string;
         part_of_speech?: string;
+        has_emoji?: boolean;
       } = {
         skip: page * ITEMS_PER_PAGE,
         limit: ITEMS_PER_PAGE,
@@ -80,6 +82,7 @@ export function WordDatabasePage() {
       if (bookFilter) params.book_name = bookFilter;
       if (lessonFilter) params.lesson = lessonFilter;
       if (posFilter) params.part_of_speech = posFilter;
+      if (emojiFilter !== null) params.has_emoji = emojiFilter;
 
       const response = await wordService.listWords(params);
 
@@ -103,7 +106,7 @@ export function WordDatabasePage() {
 
   useEffect(() => {
     fetchWords();
-  }, [page, debouncedSearch, bookFilter, lessonFilter, posFilter]);
+  }, [page, debouncedSearch, bookFilter, lessonFilter, posFilter, emojiFilter]);
 
   // Load books and parts of speech on mount
   useEffect(() => {
@@ -479,6 +482,22 @@ export function WordDatabasePage() {
                   </div>
                 </>
               )}
+              <div className="w-px h-5 bg-border-subtle" />
+              <button
+                onClick={() => {
+                  setEmojiFilter(prev => prev === true ? null : true);
+                  setPage(0);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  emojiFilter === true
+                    ? 'bg-amber-100 text-amber-700 border border-amber-300'
+                    : 'bg-white text-text-secondary border border-border-subtle hover:bg-bg-muted'
+                }`}
+                title="이모지 포함 단어만 보기"
+              >
+                <span>😀</span>
+                <span>이모지</span>
+              </button>
             </div>
             <span
               className="text-[11px] font-semibold rounded-full shrink-0"
@@ -576,7 +595,18 @@ export function WordDatabasePage() {
                           </td>
                           <td className="px-3 text-xs text-text-tertiary whitespace-nowrap">{word.part_of_speech || '-'}</td>
                           <td className="px-3 text-sm text-text-secondary">
-                            <span className="truncate block max-w-[160px]">{word.korean}</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="truncate block max-w-[160px]">{word.korean}</span>
+                              {word.has_emoji && (
+                                <span
+                                  className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold"
+                                  style={{ backgroundColor: '#FEF3C7', color: '#D97706' }}
+                                  title="이모지 포함"
+                                >
+                                  😀
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-3 text-sm text-text-secondary">
                             {(() => {

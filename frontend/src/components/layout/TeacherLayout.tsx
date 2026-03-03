@@ -15,6 +15,7 @@ import {
   UserCog,
   PanelLeftClose,
   PanelLeftOpen,
+  FlaskConical,
 } from 'lucide-react';
 
 interface TeacherLayoutProps {
@@ -26,6 +27,7 @@ const baseNavItems = [
   { to: '/students', icon: Users, label: '학생 관리' },
   { to: '/test-settings', icon: BookA, label: '단어 테스트' },
   { to: '/grammar-settings', icon: Languages, label: '문법 테스트' },
+  { to: '/level-test', icon: FlaskConical, label: '레벨테스트' },
   { to: '/words', icon: Database, label: '데이터베이스' },
   { to: '/test-results', icon: ClipboardList, label: '테스트 결과' },
   { to: '/statistics', icon: TrendingUp, label: '통계' },

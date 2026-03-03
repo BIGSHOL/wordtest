@@ -1,7 +1,7 @@
 """Word schemas."""
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, computed_field
 
 
 class WordExampleResponse(BaseModel):
@@ -36,6 +36,11 @@ class WordResponse(BaseModel):
     area5_spelling: Optional[str] = None
     area6_context: Optional[str] = None
     created_at: Optional[datetime] = None
+
+    @computed_field
+    @property
+    def has_emoji(self) -> bool:
+        return bool(self.compatible_engines and 'emoji' in self.compatible_engines)
 
 
 class CreateWordRequest(BaseModel):

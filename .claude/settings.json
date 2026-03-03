@@ -1,4 +1,12 @@
 {
+  "permissions": {
+    "additionalDirectories": [
+      "d:\\wordtest\\data\\__pycache__"
+    ],
+    "allow": [
+      "WebFetch(domain:api.iconify.design)"
+    ]
+  },
   "mcpServers": {
     "context7": {
       "command": "npx",

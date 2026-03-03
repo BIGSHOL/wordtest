@@ -278,18 +278,9 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
         pools[level].push(q);
       }
 
-      // Exam (total) mode: preserve backend's configured type order
-      // Adaptive (per_question) mode: flatten by level ascending
-      let flat: UnifiedQuestion[];
-      if (tm === 'total') {
-        flat = [...response.questions];
-      } else {
-        const sortedLevels = [...response.available_levels].sort((a, b) => a - b);
-        flat = [];
-        for (const level of sortedLevels) {
-          if (pools[level]) flat.push(...pools[level]);
-        }
-      }
+      // Always preserve backend's question order (type-grouped for level tests,
+      // level-sorted for adaptive tests — backend handles both correctly)
+      const flat: UnifiedQuestion[] = [...response.questions];
 
       set({
         engineType: 'levelup',

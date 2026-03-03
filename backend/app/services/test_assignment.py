@@ -14,7 +14,13 @@ from app.core.timezone import now_kst
 
 
 async def _get_book_level(db: AsyncSession, book_name: str) -> int:
-    """Get the word level for a given book name."""
+    """Get the book-level for a given book name.
+
+    Uses the canonical BOOK_LEVEL_MAP first; falls back to DB query.
+    """
+    from app.utils.load_words import BOOK_LEVEL_MAP
+    if book_name in BOOK_LEVEL_MAP:
+        return BOOK_LEVEL_MAP[book_name]
     result = await db.execute(
         select(func.min(Word.level)).where(Word.book_name == book_name)
     )

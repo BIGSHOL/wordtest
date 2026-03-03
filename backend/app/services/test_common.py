@@ -151,6 +151,12 @@ async def get_words_for_config(db: AsyncSession, config: TestConfig) -> list[Wor
                 and_(Word.book_name == effective_end, Word.lesson <= config.lesson_range_end),
             )
         )
+    elif is_cross_book:
+        # Cross-book without lesson constraints: include all books in range
+        query = query.where(
+            Word.book_name >= config.book_name,
+            Word.book_name <= effective_end,
+        )
     elif config.book_name:
         query = query.where(Word.book_name == config.book_name)
         if config.lesson_range_start and config.lesson_range_end:

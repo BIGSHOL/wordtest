@@ -46,13 +46,13 @@ SEGMENT_SIZE = 10  # Questions per level batch
 # Grade → recommended starting book level (교재 순서대로)
 # Levels 1-10: POWER VOCA 5000-01~10, Levels 11-15: 수능기출 01~05
 GRADE_TO_START_LEVEL: dict[str, int] = {
-    "초5": 1, "초6": 1,
-    "중1": 2,
-    "중2": 3,
-    "중3": 4,
-    "고1": 5,
-    "고2": 8,
-    "고3": 13,
+    "초1": 1, "초2": 1,
+    "초3": 2, "초4": 2,
+    "초5": 3, "초6": 4,
+    "중1": 3, "중2": 5,
+    "중3": 7,
+    "고1": 9, "고2": 9,
+    "고3": 11,
 }
 
 
@@ -135,13 +135,18 @@ async def start_session(
         raise ValueError("No words available after filtering")
 
     # Grade-based starting level: find first available level >= student's recommended level
-    recommended = GRADE_TO_START_LEVEL.get(_normalize_grade(student.grade or ""), 1)
+    normalized_grade = _normalize_grade(student.grade or "")
+    recommended = GRADE_TO_START_LEVEL.get(normalized_grade or "", 1)
     start_level = available_levels[-1]  # default: if above all, start at highest
     for lvl in available_levels:
         if lvl >= recommended:
             start_level = lvl
             break
     session.current_level = start_level
+
+    # Grade-based difficulty bias for word selection within each level
+    from app.core.level_test_presets import GRADE_DIFFICULTY_BIAS
+    grade_bias = GRADE_DIFFICULTY_BIAS.get(normalized_grade or "", 0.5)
 
     # Generate initial question pool: current level + up to 4 more
     mastery_map = {m.word_id: m for m in masteries}
@@ -155,6 +160,7 @@ async def start_session(
         question_types=question_types,
         timer_seconds=timer_seconds,
         question_type_counts=question_type_counts,
+        grade_difficulty_bias=grade_bias,
     )
 
     # Level metadata for frontend
@@ -575,6 +581,7 @@ def _generate_multi_level_pool(
     question_types: list[str],
     timer_seconds: int,
     question_type_counts: dict[str, int] | None = None,
+    grade_difficulty_bias: float = 0.5,
 ) -> list[dict]:
     """Generate a multi-level question pool for initial serving.
 
@@ -595,6 +602,7 @@ def _generate_multi_level_pool(
 
         combined_words = _weighted_word_selection(
             words_by_level, all_active, pool_size,
+            grade_difficulty_bias=grade_difficulty_bias,
         )
         random.shuffle(combined_words)
 
@@ -697,13 +705,15 @@ def _weighted_word_selection(
     words_by_level: dict[int, list[Word]],
     active_levels: list[int],
     total_budget: int,
+    grade_difficulty_bias: float = 0.5,
 ) -> list[Word]:
-    """Select words with higher levels AND harder words getting priority.
+    """Select words with higher levels AND grade-appropriate difficulty.
 
     Used for exam mode where all levels should be tested.
     Two-axis difficulty:
     1. Level weight: level 10 gets 10x the share of level 1
-    2. Within each level: words sorted by difficulty score (hardest first)
+    2. Within each level: grade_difficulty_bias controls which difficulty
+       tier to draw from (0.0=easiest first, 1.0=hardest first).
 
     Guarantees at least 1 word per level if available.
     """
@@ -718,6 +728,14 @@ def _weighted_word_selection(
         level_words.sort(key=_word_difficulty_score, reverse=True)
         # Allocate proportionally by weight, minimum 1
         allocation = max(1, round(total_budget * level / total_weight))
-        combined.extend(level_words[:allocation])
+
+        n = len(level_words)
+        if n > allocation:
+            # bias=1.0 → start_idx=0 (hardest), bias=0.0 → start_idx=n-allocation (easiest)
+            start_idx = int((n - allocation) * (1.0 - grade_difficulty_bias))
+            start_idx = max(0, min(start_idx, n - allocation))
+            combined.extend(level_words[start_idx : start_idx + allocation])
+        else:
+            combined.extend(level_words)
 
     return combined

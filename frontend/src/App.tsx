@@ -40,6 +40,7 @@ const TestStartPage = lazyRetry(() => import('./pages/student/TestStartPage'));
 const UnifiedTestPage = lazyRetry(() => import('./pages/student/UnifiedTestPage'));
 const StudentReportPage = lazyRetry(() => import('./pages/student/StudentReportPage'));
 const GrammarSettingsPage = lazyRetry(() => import('./pages/teacher/GrammarSettingsPage'));
+const LevelTestPage = lazyRetry(() => import('./pages/teacher/LevelTestPage'));
 const GrammarTestPage = lazyRetry(() => import('./pages/student/GrammarTestPage'));
 
 function PageLoader() {
@@ -114,6 +115,14 @@ function App() {
             element={
               <RouteGuard roles={['teacher']}>
                 <GrammarSettingsPage />
+              </RouteGuard>
+            }
+          />
+          <Route
+            path="/level-test"
+            element={
+              <RouteGuard roles={['teacher']}>
+                <LevelTestPage />
               </RouteGuard>
             }
           />

@@ -22,6 +22,7 @@ from app.services.question_engines import ENGINES, compute_compatible_engines
 router = APIRouter(prefix="/words", tags=["words"])
 
 
+
 @router.get("", response_model=WordListResponse)
 async def list_words(
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -31,6 +32,7 @@ async def list_words(
     lesson: Optional[str] = Query(None),
     part_of_speech: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
+    has_emoji: Optional[bool] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
 ):
@@ -57,6 +59,11 @@ async def list_words(
                 Word.example_en.ilike(search_pattern),
             )
         )
+    if has_emoji is not None:
+        if has_emoji:
+            conditions.append(func.coalesce(Word.compatible_engines, '').contains('emoji'))
+        else:
+            conditions.append(~func.coalesce(Word.compatible_engines, '').contains('emoji'))
 
     if conditions:
         query = query.where(*conditions)

@@ -23,6 +23,7 @@ export interface Word {
   example_ko: string | null;
   examples: WordExample[];
   compatible_engines: string | null;
+  has_emoji?: boolean;
   area1_meaning: string | null;
   area2_association: string | null;
   area3_pronunciation: string | null;
@@ -76,6 +77,7 @@ export const wordService = {
     search?: string;
     skip?: number;
     limit?: number;
+    has_emoji?: boolean;
   }): Promise<WordListResponse> {
     const response = await api.get<WordListResponse>('/api/v1/words', { params });
     return response.data;
