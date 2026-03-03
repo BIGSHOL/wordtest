@@ -5,6 +5,7 @@ import { TypingInput } from '../mastery/TypingInput';
 
 interface ListeningCardProps {
   english: string;
+  prompt?: string;
   /** Typing props - when provided, renders inline typing input */
   typingValue?: string;
   onTypingChange?: (value: string) => void;
@@ -15,6 +16,7 @@ interface ListeningCardProps {
 
 export const ListeningCard = memo(function ListeningCard({
   english,
+  prompt,
   typingValue,
   onTypingChange,
   onTypingSubmit,
@@ -36,7 +38,7 @@ export const ListeningCard = memo(function ListeningCard({
       }}
     >
       <p className="font-display text-[16px] font-semibold text-text-secondary">
-        {isTyping ? '발음을 듣고 영어 단어를 입력하시오' : '발음을 듣고 알맞은 단어를 고르시오'}
+        {prompt || (isTyping ? '\uBC1C\uC74C\uC744 \uB4E3\uACE0 \uC601\uC5B4 \uB2E8\uC5B4\uB97C \uC785\uB825\uD558\uC2DC\uC624' : '\uBC1C\uC74C\uC744 \uB4E3\uACE0 \uC54C\uB9DE\uC740 \uB2E8\uC5B4\uB97C \uACE0\uB974\uC2DC\uC624')}
       </p>
       <div className="flex items-center justify-center" style={{ minHeight: isTyping ? 80 : 140 }}>
         <Headphones className={`${isTyping ? 'w-16 h-16' : 'w-24 h-24'} text-accent-indigo opacity-30`} strokeWidth={1.2} />

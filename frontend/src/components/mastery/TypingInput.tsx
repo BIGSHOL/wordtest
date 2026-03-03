@@ -115,7 +115,20 @@ export const TypingInput = memo(function TypingInput({
   // Reset hidden input when question changes (hint changes = new question)
   useEffect(() => {
     if (inputRef.current) inputRef.current.value = '';
+    autoSubmittedRef.current = false;
   }, [hint]);
+
+  // Auto-submit when all slots filled
+  const autoSubmittedRef = useRef(false);
+  useEffect(() => {
+    const filled = userInput.length >= userSlots && userSlots > 0;
+    if (filled && !autoSubmittedRef.current && !disabled) {
+      autoSubmittedRef.current = true;
+      const t = setTimeout(() => onSubmit(), 200);
+      return () => clearTimeout(t);
+    }
+    if (!filled) autoSubmittedRef.current = false;
+  }, [userInput.length, userSlots, onSubmit, disabled]);
 
   const appendChars = useCallback((raw: string) => {
     const english = koreanToEnglish(raw);

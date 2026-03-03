@@ -16,8 +16,10 @@ interface SentenceBlankCardProps {
   sentenceKo?: string;
   /** Full English sentence (for TTS) */
   sentenceEn?: string;
-  /** Stage number for prompt text */
+  /** Stage number for prompt text (mastery mode) */
   stage: number;
+  /** Override prompt text based on question type */
+  prompt?: string;
   /** Typing props - when provided, renders inline typing input in the blank */
   typingValue?: string;
   onTypingChange?: (value: string) => void;
@@ -187,6 +189,7 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
   sentenceKo,
   sentenceEn,
   stage,
+  prompt: promptOverride,
   typingValue,
   onTypingChange,
   onTypingSubmit,
@@ -247,7 +250,20 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
   // Reset hidden input when question changes
   useEffect(() => {
     if (inputRef.current) inputRef.current.value = '';
-  }, [typingValue]);
+    autoSubmittedRef.current = false;
+  }, [typingHint]);
+
+  // Auto-submit when all slots filled
+  const autoSubmittedRef = useRef(false);
+  useEffect(() => {
+    const filled = userPart.length >= userSlots && userSlots > 0;
+    if (filled && !autoSubmittedRef.current && !typingDisabled && onTypingSubmit) {
+      autoSubmittedRef.current = true;
+      const t = setTimeout(() => onTypingSubmit(), 200);
+      return () => clearTimeout(t);
+    }
+    if (!filled) autoSubmittedRef.current = false;
+  }, [userPart.length, userSlots, onTypingSubmit, typingDisabled]);
 
   const appendChars = useCallback((raw: string) => {
     const english = koreanToEnglish(raw);
@@ -315,7 +331,7 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
 
       {/* Prompt */}
       <p className="font-display text-[16px] font-semibold text-text-secondary text-center">
-        {STAGE_PROMPTS[stage] || '빈칸에 들어갈 단어는?'}
+        {promptOverride || STAGE_PROMPTS[stage] || '\uBE48\uCE78\uC5D0 \uB4E4\uC5B4\uAC08 \uC601\uB2E8\uC5B4\uB97C \uACE0\uB974\uC2DC\uC624'}
       </p>
 
       {/* Sentence with dashed blank */}

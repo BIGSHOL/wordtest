@@ -223,6 +223,9 @@ def make_sentence_blank(sentence: str, target_word: str) -> str | None:
     if not sentence or not target_word:
         return None
 
+    # Strip <word> markers that some DB examples contain
+    sentence = re.sub(r'<([^>]+)>', r'\1', sentence)
+
     # Phase 1: exact + inflected
     result = _try_exact(sentence, target_word)
     if result:

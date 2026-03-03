@@ -455,6 +455,49 @@ export function UnifiedTestPage() {
   const isSentence = currentQuestion.context_mode === 'sentence' && currentQuestion.sentence_blank;
   const totalQ = questionCount || flatQuestions.length;
 
+  // Prompt text per question type
+  const questionPrompt = useMemo(() => {
+    // Sentence context overrides
+    if (isSentence) {
+      if (isTyping) return '\uBE48\uCE78\uC5D0 \uB4E4\uC5B4\uAC08 \uC601\uB2E8\uC5B4\uB97C \uC785\uB825\uD558\uC2DC\uC624';
+      return '\uBE48\uCE78\uC5D0 \uB4E4\uC5B4\uAC08 \uC601\uB2E8\uC5B4\uB97C \uACE0\uB974\uC2DC\uC624';
+    }
+    switch (questionType) {
+      case 'en_to_ko':
+      case 'word_to_meaning':
+        return '\uB2E4\uC74C \uC601\uB2E8\uC5B4\uC758 \uB73B\uC744 \uACE0\uB974\uC2DC\uC624';
+      case 'ko_to_en':
+      case 'meaning_to_word':
+        return '\uC54C\uB9DE\uC740 \uC601\uB2E8\uC5B4\uB97C \uACE0\uB974\uC2DC\uC624';
+      case 'ko_type':
+      case 'meaning_and_type':
+        return '\uC54C\uB9DE\uC740 \uC601\uB2E8\uC5B4\uB97C \uC785\uB825\uD558\uC2DC\uC624';
+      case 'listen_en':
+        return '\uBC1C\uC74C\uC744 \uB4E3\uACE0 \uC54C\uB9DE\uC740 \uC601\uB2E8\uC5B4\uB97C \uACE0\uB974\uC2DC\uC624';
+      case 'listen_ko':
+      case 'listen_to_meaning':
+        return '\uBC1C\uC74C\uC744 \uB4E3\uACE0 \uC54C\uB9DE\uC740 \uB73B\uC744 \uACE0\uB974\uC2DC\uC624';
+      case 'listen_type':
+      case 'listen_and_type':
+        return '\uBC1C\uC74C\uC744 \uB4E3\uACE0 \uC601\uB2E8\uC5B4\uB97C \uC785\uB825\uD558\uC2DC\uC624';
+      case 'emoji':
+      case 'emoji_to_word':
+        return '\uC774\uBAA8\uC9C0\uC5D0 \uD574\uB2F9\uD558\uB294 \uC601\uB2E8\uC5B4\uB97C \uACE0\uB974\uC2DC\uC624';
+      case 'sentence':
+        return '\uBE48\uCE78\uC5D0 \uB4E4\uC5B4\uAC08 \uC601\uB2E8\uC5B4\uB97C \uACE0\uB974\uC2DC\uC624';
+      case 'sentence_type':
+        return '\uBE48\uCE78\uC5D0 \uB4E4\uC5B4\uAC08 \uC601\uB2E8\uC5B4\uB97C \uC785\uB825\uD558\uC2DC\uC624';
+      case 'antonym_choice':
+      case 'antonym_and_choice':
+        return '\uB2E4\uC74C \uB2E8\uC5B4\uC758 \uBC18\uC758\uC5B4\uB97C \uACE0\uB974\uC2DC\uC624';
+      case 'antonym_type':
+      case 'antonym_and_type':
+        return '\uB2E4\uC74C \uB2E8\uC5B4\uC758 \uBC18\uC758\uC5B4\uB97C \uC785\uB825\uD558\uC2DC\uC624';
+      default:
+        return '\uB2E4\uC74C \uC601\uB2E8\uC5B4\uC758 \uB73B\uC744 \uACE0\uB974\uC2DC\uC624';
+    }
+  }, [questionType, isSentence, isTyping]);
+
   // Question card renderer (shared between modes)
   // Cards only show the question prompt; TypingInput is rendered separately below.
   // Exception: SentenceBlankCard renders inline letter-boxes when typing props are provided.
@@ -467,7 +510,7 @@ export function UnifiedTestPage() {
   }) => {
     // Listen questions: always use ListeningCard (hides word, shows headphones)
     if (isListen && !isSentence) {
-      return <ListeningCard english={currentQuestion.word.english} />;
+      return <ListeningCard english={currentQuestion.word.english} prompt={questionPrompt} />;
     }
 
     if (isSentence) {
@@ -487,6 +530,7 @@ export function UnifiedTestPage() {
           sentenceKo={currentQuestion.word.example_ko || undefined}
           sentenceEn={currentQuestion.word.example_en || undefined}
           stage={currentQuestion.stage}
+          prompt={questionPrompt}
           {...tp}
         />
       );
@@ -495,28 +539,28 @@ export function UnifiedTestPage() {
     switch (questionType) {
       case 'emoji_to_word':
       case 'emoji':
-        return <EmojiCard emoji={currentQuestion.emoji || ''} />;
+        return <EmojiCard emoji={currentQuestion.emoji || ''} prompt={questionPrompt} />;
       case 'word_to_meaning':
       case 'en_to_ko':
-        return <WordCard word={currentQuestion.word.english} />;
+        return <WordCard word={currentQuestion.word.english} prompt={questionPrompt} />;
       case 'meaning_to_word':
       case 'meaning_and_type':
       case 'ko_to_en':
       case 'ko_type':
-        return <MeaningCard korean={currentQuestion.word.korean || ''} />;
+        return <MeaningCard korean={currentQuestion.word.korean || ''} prompt={questionPrompt} />;
       case 'listen_and_type':
       case 'listen_to_meaning':
       case 'listen_en':
       case 'listen_ko':
       case 'listen_type':
-        return <ListeningCard english={currentQuestion.word.english} />;
+        return <ListeningCard english={currentQuestion.word.english} prompt={questionPrompt} />;
       case 'antonym_type':
       case 'antonym_choice':
       case 'antonym_and_type':
       case 'antonym_and_choice':
-        return <AntonymCard english={currentQuestion.word.english} korean={currentQuestion.word.korean ?? undefined} />;
+        return <AntonymCard english={currentQuestion.word.english} korean={currentQuestion.word.korean ?? undefined} prompt={questionPrompt} />;
       default:
-        return <WordCard word={currentQuestion.word.english} />;
+        return <WordCard word={currentQuestion.word.english} prompt={questionPrompt} />;
     }
   };
 

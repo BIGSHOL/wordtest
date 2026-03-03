@@ -4,9 +4,10 @@ import { speakWord } from '../../utils/tts';
 
 interface WordCardProps {
   word: string;
+  prompt?: string;
 }
 
-export const WordCard = memo(function WordCard({ word }: WordCardProps) {
+export const WordCard = memo(function WordCard({ word, prompt }: WordCardProps) {
   // Auto-shrink font for long expressions to keep them on one line
   const fontSize = useMemo(() => {
     const len = word.length;
@@ -25,7 +26,7 @@ export const WordCard = memo(function WordCard({ word }: WordCardProps) {
       }}
     >
       <p className="font-display text-[16px] font-semibold text-text-secondary">
-        다음 영단어의 뜻은?
+        {prompt || '\uB2E4\uC74C \uC601\uB2E8\uC5B4\uC758 \uB73B\uC744 \uACE0\uB974\uC2DC\uC624'}
       </p>
       <h2
         className="font-word font-bold text-text-primary text-center"

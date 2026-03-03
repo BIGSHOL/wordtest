@@ -6,6 +6,7 @@ import { TypingInput } from '../mastery/TypingInput';
 interface AntonymCardProps {
   english: string;
   korean?: string;
+  prompt?: string;
   /** Typing props - when provided, renders inline typing input */
   typingValue?: string;
   onTypingChange?: (value: string) => void;
@@ -18,6 +19,7 @@ interface AntonymCardProps {
 export const AntonymCard = memo(function AntonymCard({
   english,
   korean,
+  prompt,
   typingValue,
   onTypingChange,
   onTypingSubmit,
@@ -36,7 +38,7 @@ export const AntonymCard = memo(function AntonymCard({
       }}
     >
       <p className="font-display text-[16px] font-semibold text-text-secondary">
-        다음 단어의 반의어는?
+        {prompt || (isTyping ? '\uB2E4\uC74C \uB2E8\uC5B4\uC758 \uBC18\uC758\uC5B4\uB97C \uC785\uB825\uD558\uC2DC\uC624' : '\uB2E4\uC74C \uB2E8\uC5B4\uC758 \uBC18\uC758\uC5B4\uB97C \uACE0\uB974\uC2DC\uC624')}
       </p>
       <div className="flex items-center gap-3">
         <h2 className="font-display text-[32px] md:text-[36px] font-bold text-text-primary leading-snug text-center">
