@@ -176,3 +176,24 @@ async def list_level_test_assignments(
             )
         )
     return responses
+
+
+async def delete_level_test_assignment(
+    db: AsyncSession, assignment_id: str
+) -> bool:
+    """Delete a level-test assignment regardless of owning teacher."""
+    result = await db.execute(
+        select(TestAssignment)
+        .join(TestConfig, TestAssignment.test_config_id == TestConfig.id)
+        .where(
+            TestAssignment.id == assignment_id,
+            TestConfig.name.like("레벨테스트%"),
+        )
+    )
+    assignment = result.scalar_one_or_none()
+    if not assignment:
+        return False
+
+    await db.delete(assignment)
+    await db.commit()
+    return True

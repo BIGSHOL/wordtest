@@ -11,6 +11,7 @@ import { studentService } from '../../services/student';
 import {
   createLevelTest,
   listLevelTestAssignments,
+  deleteLevelTestAssignment,
   type LevelTestCreateResponse,
 } from '../../services/levelTest';
 import { testAssignmentService } from '../../services/testAssignment';
@@ -240,7 +241,7 @@ export function LevelTestPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      await testAssignmentService.deleteAssignment(id);
+      await deleteLevelTestAssignment(id);
       await refreshAssignments();
     } catch { /* ignore */ }
   };

@@ -14,7 +14,7 @@ from app.schemas.level_test import (
     LevelTestStudentResult,
 )
 from app.schemas.test_assignment import TestAssignmentResponse
-from app.services.level_test import create_level_test, list_level_test_assignments
+from app.services.level_test import create_level_test, list_level_test_assignments, delete_level_test_assignment
 
 router = APIRouter(prefix="/level-test", tags=["level-test"])
 
@@ -56,3 +56,18 @@ async def list_level_test_assignments_endpoint(
 ):
     """List all level test assignments for the current teacher."""
     return await list_level_test_assignments(db, str(teacher.id))
+
+
+@router.delete("/assignments/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_level_test_assignment_endpoint(
+    assignment_id: str,
+    teacher: CurrentTeacher,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Delete a level-test assignment (any teacher can delete)."""
+    deleted = await delete_level_test_assignment(db, assignment_id)
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Level test assignment not found",
+        )

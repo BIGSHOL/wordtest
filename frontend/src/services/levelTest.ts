@@ -31,3 +31,7 @@ export async function listLevelTestAssignments(): Promise<TestAssignmentItem[]> 
   const res = await api.get<TestAssignmentItem[]>('/api/v1/level-test/assignments');
   return res.data;
 }
+
+export async function deleteLevelTestAssignment(id: string): Promise<void> {
+  await api.delete(`/api/v1/level-test/assignments/${id}`);
+}
