@@ -598,15 +598,14 @@ def _generate_multi_level_pool(
         )
         random.shuffle(combined_words)
 
-        pool_masteries = [
-            mastery_map[w.id] for w in combined_words if w.id in mastery_map
-        ]
+        # Pass full mastery list so Pass 2 (all_words search) can find records
+        all_masteries = list(mastery_map.values())
         return generate_questions_for_words(
             words=combined_words,
             all_words=all_words,
             question_types=question_types,
             timer_seconds=timer_seconds,
-            masteries=pool_masteries,
+            masteries=all_masteries,
             question_type_counts=question_type_counts,
         )
 
@@ -620,16 +619,14 @@ def _generate_multi_level_pool(
     if not combined_words:
         return []
 
-    batch_masteries = [
-        mastery_map[w.id] for w in combined_words if w.id in mastery_map
-    ]
+    all_masteries = list(mastery_map.values())
 
     return generate_questions_for_words(
         words=combined_words,
         all_words=all_words,
         question_types=question_types,
         timer_seconds=timer_seconds,
-        masteries=batch_masteries,
+        masteries=all_masteries,
     )
 
 
