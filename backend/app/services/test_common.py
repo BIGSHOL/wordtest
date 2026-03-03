@@ -695,29 +695,15 @@ def generate_questions_for_words(
             if q is not None:
                 questions.append(q)
 
-    # Sort questions by type then difficulty (level ascending within each type)
+    # Sort questions by configured type order then difficulty (level ascending)
+    # Use the teacher's configured question_types order, not a hardcoded order
+    configured_order = {qt: idx for idx, qt in enumerate(question_types)}
     questions.sort(key=lambda q: (
-        _QUESTION_TYPE_ORDER.get(q["question_type"], 99),
+        configured_order.get(q["question_type"], 99),
         q["word"]["level"],
     ))
 
     return questions
-
-
-# Defines the display order of question types for sorted output
-_QUESTION_TYPE_ORDER = {
-    "en_to_ko": 0,
-    "ko_to_en": 1,
-    "listen_en": 2,
-    "listen_ko": 3,
-    "listen_type": 4,
-    "ko_type": 5,
-    "emoji": 6,
-    "sentence": 7,
-    "sentence_type": 8,
-    "antonym_choice": 9,
-    "antonym_type": 10,
-}
 
 
 # ── Answer Checking ──────────────────────────────────────────────────────────
