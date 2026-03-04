@@ -23,8 +23,9 @@ import {
 
 // ── XP (per-question mode, levelup engine) ──────────────────────────────────
 
-function getLessonXp(book: number, numLevels: number = 15): number {
-  return (4 + book) * Math.max(1, Math.ceil(15 / numLevels)) * 4;
+function getLessonXp(book: number, _numLevels: number = 15): number {
+  // Fixed: removed numLevels scaling that made narrow ranges nearly impossible
+  return (4 + book) * 4;
 }
 
 export interface XpBreakdown {
@@ -278,9 +279,16 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
         pools[level].push(q);
       }
 
-      // Always preserve backend's question order (type-grouped for level tests,
-      // level-sorted for adaptive tests — backend handles both correctly)
-      const flat: UnifiedQuestion[] = [...response.questions];
+      // Per-question adaptive: start with first question from current level pool
+      // Total/exam mode: use all questions as-is
+      const startLevel = response.current_level;
+      let flat: UnifiedQuestion[];
+      if (tm === 'per_question' && pools[startLevel]?.length > 0) {
+        flat = [pools[startLevel][0]];
+        indexes[startLevel] = 1; // first question already consumed
+      } else {
+        flat = [...response.questions];
+      }
 
       set({
         engineType: 'levelup',
@@ -530,16 +538,17 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
         newXp = state.xp + xpChange.total;
         const lessonXp = getLessonXp(state.currentBook, state.availableLevels.length);
 
-        // Level up: XP threshold met AND at least 5 consecutive correct in this book
-        if (newXp >= lessonXp && newBookStreak >= 5) {
+        // Level up: XP threshold met AND at least 3 consecutive correct
+        if (newXp >= lessonXp && newBookStreak >= 3) {
           const nextLevels = state.availableLevels.filter(l => l > state.currentBook);
           if (nextLevels.length > 0) {
             newBook = nextLevels[0]; newXp = 0; levelChanged = 'up';
-            newBookStreak = 0; // reset streak for new book
+            newBookStreak = 0;
             _prefetchLevel(state.sessionId!, newBook);
           }
         }
-        // No level down — wrong answers give 0 XP so XP never goes negative
+
+        // No level down — wrong answers give 0 XP, stay at current level
       }
 
       set({
@@ -574,15 +583,49 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
       return;
     }
 
-    // Per-question mode uses currentQuestionIndex
-    set({
-      currentQuestionIndex: state.currentQuestionIndex + 1,
-      selectedAnswer: null,
-      typedAnswer: '',
-      answerResult: null,
-      feedbackQuestion: null,
-      levelChanged: null,
-    });
+    // Adaptive per-question: serve next question from current level's pool
+    if (state.engineType === 'levelup') {
+      const book = state.currentBook;
+      const pool = state.levelPools[book] ?? [];
+      const idx = state.poolIndex[book] ?? 0;
+
+      if (idx < pool.length) {
+        // Serve from current level pool — append to flatQuestions for history
+        const nextQ = pool[idx];
+        const newFlat = [...state.flatQuestions, nextQ];
+        set({
+          flatQuestions: newFlat,
+          currentQuestionIndex: newFlat.length - 1,
+          poolIndex: { ...state.poolIndex, [book]: idx + 1 },
+          selectedAnswer: null,
+          typedAnswer: '',
+          answerResult: null,
+          feedbackQuestion: null,
+          levelChanged: null,
+        });
+      } else {
+        // Pool exhausted — prefetch and advance linearly as fallback
+        _prefetchLevel(state.sessionId!, book);
+        set({
+          currentQuestionIndex: state.currentQuestionIndex + 1,
+          selectedAnswer: null,
+          typedAnswer: '',
+          answerResult: null,
+          feedbackQuestion: null,
+          levelChanged: null,
+        });
+      }
+    } else {
+      // Legacy / non-adaptive: linear advance
+      set({
+        currentQuestionIndex: state.currentQuestionIndex + 1,
+        selectedAnswer: null,
+        typedAnswer: '',
+        answerResult: null,
+        feedbackQuestion: null,
+        levelChanged: null,
+      });
+    }
   },
 
   complete: async () => {
