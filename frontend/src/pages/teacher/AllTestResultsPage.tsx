@@ -70,7 +70,7 @@ export function AllTestResultsPage() {
   };
 
   const handleRowClick = (item: TestResultItem) => {
-    if (item.test_type === 'mastery') {
+    if (item.test_type === 'mastery' || item.test_type === 'leveltest') {
       navigate(`/students/${item.student_id}/mastery/${item.id}`);
     } else {
       navigate(`/students/${item.student_id}/results`);
@@ -119,8 +119,9 @@ export function AllTestResultsPage() {
                   style={{ minWidth: 140 }}
                 >
                   <option value="">전체</option>
-                  <option value="test">레벨테스트</option>
-                  <option value="mastery">학습테스트</option>
+                  <option value="mastery">단어</option>
+                  <option value="grammar">문법</option>
+                  <option value="leveltest">레벨</option>
                 </select>
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary pointer-events-none" />
               </div>
@@ -180,11 +181,17 @@ export function AllTestResultsPage() {
                             <span
                               className="inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold"
                               style={{
-                                backgroundColor: item.test_type === 'mastery' ? '#F3E8FF' : '#EBF8FA',
-                                color: item.test_type === 'mastery' ? '#9333EA' : '#2D9CAE',
+                                backgroundColor:
+                                  item.test_type === 'grammar' ? '#FEF3C7'
+                                  : item.test_type === 'leveltest' ? '#EBF8FA'
+                                  : '#F3E8FF',
+                                color:
+                                  item.test_type === 'grammar' ? '#B45309'
+                                  : item.test_type === 'leveltest' ? '#2D9CAE'
+                                  : '#9333EA',
                               }}
                             >
-                              {item.test_type === 'mastery' ? '학습' : '레벨'}
+                              {item.test_type === 'grammar' ? '문법' : item.test_type === 'leveltest' ? '레벨' : '단어'}
                             </span>
                           </td>
                           <td className="px-3 text-center text-sm font-semibold text-text-primary">

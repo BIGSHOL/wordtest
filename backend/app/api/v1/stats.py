@@ -35,6 +35,9 @@ from app.models.test_session import TestSession
 from app.models.learning_session import LearningSession
 from app.models.learning_answer import LearningAnswer
 from app.models.word_mastery import WordMastery
+from app.models.test_assignment import TestAssignment
+from app.models.test_config import TestConfig
+from app.models.grammar_session import GrammarSession
 from app.core.timezone import now_kst
 from app.services.test_common import get_test_result
 from app.services import report_engine
@@ -47,7 +50,7 @@ async def get_all_results(
     teacher: CurrentTeacher,
     db: Annotated[AsyncSession, Depends(get_db)],
     search: Optional[str] = Query(None),
-    test_type: Optional[str] = Query(None, description="test | mastery"),
+    test_type: Optional[str] = Query(None, description="mastery | leveltest | grammar"),
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
 ):
@@ -65,53 +68,16 @@ async def get_all_results(
 
     results: list[RecentTest] = []
 
-    # --- TestSession results ---
-    if test_type != "mastery":
-        ts_query = (
-            select(TestSession, User.name, User.id, User.school_name, User.grade)
-            .join(User, TestSession.student_id == User.id)
-            .where(
-                and_(
-                    TestSession.student_id.in_(student_ids_subq),
-                    TestSession.completed_at.isnot(None),
-                )
-            )
-        )
-        if search:
-            ts_query = ts_query.where(User.name.ilike(f"%{search}%"))
-        ts_result = await db.execute(ts_query.order_by(TestSession.completed_at.desc()))
-        for row in ts_result.fetchall():
-            session = row[0]
-            duration = None
-            if session.completed_at and session.started_at:
-                duration = int((session.completed_at - session.started_at).total_seconds())
-            rank_label = None
-            if session.determined_level and session.determined_sublevel:
-                rank_label = format_rank_label(session.determined_level, session.determined_sublevel)
-            results.append(
-                RecentTest(
-                    id=session.id,
-                    student_id=row[2],
-                    student_name=row[1],
-                    student_school=row[3],
-                    student_grade=row[4],
-                    score=session.score,
-                    determined_level=session.determined_level,
-                    rank_name=session.rank_name,
-                    rank_label=rank_label,
-                    total_questions=session.total_questions,
-                    correct_count=session.correct_count,
-                    duration_seconds=duration,
-                    completed_at=str(session.completed_at) if session.completed_at else None,
-                    test_type="test",
-                )
-            )
-
-    # --- LearningSession (mastery) results ---
-    if test_type != "test":
+    # --- LearningSession (mastery + level-test) results ---
+    if test_type in (None, "mastery", "leveltest"):
         ms_query = (
-            select(LearningSession, User.name, User.id, User.school_name, User.grade)
+            select(
+                LearningSession, User.name, User.id, User.school_name, User.grade,
+                TestConfig.name.label("config_name"),
+            )
             .join(User, LearningSession.student_id == User.id)
+            .join(TestAssignment, LearningSession.assignment_id == TestAssignment.id)
+            .join(TestConfig, TestAssignment.test_config_id == TestConfig.id)
             .where(
                 and_(
                     LearningSession.student_id.in_(student_ids_subq),
@@ -119,11 +85,18 @@ async def get_all_results(
                 )
             )
         )
+        # Filter by mastery-only or level-test-only when type filter is set
+        if test_type == "mastery":
+            ms_query = ms_query.where(~TestConfig.name.like("레벨테스트%"))
+        elif test_type == "leveltest":
+            ms_query = ms_query.where(TestConfig.name.like("레벨테스트%"))
         if search:
             ms_query = ms_query.where(User.name.ilike(f"%{search}%"))
         ms_result = await db.execute(ms_query.order_by(LearningSession.completed_at.desc()))
         for row in ms_result.fetchall():
             ms = row[0]
+            config_name = row[5] or ""
+            is_level_test = config_name.startswith("레벨테스트")
             ans_result = await db.execute(
                 select(
                     func.count(LearningAnswer.id),
@@ -154,7 +127,49 @@ async def get_all_results(
                     correct_count=correct_q,
                     duration_seconds=duration,
                     completed_at=str(ms.completed_at) if ms.completed_at else None,
-                    test_type="mastery",
+                    test_type="leveltest" if is_level_test else "mastery",
+                )
+            )
+
+    # --- GrammarSession results ---
+    if test_type in (None, "grammar"):
+        gs_query = (
+            select(GrammarSession, User.name, User.id, User.school_name, User.grade)
+            .join(User, GrammarSession.student_id == User.id)
+            .where(
+                and_(
+                    GrammarSession.student_id.in_(student_ids_subq),
+                    GrammarSession.completed_at.isnot(None),
+                )
+            )
+        )
+        if search:
+            gs_query = gs_query.where(User.name.ilike(f"%{search}%"))
+        gs_result = await db.execute(gs_query.order_by(GrammarSession.completed_at.desc()))
+        for row in gs_result.fetchall():
+            gs = row[0]
+            duration = None
+            if gs.completed_at and gs.started_at:
+                duration = int((gs.completed_at - gs.started_at).total_seconds())
+            score = gs.score if gs.score is not None else (
+                round((gs.correct_count / gs.total_questions * 100) if gs.total_questions > 0 else 0)
+            )
+            results.append(
+                RecentTest(
+                    id=gs.id,
+                    student_id=row[2],
+                    student_name=row[1],
+                    student_school=row[3],
+                    student_grade=row[4],
+                    score=score,
+                    determined_level=None,
+                    rank_name=None,
+                    rank_label=None,
+                    total_questions=gs.total_questions,
+                    correct_count=gs.correct_count,
+                    duration_seconds=duration,
+                    completed_at=str(gs.completed_at) if gs.completed_at else None,
+                    test_type="grammar",
                 )
             )
 

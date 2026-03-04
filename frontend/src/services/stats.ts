@@ -25,7 +25,7 @@ export interface DashboardStats {
     correct_count: number;
     duration_seconds: number | null;
     completed_at: string | null;
-    test_type: 'test' | 'mastery';
+    test_type: 'mastery' | 'leveltest' | 'grammar';
   }[];
   weekly_test_count: number;
   today_test_count: number;
@@ -62,7 +62,7 @@ export interface TestResultItem {
   correct_count: number;
   duration_seconds: number | null;
   completed_at: string | null;
-  test_type: 'test' | 'mastery';
+  test_type: 'mastery' | 'leveltest' | 'grammar';
 }
 
 export interface AllResultsResponse {
