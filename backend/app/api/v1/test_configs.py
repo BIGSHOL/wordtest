@@ -68,7 +68,6 @@ async def list_test_configs(
     query = (
         select(TestConfig, count_subq.label("assignment_count"))
         .where(
-            TestConfig.teacher_id == teacher.id,
             TestConfig.is_active == True,
         )
         .order_by(TestConfig.created_at.desc())
