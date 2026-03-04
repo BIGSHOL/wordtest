@@ -657,28 +657,12 @@ async def get_student_history(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get test history for a student (for charts)."""
-    # Authorization: students can only view own history
+    # Authorization: students can only view own history; teachers/masters can view any
     if current_user.role == "student" and current_user.id != student_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to view this student's history",
         )
-    # Teachers can only view their own students' history; masters can view all
-    if current_user.role in ("teacher", "master"):
-        student_check = await db.execute(
-            select(User).where(User.id == student_id)
-        )
-        student = student_check.scalar_one_or_none()
-        if not student:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to view this student's history",
-            )
-        if current_user.role == "teacher" and student.teacher_id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not authorized to view this student's history",
-            )
 
     query = (
         select(TestSession)
@@ -737,7 +721,7 @@ async def get_enhanced_report(
     Combines basic test result with radar metrics, peer ranking,
     grade-level mappings, and interpretive descriptions.
     """
-    # Authorization
+    # Authorization: students can only view own; teachers/masters can view any student
     if current_user.role == "student" and current_user.id != student_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -749,11 +733,6 @@ async def get_enhanced_report(
     student = student_check.scalar_one_or_none()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
-    if current_user.role == "teacher" and student.teacher_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized",
-        )
 
     # Load test result
     result = await get_test_result(db, test_id)
@@ -835,15 +814,13 @@ async def get_mastery_report(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Get enhanced mastery session report."""
-    # Authorization
+    # Authorization: students can only view own; teachers/masters can view any student
     if current_user.role == "student" and current_user.id != student_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
     student_check = await db.execute(select(User).where(User.id == student_id))
     student = student_check.scalar_one_or_none()
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
-    if current_user.role == "teacher" and student.teacher_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
 
     # Load LearningSession
     session_result = await db.execute(
