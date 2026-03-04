@@ -120,8 +120,8 @@ async def list_questions(
 @router.post("/configs", status_code=status.HTTP_201_CREATED)
 async def create_config(
     body: CreateGrammarConfigRequest,
+    current_user: CurrentTeacher,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentTeacher = Depends(),
 ):
     """Create a grammar test configuration."""
 
@@ -144,8 +144,8 @@ async def create_config(
 
 @router.get("/configs")
 async def list_configs(
+    current_user: CurrentTeacher,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentTeacher = Depends(),
 ):
     """List grammar configs for the current teacher."""
     configs = await grammar_service.list_configs(db, current_user.id)
@@ -163,8 +163,8 @@ async def list_configs(
 @router.delete("/configs/{config_id}")
 async def delete_config(
     config_id: str,
+    current_user: CurrentTeacher,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentTeacher = Depends(),
 ):
     """Soft-delete a grammar config."""
     ok = await grammar_service.delete_config(db, config_id, current_user.id)
@@ -180,8 +180,8 @@ async def delete_config(
 async def assign_grammar(
     config_id: str,
     body: AssignGrammarRequest,
+    current_user: CurrentTeacher,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentTeacher = Depends(),
 ):
     """Assign grammar test to students."""
 
@@ -198,8 +198,8 @@ async def assign_grammar(
 
 @router.get("/assignments")
 async def list_grammar_assignments(
+    current_user: CurrentTeacher,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentTeacher = Depends(),
 ):
     """List grammar test assignments for the current teacher."""
     assignments = await grammar_service.list_assignments(db, current_user.id)
@@ -209,8 +209,8 @@ async def list_grammar_assignments(
 @router.delete("/assignments/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_grammar_assignment(
     assignment_id: str,
+    current_user: CurrentTeacher,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentTeacher = Depends(),
 ):
     """Delete a grammar assignment (teacher only, must be pending)."""
     from app.services.test_assignment import delete_assignment
@@ -223,8 +223,8 @@ async def delete_grammar_assignment(
 @router.patch("/assignments/{assignment_id}/reset", status_code=status.HTTP_204_NO_CONTENT)
 async def reset_grammar_assignment(
     assignment_id: str,
+    current_user: CurrentTeacher,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentTeacher = Depends(),
 ):
     """Reset a grammar assignment back to pending (teacher only)."""
     from app.services.test_assignment import reset_assignment
