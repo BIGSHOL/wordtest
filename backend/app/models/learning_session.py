@@ -16,11 +16,11 @@ class LearningSession(Base):
     id: Mapped[str] = mapped_column(
         String(36), primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    student_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    student_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
-    assignment_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("test_assignments.id", ondelete="CASCADE"), nullable=False
+    assignment_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("test_assignments.id", ondelete="SET NULL"), nullable=True
     )
     current_stage: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     current_level: Mapped[int] = mapped_column(Integer, nullable=False, default=1)

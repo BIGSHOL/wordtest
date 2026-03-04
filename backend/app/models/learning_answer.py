@@ -19,8 +19,8 @@ class LearningAnswer(Base):
     session_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("learning_sessions.id", ondelete="CASCADE"), nullable=False
     )
-    word_mastery_id: Mapped[str] = mapped_column(
-        String(36), ForeignKey("word_mastery.id", ondelete="CASCADE"), nullable=False
+    word_mastery_id: Mapped[Optional[str]] = mapped_column(
+        String(36), ForeignKey("word_mastery.id", ondelete="SET NULL"), nullable=True
     )
     word_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("words.id", ondelete="RESTRICT"), nullable=False
