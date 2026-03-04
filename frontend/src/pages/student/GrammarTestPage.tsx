@@ -2,11 +2,14 @@
  * Student grammar test page.
  * Renders 8 grammar question types with navigation and submission.
  */
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGrammarTestStore } from '../../stores/grammarTestStore';
 import { GRAMMAR_TYPE_LABELS } from '../../types/grammar';
 import type { GrammarQuestion } from '../../types/grammar';
+import { useTimer } from '../../hooks/useTimer';
+import { TotalTimerDisplay } from '../../components/test/TotalTimerDisplay';
+import { TimerBar } from '../../components/test/TimerBar';
 import {
   ChevronLeft, ChevronRight, Send, Loader2,
   CheckCircle2, XCircle, GraduationCap, BookOpen,
@@ -55,12 +58,59 @@ export function GrammarTestPage() {
   const store = useGrammarTestStore();
   const {
     phase, questions, currentIndex, answers, results,
-    studentName, totalQuestions,
+    studentName, totalQuestions, timeLimitSeconds, perQuestionSeconds, timeMode,
     setAnswer, goToQuestion, goNext, goPrev, startExam, submitAll, reset,
   } = store;
 
   const currentQuestion = questions[currentIndex];
   const answeredCount = Object.keys(answers).length;
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+
+  // Compute answered indexes for QuestionNavigator
+  const answeredIndexes = useMemo(() => {
+    const set = new Set<number>();
+    questions.forEach((q, i) => { if (answers[q.id] !== undefined) set.add(i); });
+    return set;
+  }, [questions, answers]);
+
+  // Timer — auto-submit on timeout
+  const autoSubmitRef = useRef(false);
+  const handleTimeout = useCallback(async () => {
+    if (autoSubmitRef.current) return;
+    autoSubmitRef.current = true;
+    await submitAll();
+  }, [submitAll]);
+
+  const isPerQuestion = timeMode === 'per_question';
+  const timerSeconds = isPerQuestion
+    ? (perQuestionSeconds || 30)
+    : timeLimitSeconds;
+
+  const timer = useTimer(timerSeconds, isPerQuestion ? undefined : handleTimeout);
+
+  // Per-question mode: auto-advance on timeout
+  const handlePerQuestionTimeout = useCallback(() => {
+    const { currentIndex: idx, questions: qs } = store;
+    if (idx < qs.length - 1) {
+      store.goNext();
+    } else {
+      handleTimeout();
+    }
+  }, [store, handleTimeout]);
+
+  const perQuestionTimer = useTimer(
+    isPerQuestion ? (perQuestionSeconds || 30) : 0,
+    isPerQuestion ? handlePerQuestionTimeout : undefined,
+  );
+
+  // Reset per-question timer when question changes
+  const prevIndexRef = useRef(currentIndex);
+  useEffect(() => {
+    if (isPerQuestion && prevIndexRef.current !== currentIndex) {
+      perQuestionTimer.reset();
+      prevIndexRef.current = currentIndex;
+    }
+  }, [currentIndex, isPerQuestion, perQuestionTimer]);
 
   // Redirect if no session
   useEffect(() => {
@@ -69,13 +119,14 @@ export function GrammarTestPage() {
     }
   }, [phase, navigate]);
 
-  const handleSubmit = useCallback(async () => {
-    if (answeredCount < totalQuestions) {
-      const unanswered = totalQuestions - answeredCount;
-      if (!window.confirm(`${unanswered}개 문제가 미답입니다. 제출하시겠습니까?`)) return;
-    }
+  const handleSubmit = useCallback(() => {
+    setShowSubmitDialog(true);
+  }, []);
+
+  const handleSubmitConfirm = useCallback(async () => {
+    setShowSubmitDialog(false);
     await submitAll();
-  }, [answeredCount, totalQuestions, submitAll]);
+  }, [submitAll]);
 
   // Briefing phase
   if (phase === 'briefing') {
@@ -108,9 +159,11 @@ export function GrammarTestPage() {
             <div className="space-y-2">
               {[
                 `총 ${totalQuestions}문제`,
+                timeMode === 'per_question'
+                  ? `문제당 ${perQuestionSeconds || 30}초`
+                  : `총 ${Math.floor(timeLimitSeconds / 60)}분`,
                 '빈칸, 오류탐지, 문장전환 등 다양한 유형',
                 '모든 문제를 풀고 제출 버튼을 누르세요',
-                '이전/다음 문제로 자유롭게 이동 가능',
               ].map((text, i) => (
                 <div key={i} className="flex items-start gap-2.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-text-tertiary mt-1.5 shrink-0" />
@@ -228,6 +281,9 @@ export function GrammarTestPage() {
           </span>
         </div>
         <div className="flex items-center gap-4">
+          {!isPerQuestion && (
+            <TotalTimerDisplay secondsLeft={timer.secondsLeft} totalSeconds={timeLimitSeconds} />
+          )}
           <span className="text-sm text-text-secondary">
             {answeredCount}/{totalQuestions} 답변
           </span>
@@ -240,6 +296,17 @@ export function GrammarTestPage() {
           </button>
         </div>
       </div>
+
+      {/* Per-question timer bar */}
+      {isPerQuestion && (
+        <div className="px-4 py-2 bg-bg-surface border-b border-border-subtle">
+          <TimerBar
+            secondsLeft={perQuestionTimer.secondsLeft}
+            fraction={perQuestionTimer.fraction}
+            urgency={perQuestionTimer.urgency}
+          />
+        </div>
+      )}
 
       {/* Question area */}
       <div className="flex-1 flex flex-col items-center py-6 px-4">
