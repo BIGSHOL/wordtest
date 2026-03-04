@@ -19,6 +19,9 @@ import { GrammarQuestionEditForm } from './GrammarQuestionEditForm';
 
 const ITEMS_PER_PAGE = 10;
 
+/** Status filters that require full dataset (client-side validation logic) */
+const CLIENT_SIDE_FILTERS: StatusFilter[] = ['error', 'warn', 'no_prompt', 'few_choices', 'multi_blank'];
+
 const DIFFICULTY_LABELS: Record<number, { label: string; color: string; bg: string }> = {
   1: { label: '기본', color: '#16A34A', bg: '#DCFCE7' },
   2: { label: '중급', color: '#D97706', bg: '#FEF3C7' },
@@ -221,6 +224,9 @@ export function GrammarDatabasePanel() {
     }
   }, [expandedBookId, chapters]);
 
+  // Client-side filters need ALL questions to filter correctly
+  const needsFullFetch = CLIENT_SIDE_FILTERS.includes(statusFilter as StatusFilter);
+
   const loadQuestions = useCallback(async () => {
     if (!selectedBookId && !selectedChapterId) {
       setQuestions([]);
@@ -235,8 +241,8 @@ export function GrammarDatabasePanel() {
         chapter_id: selectedChapterId || undefined,
         question_type: typeFilter || undefined,
         is_active: isActiveParam,
-        skip: questionsPage * ITEMS_PER_PAGE,
-        limit: ITEMS_PER_PAGE,
+        skip: needsFullFetch ? 0 : questionsPage * ITEMS_PER_PAGE,
+        limit: needsFullFetch ? 9999 : ITEMS_PER_PAGE,
       });
       setQuestions(res.questions);
       setQuestionsTotal(res.total);
@@ -246,7 +252,7 @@ export function GrammarDatabasePanel() {
     } finally {
       setIsLoadingQuestions(false);
     }
-  }, [selectedBookId, selectedChapterId, typeFilter, statusFilter, questionsPage]);
+  }, [selectedBookId, selectedChapterId, typeFilter, statusFilter, questionsPage, needsFullFetch]);
 
   useEffect(() => {
     loadQuestions();
@@ -268,20 +274,18 @@ export function GrammarDatabasePanel() {
     setQuestions((prev) => prev.map((q) => (q.id === updated.id ? updated : q)));
   };
 
-  const totalPages = Math.ceil(questionsTotal / ITEMS_PER_PAGE);
-
   const totalAllQuestions = Object.values(chapters)
     .flat()
     .reduce((sum, ch) => sum + (ch.question_count || 0), 0);
 
-  // Compute validations for current page
+  // Compute validations for all fetched questions
   const validations = new Map<string, ValidationResult>();
   for (const q of questions) {
     validations.set(q.id, validateQuestion(q));
   }
 
   // Client-side status filtering (for error/warn/specific issues)
-  const filteredQuestions = (() => {
+  const allFiltered = (() => {
     if (statusFilter === 'error')
       return questions.filter((q) => validations.get(q.id)?.level === 'error');
     if (statusFilter === 'warn')
@@ -295,9 +299,17 @@ export function GrammarDatabasePanel() {
     return questions;
   })();
 
-  // Stats for current page
-  const errorCount = questions.filter((q) => validations.get(q.id)?.level === 'error').length;
-  const warnCount = questions.filter((q) => validations.get(q.id)?.level === 'warn').length;
+  // When client-side filtering, paginate the filtered results locally
+  const filteredQuestions = needsFullFetch
+    ? allFiltered.slice(questionsPage * ITEMS_PER_PAGE, (questionsPage + 1) * ITEMS_PER_PAGE)
+    : allFiltered;
+  const displayTotal = needsFullFetch ? allFiltered.length : questionsTotal;
+  const totalPages = Math.ceil(displayTotal / ITEMS_PER_PAGE);
+
+  // Stats for current view
+  const statsSource = needsFullFetch ? allFiltered : questions;
+  const errorCount = statsSource.filter((q) => validations.get(q.id)?.level === 'error').length;
+  const warnCount = statsSource.filter((q) => validations.get(q.id)?.level === 'warn').length;
 
   if (isLoadingBooks) {
     return (
@@ -491,7 +503,7 @@ export function GrammarDatabasePanel() {
                     className="text-[11px] font-semibold rounded-full"
                     style={{ backgroundColor: '#EDE9FE', color: '#7C3AED', padding: '4px 12px' }}
                   >
-                    {questionsTotal.toLocaleString()}개
+                    {displayTotal.toLocaleString()}개
                   </span>
                 </div>
               </div>

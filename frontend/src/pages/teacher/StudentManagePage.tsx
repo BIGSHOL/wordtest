@@ -48,6 +48,7 @@ export function StudentManagePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  const [hideDummy, setHideDummy] = useState(true);
   const [newStudent, setNewStudent] = useState(EMPTY_NEW_STUDENT);
   const [editData, setEditData] = useState({
     username: '',
@@ -60,17 +61,21 @@ export function StudentManagePage() {
 
   // useMemo instead of useEffect + setState to prevent double rendering
   const filteredStudents = useMemo(() => {
-    if (searchQuery.trim() === '') {
-      return students;
+    let result = students;
+    if (hideDummy) {
+      result = result.filter((s) => !s.name.startsWith('[DUMMY]'));
     }
-    const query = searchQuery.toLowerCase();
-    return students.filter(
-      (s) =>
-        s.name.toLowerCase().includes(query) ||
-        s.username?.toLowerCase().includes(query) ||
-        s.school_name?.toLowerCase().includes(query)
-    );
-  }, [searchQuery, students]);
+    if (searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(
+        (s) =>
+          s.name.toLowerCase().includes(query) ||
+          s.username?.toLowerCase().includes(query) ||
+          s.school_name?.toLowerCase().includes(query)
+      );
+    }
+    return result;
+  }, [searchQuery, students, hideDummy]);
 
   // Reset page when filter/search changes
   useEffect(() => {
@@ -266,7 +271,7 @@ export function StudentManagePage() {
               <h2 className="text-lg font-semibold text-text-primary">
                 전체 학생 ({filteredStudents.length}명)
               </h2>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 {[
                   { key: 'all', label: '전체' },
                   { key: 'completed', label: '완료' },
@@ -285,6 +290,17 @@ export function StudentManagePage() {
                     {f.label}
                   </button>
                 ))}
+                <span className="w-px h-5 bg-border-subtle mx-1" />
+                <button
+                  onClick={() => setHideDummy((v) => !v)}
+                  className={`px-[14px] py-1.5 rounded-full text-xs font-medium transition-colors ${
+                    hideDummy
+                      ? 'bg-amber-100 border border-amber-300 text-amber-700'
+                      : 'bg-[#F5F4F1] border border-border-subtle text-text-secondary'
+                  }`}
+                >
+                  {hideDummy ? '더미 숨김' : '더미 표시'}
+                </button>
               </div>
             </div>
           </div>
