@@ -343,6 +343,8 @@ async def main():
                         help="더미 데이터만 삭제 (생성 안 함)")
     parser.add_argument("--tag-existing", action="store_true",
                         help="기존 모든 학생/테스트에 [DUMMY] 태그 적용")
+    parser.add_argument("--teacher-id", type=str, default=None,
+                        help="선생님 UUID (미지정시 학생 수가 가장 많은 선생님)")
     args = parser.parse_args()
 
     async with AsyncSessionLocal() as db:
@@ -359,10 +361,26 @@ async def main():
 
         # ── 생성 모드 ──
         # 선생님 찾기
-        result = await db.execute(
-            select(User).where(User.role == "teacher").limit(1)
-        )
-        teacher = result.scalar_one_or_none()
+        if args.teacher_id:
+            result = await db.execute(
+                select(User).where(User.id == args.teacher_id, User.role == "teacher")
+            )
+            teacher = result.scalar_one_or_none()
+        else:
+            # 학생 수가 가장 많은 선생님 (실제 사용 중인 계정)
+            from sqlalchemy import func
+            subq = (
+                select(User.teacher_id, func.count(User.id).label("cnt"))
+                .where(User.role == "student", User.teacher_id.isnot(None))
+                .group_by(User.teacher_id)
+                .order_by(func.count(User.id).desc())
+                .limit(1)
+                .subquery()
+            )
+            result = await db.execute(
+                select(User).where(User.id == subq.c.teacher_id)
+            )
+            teacher = result.scalar_one_or_none()
         if not teacher:
             print("ERROR: 선생님 계정이 없습니다.")
             return

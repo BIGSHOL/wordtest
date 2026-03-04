@@ -36,6 +36,7 @@ export function StudentSelectionCard({ students, selectedIds, onToggle, onToggle
   const [search, setSearch] = useState('');
 
   const filtered = students.filter((s) => {
+    if (s.name.startsWith('[DUMMY]')) return false;
     const term = search.toLowerCase();
     return (
       s.name.toLowerCase().includes(term) ||

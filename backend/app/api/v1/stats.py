@@ -62,16 +62,9 @@ async def get_all_results(
     limit: int = Query(10, ge=1, le=100),
 ):
     """Get all test results with pagination (teacher only)."""
-    if teacher.role == "master":
-        student_ids_subq = (
-            select(User.id).where(User.role == "student").scalar_subquery()
-        )
-    else:
-        student_ids_subq = (
-            select(User.id)
-            .where(and_(User.role == "student", User.teacher_id == teacher.id))
-            .scalar_subquery()
-        )
+    student_ids_subq = (
+        select(User.id).where(User.role == "student").scalar_subquery()
+    )
 
     results: list[RecentTest] = []
 
@@ -197,12 +190,7 @@ async def get_dashboard_stats(
     """Get aggregated dashboard statistics (teacher only)."""
 
     # Total students
-    if teacher.role == "master":
-        students_query = select(func.count()).select_from(User).where(User.role == "student")
-    else:
-        students_query = select(func.count()).select_from(User).where(
-            and_(User.role == "student", User.teacher_id == teacher.id)
-        )
+    students_query = select(func.count()).select_from(User).where(User.role == "student")
     total_students_result = await db.execute(students_query)
     total_students = total_students_result.scalar() or 0
 
@@ -212,16 +200,9 @@ async def get_dashboard_stats(
     total_words = total_words_result.scalar() or 0
 
     # Subquery for student IDs (avoids loading all IDs into memory)
-    if teacher.role == "master":
-        student_ids_subq = (
-            select(User.id).where(User.role == "student").scalar_subquery()
-        )
-    else:
-        student_ids_subq = (
-            select(User.id)
-            .where(and_(User.role == "student", User.teacher_id == teacher.id))
-            .scalar_subquery()
-        )
+    student_ids_subq = (
+        select(User.id).where(User.role == "student").scalar_subquery()
+    )
 
     # Compute period filter
     if period == "weekly":
@@ -579,16 +560,9 @@ async def get_word_stats(
     period: str = Query("all"),
 ):
     """Get per-word accuracy and response time stats (teacher only)."""
-    if teacher.role == "master":
-        student_ids_subq = (
-            select(User.id).where(User.role == "student").scalar_subquery()
-        )
-    else:
-        student_ids_subq = (
-            select(User.id)
-            .where(and_(User.role == "student", User.teacher_id == teacher.id))
-            .scalar_subquery()
-        )
+    student_ids_subq = (
+        select(User.id).where(User.role == "student").scalar_subquery()
+    )
 
     # Compute period filter
     if period == "weekly":
