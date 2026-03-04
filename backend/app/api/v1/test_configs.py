@@ -133,12 +133,6 @@ async def assign_students_to_config(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Test config not found",
         )
-    if config.teacher_id != teacher.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only assign students to your own test configs",
-        )
-
     # Create assignments
     try:
         assignments = await create_assignments_for_config(
@@ -216,13 +210,6 @@ async def update_test_config(
             detail="Test config not found",
         )
 
-    # Verify ownership
-    if config.teacher_id != teacher.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only update your own test configs",
-        )
-
     # Update fields if provided
     update_data = config_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -250,12 +237,6 @@ async def delete_test_config(
             detail="Test config not found",
         )
 
-    # Verify ownership
-    if config.teacher_id != teacher.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only delete your own test configs",
-        )
 
     # Check for existing assignments
     count_result = await db.execute(
