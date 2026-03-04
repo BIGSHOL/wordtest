@@ -105,6 +105,7 @@ export interface StartGrammarResponse {
   per_question_seconds: number | null;
   time_mode: string;
   question_types?: string;
+  question_type_counts?: string; // JSON string from backend
   config_name?: string;
   access_token: string;
 }

@@ -62,7 +62,7 @@ export function GrammarTestPage() {
   const {
     phase, questions, currentIndex, answers, results,
     studentName, totalQuestions, timeLimitSeconds, perQuestionSeconds, timeMode,
-    questionTypes, configName,
+    questionTypes, questionTypeCounts, configName,
     setAnswer, goToQuestion, goNext, goPrev, startExam, submitAll, reset,
   } = store;
 
@@ -146,6 +146,7 @@ export function GrammarTestPage() {
         timeMode={timeMode as 'per_question' | 'total'}
         perQuestionTime={perQuestionSeconds || 30}
         questionTypes={questionTypes || undefined}
+        questionTypeCounts={questionTypeCounts || undefined}
         configName={configName || '문법 테스트'}
         onStart={startExam}
       />

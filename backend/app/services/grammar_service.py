@@ -361,20 +361,24 @@ async def _select_questions(
     if not all_questions:
         raise ValueError("No questions available for the selected criteria")
 
-    # Distribute by type if type_counts specified
+    # Group questions by type (each pool already shuffled via random())
+    by_type: dict[str, list] = {}
+    for q in all_questions:
+        by_type.setdefault(q.question_type, []).append(q)
+
+    # Determine type order from config (preserved from wizard step 5)
+    type_order = allowed_types if allowed_types else list(by_type.keys())
+
+    # Select questions respecting type distribution
     selected = []
     if type_counts:
-        by_type: dict[str, list] = {}
-        for q in all_questions:
-            by_type.setdefault(q.question_type, []).append(q)
-
-        for qtype, count in type_counts.items():
+        # Use explicit per-type counts (from wizard step 6)
+        for qtype in type_order:
+            count = type_counts.get(qtype, 0)
             pool = by_type.get(qtype, [])
             selected.extend(pool[:count])
 
-        # Enforce overall question_count cap — if type_counts sum exceeds it, truncate;
-        # if type_counts sum is less, fill remaining slots from any available questions
-        # (excluding already-selected ones) up to question_count.
+        # Fill remaining if type_counts sum < question_count
         target = config.question_count
         if len(selected) > target:
             selected = selected[:target]
@@ -383,12 +387,26 @@ async def _select_questions(
             remaining = [q for q in all_questions if q.id not in selected_ids]
             selected.extend(remaining[: target - len(selected)])
     else:
-        selected = all_questions[:config.question_count]
+        # No explicit distribution — equal distribution across types in order
+        target = config.question_count
+        if len(type_order) > 1:
+            base = target // len(type_order)
+            remainder = target % len(type_order)
+            for i, qtype in enumerate(type_order):
+                count = base + (1 if i < remainder else 0)
+                pool = by_type.get(qtype, [])
+                selected.extend(pool[:count])
+            # Fill remaining if some types had fewer questions
+            if len(selected) < target:
+                selected_ids = {q.id for q in selected}
+                remaining = [q for q in all_questions if q.id not in selected_ids]
+                selected.extend(remaining[: target - len(selected)])
+        else:
+            selected = all_questions[:target]
 
-    # Build output with order
+    # Build output — preserve type order (questions grouped by type in config order)
     questions_out = []
     for i, q in enumerate(selected):
-        # Strip correct answer from question_data sent to student
         qdata = dict(q.question_data) if isinstance(q.question_data, dict) else json.loads(q.question_data)
 
         questions_out.append({
@@ -464,6 +482,7 @@ async def start_session(
             "per_question_seconds": config.per_question_seconds if config else None,
             "time_mode": config.time_mode if config else "per_question",
             "question_types": config.question_types if config else None,
+            "question_type_counts": config.question_type_counts if config else None,
             "config_name": config.name if config else None,
         }
 
@@ -509,6 +528,7 @@ async def start_session(
         "per_question_seconds": config.per_question_seconds,
         "time_mode": config.time_mode,
         "question_types": config.question_types,
+        "question_type_counts": config.question_type_counts,
         "config_name": config.name,
     }
 

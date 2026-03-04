@@ -27,6 +27,7 @@ interface ExamBriefingProps {
   timeMode?: 'per_question' | 'total';
   perQuestionTime?: number;
   questionTypes?: string; // comma-separated canonical engine names
+  questionTypeCounts?: Record<string, number>; // explicit per-type counts from config
   configName?: string;
   onStart: () => void;
 }
@@ -58,6 +59,31 @@ function formatRange(
     return `${startBook} ${startLesson} ~ ${endLesson}`;
   }
   return `${startBook} ${startLesson} ~ ${endBook} ${endLesson}`;
+}
+
+/** Build per-type breakdown for grammar tests using explicit counts or equal split */
+function buildGrammarBreakdown(
+  types: string[],
+  totalQuestions: number,
+  typeCounts?: Record<string, number>,
+): { skill: string; label: string; icon: string; count: number }[] {
+  if (types.length === 0) return [];
+
+  const typeLabels: Record<string, string> = {};
+  for (const opt of QUESTION_TYPE_OPTIONS) {
+    typeLabels[opt.value] = opt.label;
+  }
+
+  return types.map(t => {
+    const count = typeCounts?.[t]
+      ?? Math.round(totalQuestions / types.length);
+    return {
+      skill: t,
+      label: typeLabels[t] || t,
+      icon: '',
+      count,
+    };
+  }).filter(a => a.count > 0);
 }
 
 /** Count questions per skill area from engine type list */
@@ -157,6 +183,7 @@ export const ExamBriefing = memo(function ExamBriefing({
   timeMode = 'total',
   perQuestionTime = 10,
   questionTypes,
+  questionTypeCounts,
   configName,
   onStart,
 }: ExamBriefingProps) {
@@ -170,7 +197,10 @@ export const ExamBriefing = memo(function ExamBriefing({
   const engines = questionTypes
     ? questionTypes.split(',').map(t => t.trim()).filter(Boolean)
     : [];
-  const skillBreakdown = countBySkillArea(engines, questionCount);
+  const isGrammar = engines.some(e => e.startsWith('grammar_'));
+  const skillBreakdown = isGrammar
+    ? buildGrammarBreakdown(engines, questionCount, questionTypeCounts)
+    : countBySkillArea(engines, questionCount);
   const hasTyping = engines.some(e => ['listen_type', 'ko_type', 'antonym_type'].includes(e));
 
   const TOTAL_STEPS = 3;

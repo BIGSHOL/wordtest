@@ -16,7 +16,7 @@ import {
   BookOpen, Users, Check, ChevronRight, ChevronLeft,
   Clock, Send, Loader2, Trash2, Copy, CheckCircle2,
   ListChecks, Search, Info, Plus, X, RotateCcw,
-  Hash, ArrowUpDown, SplitSquareHorizontal, GripVertical,
+  ArrowUpDown, SplitSquareHorizontal, GripVertical,
 } from 'lucide-react';
 
 const ALL_QUESTION_TYPES: GrammarQuestionType[] = [
@@ -32,12 +32,11 @@ const TAB_ITEMS: { key: Tab; label: string }[] = [
   { key: 'status', label: '출제 현황' },
 ];
 
-// All 7 page metas — pages 5-6 only shown when 2+ types selected
+// All 6 page metas — pages 4-5 only shown when 2+ types selected
 const ALL_PAGE_META = [
   { title: '학생 선택', icon: <Users className="w-3.5 h-3.5" /> },
   { title: '교재 선택', icon: <BookOpen className="w-3.5 h-3.5" /> },
-  { title: '시간 설정', icon: <Clock className="w-3.5 h-3.5" /> },
-  { title: '문제 수', icon: <Hash className="w-3.5 h-3.5" /> },
+  { title: '시간 & 문제 설정', icon: <Clock className="w-3.5 h-3.5" /> },
   { title: '문제 유형', icon: <ListChecks className="w-3.5 h-3.5" /> },
   { title: '출제 순서', icon: <ArrowUpDown className="w-3.5 h-3.5" /> },
   { title: '유형별 배분', icon: <SplitSquareHorizontal className="w-3.5 h-3.5" /> },
@@ -210,6 +209,19 @@ export function GrammarSettingsPage() {
       const submitCount = effCount || 20;
       // Use ordered types (from step 5) filtered by selection
       const orderedTypes = typeOrder.filter(t => selectedTypes.has(t));
+      // Build type distribution counts
+      let typeCounts: Record<string, number> | undefined;
+      if (orderedTypes.length >= 2) {
+        if (distributionMode === 'manual') {
+          typeCounts = {};
+          for (const t of orderedTypes) {
+            typeCounts[t] = manualCounts[t] ?? 0;
+          }
+        } else {
+          // Equal distribution
+          typeCounts = computeGrammarEqualDist(orderedTypes, submitCount);
+        }
+      }
       const config = await grammarTestService.createConfig({
         name,
         book_ids: Array.from(selectedBooks),
@@ -219,6 +231,7 @@ export function GrammarSettingsPage() {
         per_question_seconds: timeMode === 'per_question' ? perQuestionTime : undefined,
         time_mode: timeMode,
         question_types: orderedTypes.length > 0 ? orderedTypes : Array.from(selectedTypes),
+        question_type_counts: typeCounts,
       });
 
       if (selectedStudents.size > 0) {
@@ -285,12 +298,12 @@ export function GrammarSettingsPage() {
     setManualCounts({});
   };
 
-  // Dynamic page count: 5 base, 7 when 2+ types selected
+  // Dynamic page count: 4 base, 6 when 2+ types selected
   const orderedSelectedTypes = typeOrder.filter(t => selectedTypes.has(t));
-  const totalPages = orderedSelectedTypes.length >= 2 ? 7 : 5;
+  const totalPages = orderedSelectedTypes.length >= 2 ? 6 : 4;
   const pageTitles = orderedSelectedTypes.length >= 2
     ? ALL_PAGE_META
-    : ALL_PAGE_META.slice(0, 5);
+    : ALL_PAGE_META.slice(0, 4);
 
   const effCount = questionCount === -1 ? (parseInt(customQuestionCount) || 0) : questionCount;
 
@@ -299,11 +312,10 @@ export function GrammarSettingsPage() {
     switch (step) {
       case 0: return true; // students optional
       case 1: return selectedBooks.size > 0;
-      case 2: return true; // time always valid
-      case 3: return effCount > 0; // question count must be set
-      case 4: return selectedTypes.size > 0;
-      case 5: return true; // order always valid
-      case 6: {
+      case 2: return effCount > 0; // merged: time always valid + count must be set
+      case 3: return selectedTypes.size > 0; // question types
+      case 4: return true; // order always valid
+      case 5: {
         // distribution: manual sum must match
         if (distributionMode === 'manual') {
           const sum = orderedSelectedTypes.reduce((s, t) => s + (manualCounts[t] ?? 0), 0);
@@ -662,200 +674,200 @@ export function GrammarSettingsPage() {
                     </div>
                   )}
 
-                  {/* Step 2: Time setting only */}
+                  {/* Step 2: Time & question count (merged) */}
                   {step === 2 && (
-                    <div className="space-y-4">
-                      {/* Time mode */}
-                      <div>
-                        <span className="text-[11px] font-semibold text-text-secondary mb-1.5 block">시간 유형</span>
-                        <div className="flex flex-wrap gap-2">
-                          <GrammarOptionPill selected={timeMode === 'per_question'} onClick={() => setTimeMode('per_question')}>
-                            문제당 시간
-                          </GrammarOptionPill>
-                          <GrammarOptionPill selected={timeMode === 'total'} onClick={() => setTimeMode('total')}>
-                            전체 시간
-                          </GrammarOptionPill>
-                        </div>
-                        <div
-                          className="flex items-center gap-2 rounded-lg mt-3"
-                          style={{ backgroundColor: '#EBF8FA', padding: '10px 14px' }}
-                        >
-                          <Info className="w-3.5 h-3.5 shrink-0" style={{ color: '#2D9CAE' }} />
-                          <span className="text-[11px] font-medium" style={{ color: '#2D9CAE' }}>
-                            {timeMode === 'per_question'
-                              ? '각 문제마다 제한 시간이 주어집니다. 시간 초과 시 자동으로 다음 문제로 넘어갑니다.'
-                              : '전체 시험 시간 내에서 자유롭게 문제를 이동하고 답을 변경할 수 있습니다.'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Time value */}
-                      <div>
-                        <span className="text-[11px] font-semibold text-text-secondary mb-1.5 block">
-                          {timeMode === 'per_question' ? '문제당 제한 시간' : '전체 제한 시간'}
-                        </span>
-                        {timeMode === 'per_question' ? (
-                          <>
-                            <div className="flex flex-wrap gap-2">
-                              {[
-                                { label: '15초', value: 15 },
-                                { label: '20초', value: 20 },
-                                { label: '30초', value: 30 },
-                                { label: '45초', value: 45 },
-                                { label: '60초', value: 60 },
-                              ].map((opt) => (
-                                <GrammarOptionPill
-                                  key={opt.value}
-                                  selected={perQuestionTime === opt.value && customPerQuestionTime === ''}
-                                  onClick={() => { setPerQuestionTime(opt.value); setCustomPerQuestionTime(''); }}
-                                >
-                                  {opt.label}
-                                </GrammarOptionPill>
-                              ))}
-                              <GrammarOptionPill
-                                selected={customPerQuestionTime !== ''}
-                                onClick={() => { setCustomPerQuestionTime(String(perQuestionTime || 30)); }}
-                              >
-                                직접 입력
-                              </GrammarOptionPill>
-                            </div>
-                            {customPerQuestionTime !== '' && (
-                              <div className="flex items-center gap-2 mt-3">
-                                <input
-                                  type="number"
-                                  min={1}
-                                  max={300}
-                                  value={customPerQuestionTime}
-                                  onChange={(e) => {
-                                    const secs = parseInt(e.target.value) || 0;
-                                    setCustomPerQuestionTime(e.target.value);
-                                    setPerQuestionTime(secs);
-                                  }}
-                                  className="w-20 px-3 py-1.5 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#2D9CAE]/30"
-                                  style={{ backgroundColor: '#F8F8F6', border: '1px solid #E8E8E6' }}
-                                />
-                                <span className="text-[13px] text-text-secondary">초</span>
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            <div className="flex flex-wrap gap-2">
-                              {[
-                                { label: '10분', value: 600 },
-                                { label: '20분', value: 1200 },
-                                { label: '30분', value: 1800 },
-                                { label: '50분', value: 3000 },
-                                { label: '80분', value: 4800 },
-                              ].map((opt) => (
-                                <GrammarOptionPill
-                                  key={opt.value}
-                                  selected={totalTime === opt.value && customTotalTime === ''}
-                                  onClick={() => { setTotalTime(opt.value); setCustomTotalTime(''); }}
-                                >
-                                  {opt.label}
-                                </GrammarOptionPill>
-                              ))}
-                              <GrammarOptionPill
-                                selected={customTotalTime !== ''}
-                                onClick={() => { setCustomTotalTime(String(Math.floor(totalTime / 60) || 10)); }}
-                              >
-                                직접 입력
-                              </GrammarOptionPill>
-                            </div>
-                            {customTotalTime !== '' && (
-                              <div className="flex items-center gap-2 mt-3">
-                                <input
-                                  type="number"
-                                  min={1}
-                                  max={120}
-                                  value={customTotalTime}
-                                  onChange={(e) => {
-                                    const mins = parseInt(e.target.value) || 0;
-                                    setCustomTotalTime(e.target.value);
-                                    setTotalTime(mins * 60);
-                                  }}
-                                  className="w-20 px-3 py-1.5 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#2D9CAE]/30"
-                                  style={{ backgroundColor: '#F8F8F6', border: '1px solid #E8E8E6' }}
-                                />
-                                <span className="text-[13px] text-text-secondary">분</span>
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Step 3: Question count */}
-                  {step === 3 && (
-                    <div className="space-y-4">
-                      <div>
-                        <span className="text-[11px] font-semibold text-text-secondary mb-1.5 block">문제 수</span>
-                        <div className="flex flex-wrap gap-2">
-                          {[10, 15, 20, 25, 30].map((n) => (
-                            <GrammarOptionPill
-                              key={n}
-                              selected={questionCount === n}
-                              onClick={() => { setQuestionCount(n); setCustomQuestionCount(''); }}
-                            >
-                              {n}문제
+                    <div className="space-y-5">
+                      {/* ── Time settings ── */}
+                      <div className="space-y-4">
+                        <div>
+                          <span className="text-[11px] font-semibold text-text-secondary mb-1.5 block">시간 유형</span>
+                          <div className="flex flex-wrap gap-2">
+                            <GrammarOptionPill selected={timeMode === 'per_question'} onClick={() => setTimeMode('per_question')}>
+                              문제당 시간
                             </GrammarOptionPill>
-                          ))}
-                          <GrammarOptionPill
-                            selected={questionCount === -1}
-                            onClick={() => setQuestionCount(-1)}
+                            <GrammarOptionPill selected={timeMode === 'total'} onClick={() => setTimeMode('total')}>
+                              전체 시간
+                            </GrammarOptionPill>
+                          </div>
+                          <div
+                            className="flex items-center gap-2 rounded-lg mt-3"
+                            style={{ backgroundColor: '#EBF8FA', padding: '10px 14px' }}
                           >
-                            직접 입력
-                          </GrammarOptionPill>
+                            <Info className="w-3.5 h-3.5 shrink-0" style={{ color: '#2D9CAE' }} />
+                            <span className="text-[11px] font-medium" style={{ color: '#2D9CAE' }}>
+                              {timeMode === 'per_question'
+                                ? '각 문제마다 제한 시간이 주어집니다. 시간 초과 시 자동으로 다음 문제로 넘어갑니다.'
+                                : '전체 시험 시간 내에서 자유롭게 문제를 이동하고 답을 변경할 수 있습니다.'}
+                            </span>
+                          </div>
                         </div>
-                        {questionCount === -1 && (
-                          <input
-                            type="number"
-                            min={1}
-                            max={200}
-                            value={customQuestionCount}
-                            onChange={(e) => setCustomQuestionCount(e.target.value)}
-                            placeholder="문제 수 입력"
-                            className="mt-3 w-28 px-3 py-1.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2D9CAE]/30"
-                            style={{ backgroundColor: '#F8F8F6', border: '1px solid #E8E8E6' }}
-                          />
-                        )}
-                        {/* Time summary */}
-                        {(() => {
-                          if (effCount <= 0) return null;
-                          const summary = timeMode === 'per_question'
-                            ? `${effCount}문제 x ${perQuestionTime}초 = 총 ${Math.floor(effCount * perQuestionTime / 60)}분 ${(effCount * perQuestionTime) % 60}초`
-                            : `전체 ${Math.floor(totalTime / 60)}분 (문제당 평균 ${(totalTime / effCount).toFixed(1)}초)`;
-                          return (
-                            <div
-                              className="flex items-center gap-2 rounded-lg mt-3"
-                              style={{ backgroundColor: '#EBF8FA', padding: '10px 14px' }}
-                            >
-                              <Info className="w-3.5 h-3.5 shrink-0" style={{ color: '#2D9CAE' }} />
-                              <span className="text-[11px] font-medium" style={{ color: '#2D9CAE' }}>{summary}</span>
-                            </div>
-                          );
-                        })()}
+
+                        <div>
+                          <span className="text-[11px] font-semibold text-text-secondary mb-1.5 block">
+                            {timeMode === 'per_question' ? '문제당 제한 시간' : '전체 제한 시간'}
+                          </span>
+                          {timeMode === 'per_question' ? (
+                            <>
+                              <div className="flex flex-wrap gap-2">
+                                {[
+                                  { label: '15초', value: 15 },
+                                  { label: '20초', value: 20 },
+                                  { label: '30초', value: 30 },
+                                  { label: '45초', value: 45 },
+                                  { label: '60초', value: 60 },
+                                ].map((opt) => (
+                                  <GrammarOptionPill
+                                    key={opt.value}
+                                    selected={perQuestionTime === opt.value && customPerQuestionTime === ''}
+                                    onClick={() => { setPerQuestionTime(opt.value); setCustomPerQuestionTime(''); }}
+                                  >
+                                    {opt.label}
+                                  </GrammarOptionPill>
+                                ))}
+                                <GrammarOptionPill
+                                  selected={customPerQuestionTime !== ''}
+                                  onClick={() => { setCustomPerQuestionTime(String(perQuestionTime || 30)); }}
+                                >
+                                  직접 입력
+                                </GrammarOptionPill>
+                              </div>
+                              {customPerQuestionTime !== '' && (
+                                <div className="flex items-center gap-2 mt-3">
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    max={300}
+                                    value={customPerQuestionTime}
+                                    onChange={(e) => {
+                                      const secs = parseInt(e.target.value) || 0;
+                                      setCustomPerQuestionTime(e.target.value);
+                                      setPerQuestionTime(secs);
+                                    }}
+                                    className="w-20 px-3 py-1.5 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#2D9CAE]/30"
+                                    style={{ backgroundColor: '#F8F8F6', border: '1px solid #E8E8E6' }}
+                                  />
+                                  <span className="text-[13px] text-text-secondary">초</span>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <div className="flex flex-wrap gap-2">
+                                {[
+                                  { label: '10분', value: 600 },
+                                  { label: '20분', value: 1200 },
+                                  { label: '30분', value: 1800 },
+                                  { label: '50분', value: 3000 },
+                                  { label: '80분', value: 4800 },
+                                ].map((opt) => (
+                                  <GrammarOptionPill
+                                    key={opt.value}
+                                    selected={totalTime === opt.value && customTotalTime === ''}
+                                    onClick={() => { setTotalTime(opt.value); setCustomTotalTime(''); }}
+                                  >
+                                    {opt.label}
+                                  </GrammarOptionPill>
+                                ))}
+                                <GrammarOptionPill
+                                  selected={customTotalTime !== ''}
+                                  onClick={() => { setCustomTotalTime(String(Math.floor(totalTime / 60) || 10)); }}
+                                >
+                                  직접 입력
+                                </GrammarOptionPill>
+                              </div>
+                              {customTotalTime !== '' && (
+                                <div className="flex items-center gap-2 mt-3">
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    max={120}
+                                    value={customTotalTime}
+                                    onChange={(e) => {
+                                      const mins = parseInt(e.target.value) || 0;
+                                      setCustomTotalTime(e.target.value);
+                                      setTotalTime(mins * 60);
+                                    }}
+                                    className="w-20 px-3 py-1.5 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#2D9CAE]/30"
+                                    style={{ backgroundColor: '#F8F8F6', border: '1px solid #E8E8E6' }}
+                                  />
+                                  <span className="text-[13px] text-text-secondary">분</span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Config name */}
-                      <div>
-                        <span className="text-[11px] font-semibold text-text-secondary mb-1.5 block">테스트 이름 (선택)</span>
-                        <input
-                          type="text"
-                          value={configName}
-                          onChange={(e) => setConfigName(e.target.value)}
-                          placeholder="예: 1학기 중간고사 문법"
-                          className="w-full rounded-lg text-[13px] text-text-primary placeholder:text-text-tertiary outline-none focus:ring-2 focus:ring-[#2D9CAE]/30"
-                          style={{ padding: '8px 12px', border: '1px solid #E8E8E6', backgroundColor: '#FFFFFF' }}
-                        />
+                      {/* ── Divider ── */}
+                      <div style={{ borderTop: '1px solid #E8E8E6' }} />
+
+                      {/* ── Question count ── */}
+                      <div className="space-y-4">
+                        <div>
+                          <span className="text-[11px] font-semibold text-text-secondary mb-1.5 block">문제 수</span>
+                          <div className="flex flex-wrap gap-2">
+                            {[10, 15, 20, 25, 30].map((n) => (
+                              <GrammarOptionPill
+                                key={n}
+                                selected={questionCount === n}
+                                onClick={() => { setQuestionCount(n); setCustomQuestionCount(''); }}
+                              >
+                                {n}문제
+                              </GrammarOptionPill>
+                            ))}
+                            <GrammarOptionPill
+                              selected={questionCount === -1}
+                              onClick={() => setQuestionCount(-1)}
+                            >
+                              직접 입력
+                            </GrammarOptionPill>
+                          </div>
+                          {questionCount === -1 && (
+                            <input
+                              type="number"
+                              min={1}
+                              max={200}
+                              value={customQuestionCount}
+                              onChange={(e) => setCustomQuestionCount(e.target.value)}
+                              placeholder="문제 수 입력"
+                              className="mt-3 w-28 px-3 py-1.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2D9CAE]/30"
+                              style={{ backgroundColor: '#F8F8F6', border: '1px solid #E8E8E6' }}
+                            />
+                          )}
+                          {(() => {
+                            if (effCount <= 0) return null;
+                            const summary = timeMode === 'per_question'
+                              ? `${effCount}문제 x ${perQuestionTime}초 = 총 ${Math.floor(effCount * perQuestionTime / 60)}분 ${(effCount * perQuestionTime) % 60}초`
+                              : `전체 ${Math.floor(totalTime / 60)}분 (문제당 평균 ${(totalTime / effCount).toFixed(1)}초)`;
+                            return (
+                              <div
+                                className="flex items-center gap-2 rounded-lg mt-3"
+                                style={{ backgroundColor: '#EBF8FA', padding: '10px 14px' }}
+                              >
+                                <Info className="w-3.5 h-3.5 shrink-0" style={{ color: '#2D9CAE' }} />
+                                <span className="text-[11px] font-medium" style={{ color: '#2D9CAE' }}>{summary}</span>
+                              </div>
+                            );
+                          })()}
+                        </div>
+
+                        <div>
+                          <span className="text-[11px] font-semibold text-text-secondary mb-1.5 block">테스트 이름 (선택)</span>
+                          <input
+                            type="text"
+                            value={configName}
+                            onChange={(e) => setConfigName(e.target.value)}
+                            placeholder="예: 1학기 중간고사 문법"
+                            className="w-full rounded-lg text-[13px] text-text-primary placeholder:text-text-tertiary outline-none focus:ring-2 focus:ring-[#2D9CAE]/30"
+                            style={{ padding: '8px 12px', border: '1px solid #E8E8E6', backgroundColor: '#FFFFFF' }}
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Step 4: Question types — grouped by 객관식/서술형 */}
-                  {step === 4 && (
+                  {/* Step 3: Question types — grouped by 객관식/서술형 */}
+                  {step === 3 && (
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] font-semibold text-text-secondary">
@@ -985,8 +997,8 @@ export function GrammarSettingsPage() {
                     </div>
                   )}
 
-                  {/* Step 5: Type order (drag reorder) — only when 2+ types */}
-                  {step === 5 && totalPages === 7 && (
+                  {/* Step 4: Type order (drag reorder) — only when 2+ types */}
+                  {step === 4 && totalPages === 6 && (
                     <div className="space-y-3">
                       <div className="text-[11px] text-text-secondary">
                         드래그하여 출제 순서를 변경하세요. 위에 있을수록 먼저 출제됩니다.
@@ -1036,8 +1048,8 @@ export function GrammarSettingsPage() {
                     </div>
                   )}
 
-                  {/* Step 6: Distribution — only when 2+ types */}
-                  {step === 6 && totalPages === 7 && (
+                  {/* Step 5: Distribution — only when 2+ types */}
+                  {step === 5 && totalPages === 6 && (
                     <div className="space-y-3">
                       {/* Mode toggle */}
                       <div

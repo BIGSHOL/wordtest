@@ -1,17 +1,15 @@
 /**
- * Test configuration panel - page-based wizard (up to 8 pages).
+ * Test configuration panel - page-based wizard (up to 6 pages).
  *
  * Page 0: 학생 선택 (Student selection)
  * Page 1: 출제 범위 (Book/Lesson + Engine + Word count)
- * Page 2: 시간 설정 (Time type + value)
- * Page 3: 문제 수 (count picker + time summary)
- * Page 4: 문제 유형 (Engine 8 / Skill 6)
- * Page 5: 출제 순서 (drag reorder) - only when 2+ types selected
- * Page 6: 유형별 배분 (equal / manual) - only when 2+ types selected
- * Page 7: 설정 확인 (review & assign) - always shown as last step
+ * Page 2: 시간 & 문제 설정 (Time + count merged)
+ * Page 3: 문제 유형 (Engine 8 / Skill 6)
+ * Page 4: 출제 순서 (drag reorder) - only when 2+ types selected
+ * Page 5: 유형별 배분 (equal / manual) - only when 2+ types selected
  */
 import { useState } from 'react';
-import { Check, Info, Clock, Timer, Hash, Layers, ChevronLeft, ChevronRight, SplitSquareHorizontal, GripVertical, ArrowUpDown, Users, Search } from 'lucide-react';
+import { Check, Info, Clock, Timer, Layers, ChevronLeft, ChevronRight, SplitSquareHorizontal, GripVertical, ArrowUpDown, Users, Search } from 'lucide-react';
 import type { LessonInfo } from '../../services/word';
 import type { User } from '../../types/auth';
 import { QUESTION_TYPE_OPTIONS, SKILL_AREA_OPTIONS, SKILL_TO_ENGINES, ENGINE_PRESETS } from '../../constants/engineLabels';
@@ -90,8 +88,7 @@ const QUESTION_COUNT_OPTIONS = [10, 20, 30, 50];
 const PAGE_META = [
   { title: '학생 선택', icon: <Users className="w-3.5 h-3.5" /> },
   { title: '출제 범위', icon: <Layers className="w-3.5 h-3.5" /> },
-  { title: '시간 설정', icon: <Clock className="w-3.5 h-3.5" /> },
-  { title: '문제 수', icon: <Hash className="w-3.5 h-3.5" /> },
+  { title: '시간 & 문제 설정', icon: <Clock className="w-3.5 h-3.5" /> },
   { title: '문제 유형', icon: <Timer className="w-3.5 h-3.5" /> },
   { title: '출제 순서', icon: <ArrowUpDown className="w-3.5 h-3.5" /> },
   { title: '유형별 배분', icon: <SplitSquareHorizontal className="w-3.5 h-3.5" /> },
@@ -554,143 +551,7 @@ function PageScope({
   );
 }
 
-function PageTime({
-  config, update,
-}: {
-  config: TestConfigState;
-  update: (p: Partial<TestConfigState>) => void;
-}) {
-  return (
-    <div className="space-y-4">
-      {/* Time mode */}
-      <div>
-        <span className="text-[11px] font-semibold text-text-secondary mb-1.5 block">시간 유형</span>
-        <div className="flex flex-wrap gap-2">
-          <OptionPill
-            selected={config.timeMode === 'per_question'}
-            onClick={() => update({ timeMode: 'per_question' })}
-          >
-            문제당 시간
-          </OptionPill>
-          <OptionPill
-            selected={config.timeMode === 'total'}
-            onClick={() => update({
-              timeMode: 'total',
-              ...(config.engine === 'levelup' ? { engine: 'legacy' as const } : {}),
-            })}
-          >
-            전체 시간
-          </OptionPill>
-        </div>
-        <div
-          className="flex items-center gap-2 rounded-lg mt-3"
-          style={{ backgroundColor: '#EBF8FA', padding: '10px 14px' }}
-        >
-          <Info className="w-3.5 h-3.5 shrink-0" style={{ color: '#2D9CAE' }} />
-          <span className="text-[11px] font-medium" style={{ color: '#2D9CAE' }}>
-            {config.timeMode === 'per_question'
-              ? '각 문제마다 제한 시간이 주어집니다. 시간 초과 시 자동으로 다음 문제로 넘어갑니다.'
-              : '전체 시험 시간 내에서 자유롭게 문제를 이동하고 답을 변경할 수 있습니다.'}
-          </span>
-        </div>
-      </div>
-
-      {/* Time value */}
-      <div>
-        <span className="text-[11px] font-semibold text-text-secondary mb-1.5 block">
-          {config.timeMode === 'per_question' ? '문제당 제한 시간' : '전체 제한 시간'}
-        </span>
-        {config.timeMode === 'per_question' ? (
-          <>
-            <div className="flex flex-wrap gap-2">
-              {PER_QUESTION_TIME_OPTIONS.map((opt) => (
-                <OptionPill
-                  key={opt.value}
-                  selected={config.perQuestionTime === opt.value && config.customPerQuestionTime === ''}
-                  onClick={() => update({ perQuestionTime: opt.value, customPerQuestionTime: '' })}
-                >
-                  {opt.label}
-                </OptionPill>
-              ))}
-              <OptionPill
-                selected={config.customPerQuestionTime !== ''}
-                onClick={() => {
-                  update({
-                    customPerQuestionTime: String(config.perQuestionTime || 10),
-                    perQuestionTime: config.perQuestionTime || 10,
-                  });
-                }}
-              >
-                직접 입력
-              </OptionPill>
-            </div>
-            {config.customPerQuestionTime !== '' && (
-              <div className="flex items-center gap-2 mt-3">
-                <input
-                  type="number"
-                  min={1}
-                  max={300}
-                  value={config.customPerQuestionTime}
-                  onChange={(e) => {
-                    const secs = parseInt(e.target.value) || 0;
-                    update({ customPerQuestionTime: e.target.value, perQuestionTime: secs });
-                  }}
-                  className="w-20 px-3 py-1.5 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-teal"
-                  style={{ backgroundColor: '#F8F8F6', border: '1px solid #E8E8E6' }}
-                />
-                <span className="text-[13px] text-text-secondary">초</span>
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <div className="flex flex-wrap gap-2">
-              {TOTAL_TIME_OPTIONS.map((opt) => (
-                <OptionPill
-                  key={opt.value}
-                  selected={config.totalTime === opt.value && config.customTotalTime === ''}
-                  onClick={() => update({ totalTime: opt.value, customTotalTime: '' })}
-                >
-                  {opt.label}
-                </OptionPill>
-              ))}
-              <OptionPill
-                selected={config.customTotalTime !== ''}
-                onClick={() => {
-                  update({
-                    customTotalTime: String(Math.floor(config.totalTime / 60) || 10),
-                    totalTime: config.totalTime || 600,
-                  });
-                }}
-              >
-                직접 입력
-              </OptionPill>
-            </div>
-            {config.customTotalTime !== '' && (
-              <div className="flex items-center gap-2 mt-3">
-                <input
-                  type="number"
-                  min={1}
-                  max={120}
-                  value={config.customTotalTime}
-                  onChange={(e) => {
-                    const mins = parseInt(e.target.value) || 0;
-                    update({ customTotalTime: e.target.value, totalTime: mins * 60 });
-                  }}
-                  className="w-20 px-3 py-1.5 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-teal"
-                  style={{ backgroundColor: '#F8F8F6', border: '1px solid #E8E8E6' }}
-                />
-                <span className="text-[13px] text-text-secondary">분</span>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function PageCount({
+function PageTimeAndCount({
   config, update,
 }: {
   config: TestConfigState;
@@ -714,47 +575,180 @@ function PageCount({
   })();
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
-        {QUESTION_COUNT_OPTIONS.map((count) => (
-          <OptionPill
-            key={count}
-            selected={config.questionCount === count}
-            onClick={() => update({ questionCount: count })}
+    <div className="space-y-5">
+      {/* ── Time settings ── */}
+      <div className="space-y-4">
+        <div>
+          <span className="text-[11px] font-semibold text-text-secondary mb-1.5 block">시간 유형</span>
+          <div className="flex flex-wrap gap-2">
+            <OptionPill
+              selected={config.timeMode === 'per_question'}
+              onClick={() => update({ timeMode: 'per_question' })}
+            >
+              문제당 시간
+            </OptionPill>
+            <OptionPill
+              selected={config.timeMode === 'total'}
+              onClick={() => update({
+                timeMode: 'total',
+                ...(config.engine === 'levelup' ? { engine: 'legacy' as const } : {}),
+              })}
+            >
+              전체 시간
+            </OptionPill>
+          </div>
+          <div
+            className="flex items-center gap-2 rounded-lg mt-3"
+            style={{ backgroundColor: '#EBF8FA', padding: '10px 14px' }}
           >
-            {count}문제
-          </OptionPill>
-        ))}
-        <OptionPill
-          selected={config.questionCount === -1}
-          onClick={() => update({ questionCount: -1 })}
-        >
-          직접 입력
-        </OptionPill>
-      </div>
-      {config.questionCount === -1 && (
-        <input
-          type="number"
-          min={1}
-          max={200}
-          value={config.customQuestionCount}
-          onChange={(e) => update({ customQuestionCount: e.target.value })}
-          placeholder="문제 수 입력"
-          className="mt-1 w-28 px-3 py-1.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal"
-          style={{ backgroundColor: '#F8F8F6', border: '1px solid #E8E8E6' }}
-        />
-      )}
-      {timeSummary && (
-        <div
-          className="flex items-center gap-2 rounded-lg"
-          style={{ backgroundColor: '#EBF8FA', padding: '10px 14px' }}
-        >
-          <Info className="w-3.5 h-3.5 shrink-0" style={{ color: '#2D9CAE' }} />
-          <span className="text-[11px] font-medium" style={{ color: '#2D9CAE' }}>
-            {timeSummary}
-          </span>
+            <Info className="w-3.5 h-3.5 shrink-0" style={{ color: '#2D9CAE' }} />
+            <span className="text-[11px] font-medium" style={{ color: '#2D9CAE' }}>
+              {config.timeMode === 'per_question'
+                ? '각 문제마다 제한 시간이 주어집니다. 시간 초과 시 자동으로 다음 문제로 넘어갑니다.'
+                : '전체 시험 시간 내에서 자유롭게 문제를 이동하고 답을 변경할 수 있습니다.'}
+            </span>
+          </div>
         </div>
-      )}
+
+        <div>
+          <span className="text-[11px] font-semibold text-text-secondary mb-1.5 block">
+            {config.timeMode === 'per_question' ? '문제당 제한 시간' : '전체 제한 시간'}
+          </span>
+          {config.timeMode === 'per_question' ? (
+            <>
+              <div className="flex flex-wrap gap-2">
+                {PER_QUESTION_TIME_OPTIONS.map((opt) => (
+                  <OptionPill
+                    key={opt.value}
+                    selected={config.perQuestionTime === opt.value && config.customPerQuestionTime === ''}
+                    onClick={() => update({ perQuestionTime: opt.value, customPerQuestionTime: '' })}
+                  >
+                    {opt.label}
+                  </OptionPill>
+                ))}
+                <OptionPill
+                  selected={config.customPerQuestionTime !== ''}
+                  onClick={() => {
+                    update({
+                      customPerQuestionTime: String(config.perQuestionTime || 10),
+                      perQuestionTime: config.perQuestionTime || 10,
+                    });
+                  }}
+                >
+                  직접 입력
+                </OptionPill>
+              </div>
+              {config.customPerQuestionTime !== '' && (
+                <div className="flex items-center gap-2 mt-3">
+                  <input
+                    type="number"
+                    min={1}
+                    max={300}
+                    value={config.customPerQuestionTime}
+                    onChange={(e) => {
+                      const secs = parseInt(e.target.value) || 0;
+                      update({ customPerQuestionTime: e.target.value, perQuestionTime: secs });
+                    }}
+                    className="w-20 px-3 py-1.5 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-teal"
+                    style={{ backgroundColor: '#F8F8F6', border: '1px solid #E8E8E6' }}
+                  />
+                  <span className="text-[13px] text-text-secondary">초</span>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-2">
+                {TOTAL_TIME_OPTIONS.map((opt) => (
+                  <OptionPill
+                    key={opt.value}
+                    selected={config.totalTime === opt.value && config.customTotalTime === ''}
+                    onClick={() => update({ totalTime: opt.value, customTotalTime: '' })}
+                  >
+                    {opt.label}
+                  </OptionPill>
+                ))}
+                <OptionPill
+                  selected={config.customTotalTime !== ''}
+                  onClick={() => {
+                    update({
+                      customTotalTime: String(Math.floor(config.totalTime / 60) || 10),
+                      totalTime: config.totalTime || 600,
+                    });
+                  }}
+                >
+                  직접 입력
+                </OptionPill>
+              </div>
+              {config.customTotalTime !== '' && (
+                <div className="flex items-center gap-2 mt-3">
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    value={config.customTotalTime}
+                    onChange={(e) => {
+                      const mins = parseInt(e.target.value) || 0;
+                      update({ customTotalTime: e.target.value, totalTime: mins * 60 });
+                    }}
+                    className="w-20 px-3 py-1.5 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-teal"
+                    style={{ backgroundColor: '#F8F8F6', border: '1px solid #E8E8E6' }}
+                  />
+                  <span className="text-[13px] text-text-secondary">분</span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── Divider ── */}
+      <div style={{ borderTop: '1px solid #E8E8E6' }} />
+
+      {/* ── Question count ── */}
+      <div className="space-y-3">
+        <span className="text-[11px] font-semibold text-text-secondary mb-1.5 block">문제 수</span>
+        <div className="flex flex-wrap gap-2">
+          {QUESTION_COUNT_OPTIONS.map((count) => (
+            <OptionPill
+              key={count}
+              selected={config.questionCount === count}
+              onClick={() => update({ questionCount: count })}
+            >
+              {count}문제
+            </OptionPill>
+          ))}
+          <OptionPill
+            selected={config.questionCount === -1}
+            onClick={() => update({ questionCount: -1 })}
+          >
+            직접 입력
+          </OptionPill>
+        </div>
+        {config.questionCount === -1 && (
+          <input
+            type="number"
+            min={1}
+            max={200}
+            value={config.customQuestionCount}
+            onChange={(e) => update({ customQuestionCount: e.target.value })}
+            placeholder="문제 수 입력"
+            className="mt-1 w-28 px-3 py-1.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal"
+            style={{ backgroundColor: '#F8F8F6', border: '1px solid #E8E8E6' }}
+          />
+        )}
+        {timeSummary && (
+          <div
+            className="flex items-center gap-2 rounded-lg"
+            style={{ backgroundColor: '#EBF8FA', padding: '10px 14px' }}
+          >
+            <Info className="w-3.5 h-3.5 shrink-0" style={{ color: '#2D9CAE' }} />
+            <span className="text-[11px] font-medium" style={{ color: '#2D9CAE' }}>
+              {timeSummary}
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1235,11 +1229,11 @@ export function TestConfigPanel({
     ? config.questionTypes
     : config.skillAreas;
 
-  const totalPages = selectedTypes.length >= 2 ? 7 : 5;
+  const totalPages = selectedTypes.length >= 2 ? 6 : 4;
 
   const pageTitles = selectedTypes.length >= 2
     ? PAGE_META
-    : PAGE_META.slice(0, 5);
+    : PAGE_META.slice(0, 4);
 
   const effectiveCount =
     config.questionCount === -1
@@ -1247,20 +1241,16 @@ export function TestConfigPanel({
       : config.questionCount;
 
   const canGoNext = (() => {
-    // Page 0: student selection is optional (can skip)
-    if (currentPage === 0) {
-      return true;
-    }
-    // Page 1: scope must be set
+    if (currentPage === 0) return true;
     if (currentPage === 1) {
       return !!(config.bookStart && config.bookEnd && config.lessonStart && config.lessonEnd);
     }
-    // Page 4: at least one type selected
-    if (currentPage === 4) {
+    // Page 3: at least one type selected
+    if (currentPage === 3) {
       return selectedTypes.length > 0;
     }
-    // Page 6 (distribution): manual sum must match (only when 7 pages)
-    if (currentPage === 6 && totalPages === 7 && config.distributionMode === 'manual') {
+    // Page 5 (distribution): manual sum must match (only when 6 pages)
+    if (currentPage === 5 && totalPages === 6 && config.distributionMode === 'manual') {
       const sum = selectedTypes.reduce((s, t) => s + (config.manualCounts[t] ?? 0), 0);
       return sum === effectiveCount;
     }
@@ -1317,18 +1307,15 @@ export function TestConfigPanel({
             />
           )}
           {currentPage === 2 && (
-            <PageTime config={config} update={update} />
+            <PageTimeAndCount config={config} update={update} />
           )}
           {currentPage === 3 && (
-            <PageCount config={config} update={update} />
-          )}
-          {currentPage === 4 && (
             <PageTypes config={config} update={update} compatibleCounts={compatibleCounts} />
           )}
-          {currentPage === 5 && totalPages === 7 && (
+          {currentPage === 4 && totalPages === 6 && (
             <PageOrder config={config} update={update} />
           )}
-          {currentPage === 6 && totalPages === 7 && (
+          {currentPage === 5 && totalPages === 6 && (
             <PageDistribution config={config} update={update} />
           )}
         </div>

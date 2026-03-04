@@ -16,6 +16,7 @@ interface GrammarTestStore {
   perQuestionSeconds: number | null;
   timeMode: string;
   questionTypes: string | null;
+  questionTypeCounts: Record<string, number> | null;
   configName: string | null;
 
   // Test state
@@ -44,6 +45,7 @@ export const useGrammarTestStore = create<GrammarTestStore>()((set, get) => ({
   perQuestionSeconds: null,
   timeMode: 'per_question',
   questionTypes: null,
+  questionTypeCounts: null,
   configName: null,
   currentIndex: 0,
   answers: {},
@@ -66,6 +68,11 @@ export const useGrammarTestStore = create<GrammarTestStore>()((set, get) => ({
       perQuestionSeconds: res.per_question_seconds,
       timeMode: res.time_mode,
       questionTypes: res.question_types ?? null,
+      questionTypeCounts: res.question_type_counts
+        ? (typeof res.question_type_counts === 'string'
+            ? JSON.parse(res.question_type_counts)
+            : res.question_type_counts)
+        : null,
       configName: res.config_name ?? null,
       currentIndex: 0,
       answers: {},
@@ -127,6 +134,7 @@ export const useGrammarTestStore = create<GrammarTestStore>()((set, get) => ({
       questions: [],
       totalQuestions: 0,
       questionTypes: null,
+      questionTypeCounts: null,
       configName: null,
       currentIndex: 0,
       answers: {},
