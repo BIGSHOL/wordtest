@@ -25,7 +25,7 @@ const DIFFICULTY_LABELS: Record<number, { label: string; color: string; bg: stri
   3: { label: '고급', color: '#DC2626', bg: '#FEE2E2' },
 };
 
-type StatusFilter = '' | 'error' | 'warn' | 'inactive';
+type StatusFilter = '' | 'error' | 'warn' | 'inactive' | 'no_prompt' | 'few_choices' | 'multi_blank';
 
 // ── Question Row (expandable) ─────────────────────────────────────
 function QuestionRow({
@@ -280,12 +280,20 @@ export function GrammarDatabasePanel() {
     validations.set(q.id, validateQuestion(q));
   }
 
-  // Client-side status filtering (for error/warn)
-  const filteredQuestions = statusFilter === 'error'
-    ? questions.filter((q) => validations.get(q.id)?.level === 'error')
-    : statusFilter === 'warn'
-    ? questions.filter((q) => validations.get(q.id)?.level === 'warn' || validations.get(q.id)?.level === 'error')
-    : questions;
+  // Client-side status filtering (for error/warn/specific issues)
+  const filteredQuestions = (() => {
+    if (statusFilter === 'error')
+      return questions.filter((q) => validations.get(q.id)?.level === 'error');
+    if (statusFilter === 'warn')
+      return questions.filter((q) => { const v = validations.get(q.id); return v?.level === 'warn' || v?.level === 'error'; });
+    if (statusFilter === 'no_prompt')
+      return questions.filter((q) => validations.get(q.id)?.messages.some((m) => m.includes('프롬프트')));
+    if (statusFilter === 'few_choices')
+      return questions.filter((q) => validations.get(q.id)?.messages.some((m) => m.includes('미만')));
+    if (statusFilter === 'multi_blank')
+      return questions.filter((q) => validations.get(q.id)?.messages.some((m) => m.includes('빈칸') && m.includes('개')));
+    return questions;
+  })();
 
   // Stats for current page
   const errorCount = questions.filter((q) => validations.get(q.id)?.level === 'error').length;
@@ -460,6 +468,9 @@ export function GrammarDatabasePanel() {
                       <option value="error">오류만</option>
                       <option value="warn">경고+오류</option>
                       <option value="inactive">비활성만</option>
+                      <option value="no_prompt">프롬프트 미설정</option>
+                      <option value="few_choices">보기 부족 (4개 미만)</option>
+                      <option value="multi_blank">다중 빈칸</option>
                     </select>
                     <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary pointer-events-none" />
                   </div>
