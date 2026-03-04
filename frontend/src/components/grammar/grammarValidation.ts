@@ -40,16 +40,44 @@ export function validateQuestion(q: GrammarQuestionBrowse): ValidationResult {
       if (level !== 'error') level = 'warn';
     }
 
-    // ERROR: correct_index out of range
-    if (d.correct_index != null && d.correct_index >= choices.length) {
-      messages.push('정답 인덱스 범위 초과');
-      level = 'error';
+    // Multi-blank detection
+    const blankMatches = (stem.replace(/\[([^\]]+\/[^\]]+)\]/g, '___')).match(/___/g);
+    const blankCount = blankMatches ? blankMatches.length : 1;
+
+    if (blankCount > 1) {
+      // Multi-blank: check correct_indices
+      if (!d.correct_indices || !Array.isArray(d.correct_indices)) {
+        messages.push(`빈칸 ${blankCount}개인데 correct_indices 미설정`);
+        if (level !== 'error') level = 'warn';
+      } else if (d.correct_indices.length !== blankCount) {
+        messages.push(`빈칸 ${blankCount}개 ≠ correct_indices ${d.correct_indices.length}개`);
+        level = 'error';
+      } else {
+        for (const ci of d.correct_indices) {
+          if (ci >= choices.length) {
+            messages.push(`correct_indices 값 ${ci} 범위 초과`);
+            level = 'error';
+          }
+        }
+      }
+    } else {
+      // Single blank: check correct_index
+      if (d.correct_index != null && d.correct_index >= choices.length) {
+        messages.push('정답 인덱스 범위 초과');
+        level = 'error';
+      }
     }
 
     // ERROR: choices empty
     if (!choices || choices.length === 0) {
       messages.push('보기 없음');
       level = 'error';
+    }
+
+    // WARN: fewer than 4 choices (excluded from tests)
+    if (choices.length > 0 && choices.length < 4) {
+      messages.push(`보기 ${choices.length}개 (4개 미만 — 출제 제외됨)`);
+      if (level !== 'error') level = 'warn';
     }
   }
 
@@ -83,6 +111,12 @@ export function validateQuestion(q: GrammarQuestionBrowse): ValidationResult {
       messages.push('문장 없음');
       level = 'error';
     }
+
+    // WARN: fewer than 4 sentences (excluded from tests)
+    if (sentences.length > 0 && sentences.length < 4) {
+      messages.push(`문장 ${sentences.length}개 (4개 미만 — 출제 제외됨)`);
+      if (level !== 'error') level = 'warn';
+    }
   }
 
   if (q.question_type === 'grammar_order') {
@@ -114,16 +148,26 @@ export function validateQuestion(q: GrammarQuestionBrowse): ValidationResult {
   }
 
   if (q.question_type === 'grammar_usage') {
-    if (d.correct_index != null && d.correct_index >= (d.sentences || []).length) {
+    const sentences = d.sentences || [];
+    if (d.correct_index != null && d.correct_index >= sentences.length) {
       messages.push('정답 인덱스 범위 초과');
       level = 'error';
+    }
+    if (sentences.length > 0 && sentences.length < 4) {
+      messages.push(`문장 ${sentences.length}개 (4개 미만 — 출제 제외됨)`);
+      if (level !== 'error') level = 'warn';
     }
   }
 
   if (q.question_type === 'grammar_pair') {
-    if (d.correct_index != null && d.correct_index >= (d.paired_choices || []).length) {
+    const paired = d.paired_choices || [];
+    if (d.correct_index != null && d.correct_index >= paired.length) {
       messages.push('정답 인덱스 범위 초과');
       level = 'error';
+    }
+    if (paired.length > 0 && paired.length < 4) {
+      messages.push(`보기 ${paired.length}개 (4개 미만 — 출제 제외됨)`);
+      if (level !== 'error') level = 'warn';
     }
   }
 

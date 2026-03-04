@@ -184,6 +184,20 @@ function ArrayField({ label, fieldKey, items, updateArrayItem, addArrayItem, rem
 
 function BlankFields({ data, update, updateArrayItem, addArrayItem, removeArrayItem, labelCls, inputCls, textareaCls }: FieldProps) {
   const choices = data.choices || [];
+  const stem = data.stem || '';
+  const blankCount = (stem.replace(/\[([^\]]+\/[^\]]+)\]/g, '___').match(/___/g) || []).length || 1;
+  const isMultiBlank = blankCount > 1;
+
+  // Ensure correct_indices array has right length
+  const correctIndices: number[] = data.correct_indices || [];
+
+  const updateIndex = (blankPos: number, val: number) => {
+    const next = [...correctIndices];
+    while (next.length < blankCount) next.push(0);
+    next[blankPos] = val;
+    update('correct_indices', next);
+  };
+
   return (
     <div className="space-y-3">
       <div>
@@ -198,14 +212,37 @@ function BlankFields({ data, update, updateArrayItem, addArrayItem, removeArrayI
       <ArrayField label="보기 (choices)" fieldKey="choices" items={choices}
         updateArrayItem={updateArrayItem!} addArrayItem={addArrayItem!} removeArrayItem={removeArrayItem!}
         inputCls={inputCls} labelCls={labelCls} />
-      <div>
-        <label className={labelCls}>정답 인덱스 (0부터)</label>
-        <select value={data.correct_index ?? 0} onChange={(e) => update('correct_index', Number(e.target.value))} className={inputCls}>
-          {choices.map((_: string, i: number) => (
-            <option key={i} value={i}>{i + 1}. {choices[i]}</option>
-          ))}
-        </select>
-      </div>
+
+      {isMultiBlank ? (
+        <div>
+          <label className={labelCls}>정답 (빈칸 {blankCount}개 — 순서대로 선택)</label>
+          <div className="space-y-1.5">
+            {Array.from({ length: blankCount }, (_, bIdx) => (
+              <div key={bIdx} className="flex items-center gap-2">
+                <span className="text-xs text-text-tertiary w-16 shrink-0">빈칸 {bIdx + 1}:</span>
+                <select
+                  value={correctIndices[bIdx] ?? 0}
+                  onChange={(e) => updateIndex(bIdx, Number(e.target.value))}
+                  className={inputCls}
+                >
+                  {choices.map((_: string, i: number) => (
+                    <option key={i} value={i}>{i + 1}. {choices[i]}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <label className={labelCls}>정답 인덱스 (0부터)</label>
+          <select value={data.correct_index ?? 0} onChange={(e) => update('correct_index', Number(e.target.value))} className={inputCls}>
+            {choices.map((_: string, i: number) => (
+              <option key={i} value={i}>{i + 1}. {choices[i]}</option>
+            ))}
+          </select>
+        </div>
+      )}
     </div>
   );
 }

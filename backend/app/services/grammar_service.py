@@ -657,7 +657,17 @@ async def _check_answer(question: GrammarQuestion, selected_answer: str) -> tupl
     qtype = question.question_type
 
     if qtype in ("grammar_blank", "grammar_pair"):
-        # MC: compare index
+        # Multi-blank: correct_indices is an ordered list of choice indices
+        if "correct_indices" in qdata and isinstance(qdata["correct_indices"], list):
+            correct_indices = qdata["correct_indices"]
+            correct_answer = ",".join(str(i) for i in correct_indices)
+            try:
+                student_indices = [int(x.strip()) for x in selected_answer.split(",")]
+            except ValueError:
+                return False, correct_answer
+            is_correct = student_indices == correct_indices  # order matters
+            return is_correct, correct_answer
+        # Single blank: compare index
         correct_idx = qdata["correct_index"]
         correct_answer = str(correct_idx)
         is_correct = selected_answer.strip() == correct_answer

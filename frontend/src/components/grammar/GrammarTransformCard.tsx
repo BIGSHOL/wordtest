@@ -21,7 +21,11 @@ export function GrammarTransformCard({ data, selected, onSelect }: Props) {
           {data.original}
         </p>
         <div className="inline-block px-3 py-1 rounded-lg bg-amber-50 border border-amber-200">
-          <span className="text-sm font-semibold text-amber-700">{data.instruction}</span>
+          <span className="text-sm font-semibold text-amber-700">
+            {data.instruction.includes('쓰세요') || data.instruction.includes('하세요')
+              ? data.instruction
+              : `${data.instruction} 바꿔 쓰세요.`}
+          </span>
         </div>
       </div>
 
