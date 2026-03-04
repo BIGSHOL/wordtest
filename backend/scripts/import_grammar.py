@@ -339,7 +339,7 @@ async def import_from_json(json_path: str):
             return
 
         count = 0
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(timezone.utc)
         for q in questions:
             key = (q["level"], q["chapter_num"])
             if key not in mapping:

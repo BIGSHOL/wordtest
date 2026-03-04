@@ -5,6 +5,8 @@ import re
 import logging
 from typing import Optional
 
+import httpx
+
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -369,6 +371,17 @@ async def _select_questions(
         for qtype, count in type_counts.items():
             pool = by_type.get(qtype, [])
             selected.extend(pool[:count])
+
+        # Enforce overall question_count cap — if type_counts sum exceeds it, truncate;
+        # if type_counts sum is less, fill remaining slots from any available questions
+        # (excluding already-selected ones) up to question_count.
+        target = config.question_count
+        if len(selected) > target:
+            selected = selected[:target]
+        elif len(selected) < target:
+            selected_ids = {q.id for q in selected}
+            remaining = [q for q in all_questions if q.id not in selected_ids]
+            selected.extend(remaining[: target - len(selected)])
     else:
         selected = all_questions[:config.question_count]
 
@@ -507,7 +520,87 @@ def _normalize(text: str) -> str:
     return text
 
 
-def _check_answer(question: GrammarQuestion, selected_answer: str) -> tuple[bool, str]:
+# ── AI Grading (Gemini 2.5 Flash Lite) ─────────────────────────────────
+
+GEMINI_GRADING_MODEL = "gemini-2.5-flash-lite"
+GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+
+
+async def _ai_check_grammar(
+    question_type: str,
+    question_data: dict,
+    student_answer: str,
+) -> bool | None:
+    """Use Gemini to judge free-form grammar answers.
+
+    Returns True/False on success, None if AI is unavailable (fallback to exact match).
+    """
+    from app.core.config import settings
+    if not settings.GEMINI_API_KEY:
+        return None
+
+    correct = question_data.get("correct_answer", "")
+
+    if question_type == "grammar_translate":
+        prompt = (
+            "You are a strict English grammar teacher grading a Korean-to-English translation.\n"
+            f"Korean sentence: {question_data.get('sentence_ko', '')}\n"
+            f"Expected answer: {correct}\n"
+            f"Student answer: {student_answer}\n\n"
+            "Judge if the student's answer correctly translates the Korean sentence with proper grammar.\n"
+            "Minor differences (articles, punctuation, synonyms like very/really) are acceptable.\n"
+            "Structural or meaning errors are NOT acceptable.\n"
+            "Respond with ONLY: CORRECT or WRONG"
+        )
+    elif question_type == "grammar_transform":
+        prompt = (
+            "You are a strict English grammar teacher grading a sentence transformation.\n"
+            f"Original sentence: {question_data.get('original', '')}\n"
+            f"Instruction: {question_data.get('instruction', '')}\n"
+            f"Expected answer: {correct}\n"
+            f"Student answer: {student_answer}\n\n"
+            "Judge if the student correctly transformed the sentence as instructed.\n"
+            "Minor differences (contractions like aren't/are not, punctuation) are acceptable.\n"
+            "The core transformation must be correct.\n"
+            "Respond with ONLY: CORRECT or WRONG"
+        )
+    elif question_type == "grammar_order":
+        prompt = (
+            "You are a strict English grammar teacher grading a word ordering exercise.\n"
+            f"Words to arrange: {question_data.get('words', [])}\n"
+            f"Korean meaning: {question_data.get('sentence_ko', '')}\n"
+            f"Expected answer: {correct}\n"
+            f"Student answer: {student_answer}\n\n"
+            "Judge if the student arranged the words into a grammatically correct sentence with the same meaning.\n"
+            "Minor punctuation differences are acceptable.\n"
+            "Respond with ONLY: CORRECT or WRONG"
+        )
+    else:
+        return None
+
+    try:
+        url = f"{GEMINI_API_BASE}/{GEMINI_GRADING_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.post(url, json={
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "temperature": 0,
+                    "maxOutputTokens": 10,
+                },
+            })
+            if resp.status_code != 200:
+                logger.warning("Gemini grading error %s: %s", resp.status_code, resp.text[:200])
+                return None
+
+            result = resp.json()
+            text = result["candidates"][0]["content"]["parts"][0]["text"].strip().upper()
+            return "CORRECT" in text
+    except Exception as e:
+        logger.warning("Gemini grading exception: %s", e)
+        return None
+
+
+async def _check_answer(question: GrammarQuestion, selected_answer: str) -> tuple[bool, str]:
     """Check if the selected answer is correct. Returns (is_correct, correct_answer_str)."""
     qdata = question.question_data if isinstance(question.question_data, dict) else json.loads(question.question_data)
     qtype = question.question_type
@@ -553,13 +646,23 @@ def _check_answer(question: GrammarQuestion, selected_answer: str) -> tuple[bool
         for alt in qdata.get("acceptable_answers", []):
             if _normalize(alt) == student:
                 return True, correct_answer
+        # Fallback: AI grading
+        ai_result = await _ai_check_grammar(qtype, qdata, selected_answer)
+        if ai_result is not None:
+            return ai_result, correct_answer
         return False, correct_answer
 
     elif qtype == "grammar_order":
         correct = _normalize(qdata["correct_answer"])
         correct_answer = qdata["correct_answer"]
         student = _normalize(selected_answer)
-        return student == correct, correct_answer
+        if student == correct:
+            return True, correct_answer
+        # Fallback: AI grading
+        ai_result = await _ai_check_grammar(qtype, qdata, selected_answer)
+        if ai_result is not None:
+            return ai_result, correct_answer
+        return False, correct_answer
 
     else:
         return False, "unknown"
@@ -603,7 +706,7 @@ async def submit_answer(
             "question_id": question_id,
         }
 
-    is_correct, correct_answer = _check_answer(question, selected_answer)
+    is_correct, correct_answer = await _check_answer(question, selected_answer)
 
     # Get next question_order
     count_result = await db.execute(
@@ -663,7 +766,7 @@ async def submit_batch_and_complete(
         if not question:
             continue
 
-        is_correct, correct_answer = _check_answer(question, ans["selected_answer"])
+        is_correct, correct_answer = await _check_answer(question, ans["selected_answer"])
 
         answer_obj = GrammarAnswer(
             id=str(uuid.uuid4()),

@@ -117,12 +117,7 @@ export const ListenCard = memo(function ListenCard({
       {isSentence && blankParts && blankParts.length >= 2 && (
         <p className="font-word text-[17px] md:text-[19px] font-medium text-text-secondary leading-relaxed text-center px-2">
           {blankParts[0]}
-          <span
-            className="inline-block min-w-[50px] border-b-[3px] border-accent-indigo mx-1"
-            style={{ borderBottomStyle: 'dashed' }}
-          >
-            &nbsp;&nbsp;&nbsp;&nbsp;
-          </span>
+          <span className="inline-block w-20 border-b-2 border-accent-indigo mx-1" />
           {blankParts[1]}
         </p>
       )}

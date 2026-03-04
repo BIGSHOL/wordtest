@@ -6,6 +6,8 @@ import { useState, useEffect } from 'react';
 import { Users, Trash2, Plus, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import type { TestConfigItem } from '../../services/testAssignment';
 import { QTYPE_BADGES, TEST_ENGINE_BADGES } from '../../constants/engineLabels';
+import { BadgeOverflow } from '../common/BadgeOverflow';
+import type { BadgeDef } from '../common/BadgeOverflow';
 
 interface Props {
   configs: TestConfigItem[];
@@ -133,44 +135,18 @@ export function TestConfigListPanel({ configs, onAssign, onDelete }: Props) {
                         {formatTime(config)}
                       </td>
                       <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
-                        <div className="flex items-center gap-1">
-                          {config.question_types ? (() => {
-                            const types = config.question_types!.split(',').map(t => t.trim());
-                            const maxShow = 2;
-                            const visible = types.slice(0, maxShow);
-                            const remaining = types.length - maxShow;
-                            return (
-                              <>
-                                {visible.map((trimmedType) => {
-                                  const style = QTYPE_BADGES[trimmedType];
-                                  if (style) {
-                                    return (
-                                      <span
-                                        key={trimmedType}
-                                        className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
-                                        style={{ backgroundColor: style.bg, color: style.color }}
-                                      >
-                                        {style.label}
-                                      </span>
-                                    );
-                                  }
-                                  return <span key={trimmedType} className="text-[9px]">{trimmedType}</span>;
-                                })}
-                                {remaining > 0 && (
-                                  <span
-                                    className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
-                                    style={{ backgroundColor: '#F0F0EE', color: '#6D6C6A' }}
-                                    title={types.slice(maxShow).map(t => QTYPE_BADGES[t]?.label ?? t).join(', ')}
-                                  >
-                                    +{remaining}
-                                  </span>
-                                )}
-                              </>
-                            );
-                          })() : (
-                            '-'
-                          )}
-                        </div>
+                        <BadgeOverflow
+                          badges={config.question_types
+                            ? config.question_types.split(',').map((t): BadgeDef => {
+                                const trimmed = t.trim();
+                                const style = QTYPE_BADGES[trimmed];
+                                return style
+                                  ? { key: trimmed, label: style.label, bg: style.bg, color: style.color }
+                                  : { key: trimmed, label: trimmed, bg: '#F0F0EE', color: '#6D6C6A' };
+                              })
+                            : []}
+                          maxVisible={2}
+                        />
                       </td>
                       <td className="px-2 whitespace-nowrap">
                         <span

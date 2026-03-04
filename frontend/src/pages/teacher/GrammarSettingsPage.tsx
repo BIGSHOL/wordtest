@@ -10,6 +10,8 @@ import type { User } from '../../types/auth';
 import type { GrammarBook, GrammarChapter, GrammarConfig, GrammarAssignmentItem, GrammarQuestionType } from '../../types/grammar';
 import { GRAMMAR_TYPE_LABELS } from '../../types/grammar';
 import { logger } from '../../utils/logger';
+import { BadgeOverflow } from '../../components/common/BadgeOverflow';
+import type { BadgeDef } from '../../components/common/BadgeOverflow';
 import {
   BookOpen, Users, Check, ChevronRight, ChevronLeft,
   Clock, Send, Loader2, Trash2, Copy, CheckCircle2,
@@ -1294,23 +1296,21 @@ function GrammarConfigList({
                         ? `${config.per_question_seconds ?? 30}초/문제`
                         : `${Math.floor(config.time_limit_seconds / 60)}분`}
                     </td>
-                    <td className="text-xs text-text-secondary px-2 max-w-[200px]">
-                      <div className="flex flex-wrap items-center gap-1">
-                        {config.question_types ? (
-                          config.question_types.split(',').map((type) => {
-                            const t = type.trim() as GrammarQuestionType;
-                            return (
-                              <span
-                                key={t}
-                                className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
-                                style={{ backgroundColor: '#EEF7F8', color: '#1A7A8A' }}
-                              >
-                                {GRAMMAR_TYPE_LABELS[t] ?? t}
-                              </span>
-                            );
-                          })
-                        ) : '-'}
-                      </div>
+                    <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
+                      <BadgeOverflow
+                        badges={config.question_types
+                          ? config.question_types.split(',').map((type): BadgeDef => {
+                              const t = type.trim() as GrammarQuestionType;
+                              return {
+                                key: t,
+                                label: GRAMMAR_TYPE_LABELS[t] ?? t,
+                                bg: '#EEF7F8',
+                                color: '#1A7A8A',
+                              };
+                            })
+                          : []}
+                        maxVisible={2}
+                      />
                     </td>
                     <td className="px-2 whitespace-nowrap">
                       <span

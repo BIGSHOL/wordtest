@@ -334,18 +334,10 @@ export const SentenceBlankCard = memo(function SentenceBlankCard({
         {promptOverride || STAGE_PROMPTS[stage] || '\uBE48\uCE78\uC5D0 \uB4E4\uC5B4\uAC08 \uC601\uB2E8\uC5B4\uB97C \uACE0\uB974\uC2DC\uC624'}
       </p>
 
-      {/* Sentence with dashed blank */}
-      <div
-        className="font-word text-[20px] md:text-[22px] font-medium text-text-primary text-center px-2"
-        style={{ lineHeight: '2' }}
-      >
+      {/* Sentence with solid blank (grammar style) */}
+      <div className="font-word text-[20px] md:text-[22px] font-medium text-text-primary text-center px-2 leading-relaxed">
         {parts[0]}
-        <span
-          className="inline-block min-w-[60px] border-b-[3px] border-accent-indigo mx-1 text-center"
-          style={{ borderBottomStyle: 'dashed' }}
-        >
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        </span>
+        <span className="inline-block w-20 border-b-2 border-accent-indigo mx-1" />
         {parts[1]}
       </div>
 
