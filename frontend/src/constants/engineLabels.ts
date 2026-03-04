@@ -23,6 +23,15 @@ export const QUESTION_TYPE_OPTIONS: QuestionTypeOption[] = [
   { value: 'antonym_type', label: '반의어 타이핑', desc: '반의어를 영어로 타이핑' },
   { value: 'antonym_choice', label: '반의어 고르기', desc: '반의어를 4지선다로 고르기' },
   { value: 'sentence_type', label: '예문 타이핑', desc: '예문 빈칸에 맞는 단어 타이핑' },
+  // Grammar types
+  { value: 'grammar_blank', label: '빈칸 채우기', desc: '빈칸에 알맞은 말 고르기' },
+  { value: 'grammar_error', label: '오류 탐지', desc: '틀린 부분 찾기' },
+  { value: 'grammar_common', label: '공통 단어', desc: '공통으로 들어갈 단어 고르기' },
+  { value: 'grammar_usage', label: '쓰임 구별', desc: '어법에 맞는 표현 고르기' },
+  { value: 'grammar_transform', label: '문장 전환', desc: '문장을 다른 형태로 전환' },
+  { value: 'grammar_order', label: '단어 배열', desc: '올바른 어순으로 배열' },
+  { value: 'grammar_translate', label: '영작', desc: '한국어를 영어로 번역' },
+  { value: 'grammar_pair', label: '짝짓기', desc: '(A)(B) 짝을 맞추기' },
 ];
 
 /** Full label lookup: canonical name → Korean label */

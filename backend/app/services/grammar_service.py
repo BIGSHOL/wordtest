@@ -463,6 +463,8 @@ async def start_session(
             "time_limit_seconds": config.time_limit_seconds if config else 600,
             "per_question_seconds": config.per_question_seconds if config else None,
             "time_mode": config.time_mode if config else "per_question",
+            "question_types": config.question_types if config else None,
+            "config_name": config.name if config else None,
         }
 
     # Load grammar config
@@ -506,6 +508,8 @@ async def start_session(
         "time_limit_seconds": config.time_limit_seconds,
         "per_question_seconds": config.per_question_seconds,
         "time_mode": config.time_mode,
+        "question_types": config.question_types,
+        "config_name": config.name,
     }
 
 

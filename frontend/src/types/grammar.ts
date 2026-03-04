@@ -104,6 +104,8 @@ export interface StartGrammarResponse {
   time_limit_seconds: number;
   per_question_seconds: number | null;
   time_mode: string;
+  question_types?: string;
+  config_name?: string;
   access_token: string;
 }
 

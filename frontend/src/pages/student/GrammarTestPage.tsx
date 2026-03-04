@@ -12,9 +12,10 @@ import { TotalTimerDisplay } from '../../components/test/TotalTimerDisplay';
 import { TimerBar } from '../../components/test/TimerBar';
 import { QuestionNavigator } from '../../components/test/QuestionNavigator';
 import { SubmitConfirmDialog } from '../../components/test/SubmitConfirmDialog';
+import { ExamBriefing } from '../../components/test/ExamBriefing';
 import {
   ChevronLeft, ChevronRight, ArrowLeft, Loader2,
-  CheckCircle2, XCircle, GraduationCap, BookOpen,
+  CheckCircle2, XCircle,
 } from 'lucide-react';
 
 // Card components
@@ -61,6 +62,7 @@ export function GrammarTestPage() {
   const {
     phase, questions, currentIndex, answers, results,
     studentName, totalQuestions, timeLimitSeconds, perQuestionSeconds, timeMode,
+    questionTypes, configName,
     setAnswer, goToQuestion, goNext, goPrev, startExam, submitAll, reset,
   } = store;
 
@@ -130,61 +132,23 @@ export function GrammarTestPage() {
     await submitAll();
   }, [submitAll]);
 
-  // Briefing phase
+  // Briefing phase — reuse ExamBriefing (same as word test)
   if (phase === 'briefing') {
     return (
-      <div className="min-h-screen bg-bg-cream flex items-center justify-center">
-        <div className="w-full max-w-md mx-auto px-6">
-          <div className="flex flex-col items-center gap-4 mb-8">
-            <div
-              className="w-[72px] h-[72px] rounded-full flex items-center justify-center"
-              style={{
-                background: 'linear-gradient(180deg, #4F46E5, #7C3AED)',
-                boxShadow: '0 4px 20px #4F46E530',
-              }}
-            >
-              <GraduationCap className="w-8 h-8 text-white" />
-            </div>
-            <h1 className="font-display text-[26px] font-bold text-text-primary">
-              문법 테스트
-            </h1>
-            <p className="text-sm text-text-secondary text-center">
-              {studentName}님, 준비되셨나요?
-            </p>
-          </div>
-
-          <div className="bg-bg-surface rounded-2xl border border-border-subtle p-5 space-y-3 mb-6">
-            <div className="flex items-center gap-2">
-              <BookOpen className="w-4 h-4 text-accent-indigo" />
-              <span className="text-sm font-semibold text-text-primary">시험 안내</span>
-            </div>
-            <div className="space-y-2">
-              {[
-                `총 ${totalQuestions}문제`,
-                '빈칸, 오류탐지, 문장전환 등 다양한 유형',
-                '모든 문제를 풀고 제출 버튼을 누르세요',
-                '이전/다음 문제로 자유롭게 이동 가능',
-              ].map((text, i) => (
-                <div key={i} className="flex items-start gap-2.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-text-tertiary mt-1.5 shrink-0" />
-                  <span className="text-[13px] text-text-secondary">{text}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <button
-            onClick={startExam}
-            className="flex items-center justify-center gap-2.5 w-full h-14 rounded-2xl text-white"
-            style={{
-              background: 'linear-gradient(90deg, #4F46E5, #7C3AED)',
-              boxShadow: '0 4px 16px #4F46E540',
-            }}
-          >
-            <span className="text-[17px] font-bold">시험 시작하기</span>
-          </button>
-        </div>
-      </div>
+      <ExamBriefing
+        studentName={studentName}
+        bookName={null}
+        bookNameEnd={null}
+        lessonStart={null}
+        lessonEnd={null}
+        questionCount={totalQuestions}
+        totalTimeSeconds={timeLimitSeconds}
+        timeMode={timeMode as 'per_question' | 'total'}
+        perQuestionTime={perQuestionSeconds || 30}
+        questionTypes={questionTypes || undefined}
+        configName={configName || '문법 테스트'}
+        onStart={startExam}
+      />
     );
   }
 

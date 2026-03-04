@@ -70,7 +70,9 @@ export function AllTestResultsPage() {
   };
 
   const handleRowClick = (item: TestResultItem) => {
-    if (item.test_type === 'mastery' || item.test_type === 'leveltest') {
+    if (item.test_type === 'grammar') {
+      navigate(`/students/${item.student_id}/grammar/${item.id}`);
+    } else if (item.test_type === 'mastery' || item.test_type === 'leveltest') {
       navigate(`/students/${item.student_id}/mastery/${item.id}`);
     } else {
       navigate(`/students/${item.student_id}/results`);

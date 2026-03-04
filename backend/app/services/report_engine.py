@@ -12,12 +12,14 @@ Provides:
 """
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, Integer
 
 from app.models.user import User
 from app.models.word import Word
 from app.models.test_session import TestSession
 from app.models.test_answer import TestAnswer
+from app.models.learning_session import LearningSession
+from app.models.learning_answer import LearningAnswer
 
 
 # ---------------------------------------------------------------------------
@@ -415,43 +417,80 @@ async def calculate_member_averages(
 ) -> dict[str, float]:
     """Calculate average skill area scores across same-grade students.
 
-    Returns dict with keys for all 6 skill areas.
-    Currently returns estimated averages; will use real peer data when available.
+    Queries LearningAnswer records grouped by question_type, maps each engine
+    to a skill area via ENGINE_TO_SKILL, and returns real per-axis averages
+    on a 0-10 scale.  Falls back to 5.0 when no peer data exists.
     """
-    # Get students filtered by grade (same-grade peers) or all teacher's students
+    # Get same-grade student IDs
     filters = [User.role == "student", User.teacher_id == teacher_id]
     if grade:
         filters.append(User.grade == grade)
     student_ids_subq = (
-        select(User.id)
-        .where(and_(*filters))
+        select(User.id).where(and_(*filters)).scalar_subquery()
+    )
+
+    # Completed sessions by those students
+    session_ids_subq = (
+        select(LearningSession.id)
+        .where(
+            and_(
+                LearningSession.student_id.in_(student_ids_subq),
+                LearningSession.completed_at.isnot(None),
+            )
+        )
         .scalar_subquery()
     )
 
-    # Average accuracy as baseline for all skill areas
-    avg_score_q = (
-        select(func.avg(TestSession.score))
+    # Per-engine accuracy from LearningAnswer
+    q = (
+        select(
+            LearningAnswer.question_type,
+            func.count(LearningAnswer.id).label("total"),
+            func.sum(func.cast(LearningAnswer.is_correct, Integer)).label("correct"),
+        )
         .where(
             and_(
-                TestSession.student_id.in_(student_ids_subq),
-                TestSession.completed_at.isnot(None),
-                TestSession.score.isnot(None),
+                LearningAnswer.session_id.in_(session_ids_subq),
+                LearningAnswer.question_type.isnot(None),
             )
         )
+        .group_by(LearningAnswer.question_type)
     )
-    avg_score_result = await db.execute(avg_score_q)
-    avg_score = avg_score_result.scalar() or 50.0
-    base = round(float(avg_score) / 10, 1)
+    result = await db.execute(q)
+    rows = result.all()
 
-    # Approximate per-area averages from overall accuracy
-    return {
-        "meaning": base,
-        "association": round(base * 0.95, 1),
-        "listening": round(base * 0.85, 1),
-        "inference": round(base * 0.80, 1),
-        "spelling": round(base * 0.75, 1),
-        "comprehensive": round(base * 0.87, 1),
-    }
+    if not rows:
+        return {k: 5.0 for k in SKILL_AREA_KEYS}
+
+    # Aggregate by skill area
+    skill_data: dict[str, dict] = {k: {"total": 0, "correct": 0} for k in SKILL_AREA_KEYS}
+    for engine_type, total, correct in rows:
+        skill = ENGINE_TO_SKILL.get(engine_type)
+        if not skill:
+            continue
+        skill_data[skill]["total"] += total
+        skill_data[skill]["correct"] += correct or 0
+
+    scores: dict[str, float] = {}
+    weighted_sum = 0.0
+    total_weight = 0
+    for key in SKILL_AREA_KEYS:
+        t = skill_data[key]["total"]
+        c = skill_data[key]["correct"]
+        if t > 0:
+            s = round((c / t) * 10, 1)
+            if key != "comprehensive":
+                weighted_sum += s * t
+                total_weight += t
+        else:
+            s = 5.0  # no data fallback
+        scores[key] = s
+
+    # Comprehensive fallback (same logic as calculate_skill_area_scores)
+    if skill_data["comprehensive"]["total"] == 0 and total_weight > 0:
+        scores["comprehensive"] = round(weighted_sum / total_weight, 1)
+
+    return scores
 
 
 async def get_total_word_count(db: AsyncSession) -> int:
@@ -691,11 +730,11 @@ async def assemble_report_metrics(
     else:
         avg_metrics = {k: 5.0 for k in SKILL_AREA_KEYS}
 
-    # Metric details with descriptions
+    # Metric details with descriptions + real per-axis grade averages
     details_raw = get_metric_descriptions(rank, radar)
     metric_details = []
     for d in details_raw:
-        d["avg_score"] = 5.0  # fixed 50% for all skill areas
+        d["avg_score"] = avg_metrics.get(d["key"], 5.0)
         metric_details.append(d)
 
     # Time breakdown (by skill area category)

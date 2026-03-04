@@ -2,7 +2,7 @@
  * Statistics/analytics API service.
  */
 import api from './api';
-import type { EnhancedTestReport, MasteryReport } from '../types/report';
+import type { EnhancedTestReport, MasteryReport, GrammarReport } from '../types/report';
 
 export interface DashboardStats {
   total_students: number;
@@ -120,6 +120,13 @@ export const statsService = {
   async getMasteryReport(studentId: string, sessionId: string): Promise<MasteryReport> {
     const response = await api.get<MasteryReport>(
       `/api/v1/stats/student/${studentId}/mastery-report/${sessionId}`,
+    );
+    return response.data;
+  },
+
+  async getGrammarReport(studentId: string, sessionId: string): Promise<GrammarReport> {
+    const response = await api.get<GrammarReport>(
+      `/api/v1/stats/student/${studentId}/grammar-report/${sessionId}`,
     );
     return response.data;
   },

@@ -141,6 +141,8 @@ class StartGrammarResponse(BaseModel):
     time_limit_seconds: int
     per_question_seconds: Optional[int] = None
     time_mode: str
+    question_types: Optional[str] = None
+    config_name: Optional[str] = None
     access_token: Optional[str] = None
 
 

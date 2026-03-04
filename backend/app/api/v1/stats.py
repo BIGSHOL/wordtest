@@ -12,6 +12,10 @@ from app.schemas.stats import (
     EngineDiagnosis,
     EngineStats,
     EnhancedTestReport,
+    GrammarAnswerDetail,
+    GrammarReportResponse,
+    GrammarSessionData,
+    GrammarTypeStats,
     LevelDistribution,
     MasteryAnswerDetail,
     MasteryReportResponse,
@@ -38,6 +42,9 @@ from app.models.word_mastery import WordMastery
 from app.models.test_assignment import TestAssignment
 from app.models.test_config import TestConfig
 from app.models.grammar_session import GrammarSession
+from app.models.grammar_answer import GrammarAnswer
+from app.models.grammar_question import GrammarQuestion
+from app.models.grammar_config import GrammarConfig
 from app.core.timezone import now_kst
 from app.services.test_common import get_test_result
 from app.services import report_engine
@@ -965,4 +972,120 @@ async def get_mastery_report(
         word_summaries=word_summaries,
         per_engine_stats=[EngineStats(**s) for s in metrics["per_engine_stats"]],
         diagnosis=EngineDiagnosis(**metrics["diagnosis"]),
+    )
+
+
+GRAMMAR_TYPE_LABELS: dict[str, str] = {
+    "grammar_blank": "빈칸 채우기",
+    "grammar_error": "오류 탐지",
+    "grammar_common": "공통 단어",
+    "grammar_usage": "쓰임 구별",
+    "grammar_transform": "문장 전환",
+    "grammar_order": "단어 배열",
+    "grammar_translate": "영작",
+    "grammar_pair": "(A)(B) 짝짓기",
+}
+
+
+@router.get(
+    "/student/{student_id}/grammar-report/{session_id}",
+    response_model=GrammarReportResponse,
+)
+async def get_grammar_report(
+    student_id: str,
+    session_id: str,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Get grammar test report for a session."""
+    if current_user.role == "student" and current_user.id != student_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+    # Load session
+    session_result = await db.execute(
+        select(GrammarSession).where(GrammarSession.id == session_id)
+    )
+    session = session_result.scalar_one_or_none()
+    if not session:
+        raise HTTPException(status_code=404, detail="Grammar session not found")
+    if session.student_id != student_id:
+        raise HTTPException(status_code=403, detail="Session does not belong to student")
+
+    # Load student info
+    student_result = await db.execute(select(User).where(User.id == student_id))
+    student = student_result.scalar_one_or_none()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    # Load config name (optional)
+    config_name = None
+    if session.grammar_config_id:
+        config_result = await db.execute(
+            select(GrammarConfig.name).where(GrammarConfig.id == session.grammar_config_id)
+        )
+        config_name = config_result.scalar_one_or_none()
+
+    # Load answers + questions
+    answers_result = await db.execute(
+        select(GrammarAnswer, GrammarQuestion)
+        .join(GrammarQuestion, GrammarAnswer.grammar_question_id == GrammarQuestion.id)
+        .where(GrammarAnswer.grammar_session_id == session_id)
+        .order_by(GrammarAnswer.question_order)
+    )
+    answer_rows = answers_result.fetchall()
+
+    # Build answer details
+    answers_list = []
+    for ans, question in answer_rows:
+        answers_list.append(GrammarAnswerDetail(
+            question_order=ans.question_order,
+            question_type=ans.question_type,
+            question_data=question.question_data,
+            selected_answer=ans.selected_answer,
+            correct_answer=ans.correct_answer,
+            is_correct=ans.is_correct,
+            time_taken_seconds=ans.time_taken_seconds,
+        ))
+
+    # Build type stats
+    type_groups: dict[str, list] = {}
+    for ans, _ in answer_rows:
+        type_groups.setdefault(ans.question_type, []).append(ans)
+
+    type_stats = []
+    for qtype, group in type_groups.items():
+        correct = sum(1 for a in group if a.is_correct)
+        times = [a.time_taken_seconds for a in group if a.time_taken_seconds is not None]
+        type_stats.append(GrammarTypeStats(
+            question_type=qtype,
+            label=GRAMMAR_TYPE_LABELS.get(qtype, qtype),
+            total=len(group),
+            correct=correct,
+            accuracy_pct=round(correct / len(group) * 100, 1) if group else 0,
+            avg_time_sec=round(sum(times) / len(times), 1) if times else None,
+        ))
+
+    # Total time
+    total_time = None
+    if session.completed_at and session.started_at:
+        total_time = int((session.completed_at - session.started_at).total_seconds())
+
+    session_data = GrammarSessionData(
+        id=session.id,
+        student_id=student_id,
+        student_name=student.name,
+        student_grade=student.grade,
+        config_name=config_name,
+        total_questions=session.total_questions,
+        correct_count=session.correct_count,
+        score=session.score,
+        started_at=str(session.started_at) if session.started_at else None,
+        completed_at=str(session.completed_at) if session.completed_at else None,
+    )
+
+    return GrammarReportResponse(
+        session=session_data,
+        type_stats=type_stats,
+        answers=answers_list,
+        total_time_seconds=total_time,
     )

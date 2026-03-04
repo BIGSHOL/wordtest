@@ -174,6 +174,47 @@ class MasteryReportResponse(BaseModel):
     diagnosis: Optional[EngineDiagnosis] = None
 
 
+class GrammarTypeStats(BaseModel):
+    """유형별 통계"""
+    question_type: str
+    label: str
+    total: int
+    correct: int
+    accuracy_pct: float
+    avg_time_sec: Optional[float] = None
+
+
+class GrammarAnswerDetail(BaseModel):
+    """개별 문제 상세"""
+    question_order: int
+    question_type: str
+    question_data: Optional[dict] = None
+    selected_answer: Optional[str] = None
+    correct_answer: str
+    is_correct: bool
+    time_taken_seconds: Optional[float] = None
+
+
+class GrammarSessionData(BaseModel):
+    id: str
+    student_id: str
+    student_name: Optional[str] = None
+    student_grade: Optional[str] = None
+    config_name: Optional[str] = None
+    total_questions: int
+    correct_count: int
+    score: Optional[int] = None
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+
+
+class GrammarReportResponse(BaseModel):
+    session: GrammarSessionData
+    type_stats: list[GrammarTypeStats]
+    answers: list[GrammarAnswerDetail]
+    total_time_seconds: Optional[int] = None
+
+
 class AllResultsResponse(BaseModel):
     results: list[RecentTest]
     total: int

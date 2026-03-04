@@ -16,6 +16,7 @@ import {
   BookOpen, Users, Check, ChevronRight, ChevronLeft,
   Clock, Send, Loader2, Trash2, Copy, CheckCircle2,
   ListChecks, Search, Info, Plus, X, RotateCcw,
+  Hash, ArrowUpDown, SplitSquareHorizontal, GripVertical,
 } from 'lucide-react';
 
 const ALL_QUESTION_TYPES: GrammarQuestionType[] = [
@@ -24,7 +25,6 @@ const ALL_QUESTION_TYPES: GrammarQuestionType[] = [
 ];
 
 type Tab = 'create' | 'configs' | 'status';
-type Step = 0 | 1 | 2 | 3 | 4;
 
 const TAB_ITEMS: { key: Tab; label: string }[] = [
   { key: 'create', label: '테스트 출제' },
@@ -32,13 +32,25 @@ const TAB_ITEMS: { key: Tab; label: string }[] = [
   { key: 'status', label: '출제 현황' },
 ];
 
-const PAGE_META = [
+// All 7 page metas — pages 5-6 only shown when 2+ types selected
+const ALL_PAGE_META = [
   { title: '학생 선택', icon: <Users className="w-3.5 h-3.5" /> },
   { title: '교재 선택', icon: <BookOpen className="w-3.5 h-3.5" /> },
   { title: '시간 설정', icon: <Clock className="w-3.5 h-3.5" /> },
+  { title: '문제 수', icon: <Hash className="w-3.5 h-3.5" /> },
   { title: '문제 유형', icon: <ListChecks className="w-3.5 h-3.5" /> },
-  { title: '완료', icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+  { title: '출제 순서', icon: <ArrowUpDown className="w-3.5 h-3.5" /> },
+  { title: '유형별 배분', icon: <SplitSquareHorizontal className="w-3.5 h-3.5" /> },
 ];
+
+function computeGrammarEqualDist(types: GrammarQuestionType[], total: number): Record<string, number> {
+  if (types.length === 0) return {};
+  const base = Math.floor(total / types.length);
+  const remainder = total % types.length;
+  const dist: Record<string, number> = {};
+  types.forEach((t, i) => { dist[t] = base + (i < remainder ? 1 : 0); });
+  return dist;
+}
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '-';
@@ -66,7 +78,7 @@ export function GrammarSettingsPage() {
   const [assignments, setAssignments] = useState<GrammarAssignmentItem[]>([]);
 
   // Wizard state
-  const [step, setStep] = useState<Step>(0);
+  const [step, setStep] = useState(0);
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set());
   const [selectedBooks, setSelectedBooks] = useState<Set<string>>(new Set());
   const [selectedChapters, setSelectedChapters] = useState<Set<string>>(new Set());
@@ -79,6 +91,12 @@ export function GrammarSettingsPage() {
   const [customQuestionCount, setCustomQuestionCount] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<Set<GrammarQuestionType>>(new Set(ALL_QUESTION_TYPES));
   const [configName, setConfigName] = useState('');
+  // New: type order + distribution (steps 5-6)
+  const [typeOrder, setTypeOrder] = useState<GrammarQuestionType[]>([...ALL_QUESTION_TYPES]);
+  const [distributionMode, setDistributionMode] = useState<'equal' | 'manual'>('equal');
+  const [manualCounts, setManualCounts] = useState<Record<string, number>>({});
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
 
   // UI
   const [isLoading, setIsLoading] = useState(false);
@@ -189,16 +207,18 @@ export function GrammarSettingsPage() {
     setIsSubmitting(true);
     try {
       const name = configName || `문법 테스트 ${new Date().toLocaleDateString('ko-KR')}`;
-      const effCount = questionCount === -1 ? (parseInt(customQuestionCount) || 20) : questionCount;
+      const submitCount = effCount || 20;
+      // Use ordered types (from step 5) filtered by selection
+      const orderedTypes = typeOrder.filter(t => selectedTypes.has(t));
       const config = await grammarTestService.createConfig({
         name,
         book_ids: Array.from(selectedBooks),
         chapter_ids: selectedChapters.size > 0 ? Array.from(selectedChapters) : undefined,
-        question_count: effCount,
-        time_limit_seconds: timeMode === 'total' ? totalTime : perQuestionTime * effCount,
+        question_count: submitCount,
+        time_limit_seconds: timeMode === 'total' ? totalTime : perQuestionTime * submitCount,
         per_question_seconds: timeMode === 'per_question' ? perQuestionTime : undefined,
         time_mode: timeMode,
-        question_types: Array.from(selectedTypes),
+        question_types: orderedTypes.length > 0 ? orderedTypes : Array.from(selectedTypes),
       });
 
       if (selectedStudents.size > 0) {
@@ -210,7 +230,7 @@ export function GrammarSettingsPage() {
       }
 
       setConfigs((prev) => [{ ...config, assignment_count: selectedStudents.size }, ...prev]);
-      setStep(4);
+      setStep(99); // completion view
     } catch (error) {
       logger.error('Failed to create grammar test:', error);
     } finally {
@@ -260,15 +280,37 @@ export function GrammarSettingsPage() {
     setConfigName('');
     setAssignResults(null);
     setStudentSearch('');
+    setTypeOrder([...ALL_QUESTION_TYPES]);
+    setDistributionMode('equal');
+    setManualCounts({});
   };
 
-  // Step 0 allows proceeding without students (config-only mode)
+  // Dynamic page count: 5 base, 7 when 2+ types selected
+  const orderedSelectedTypes = typeOrder.filter(t => selectedTypes.has(t));
+  const totalPages = orderedSelectedTypes.length >= 2 ? 7 : 5;
+  const pageTitles = orderedSelectedTypes.length >= 2
+    ? ALL_PAGE_META
+    : ALL_PAGE_META.slice(0, 5);
+
+  const effCount = questionCount === -1 ? (parseInt(customQuestionCount) || 0) : questionCount;
+
+  // Step validation
   const canProceed = () => {
     switch (step) {
       case 0: return true; // students optional
       case 1: return selectedBooks.size > 0;
-      case 2: return true;
-      case 3: return selectedTypes.size > 0;
+      case 2: return true; // time always valid
+      case 3: return effCount > 0; // question count must be set
+      case 4: return selectedTypes.size > 0;
+      case 5: return true; // order always valid
+      case 6: {
+        // distribution: manual sum must match
+        if (distributionMode === 'manual') {
+          const sum = orderedSelectedTypes.reduce((s, t) => s + (manualCounts[t] ?? 0), 0);
+          return sum === effCount;
+        }
+        return true;
+      }
       default: return false;
     }
   };
@@ -280,11 +322,10 @@ export function GrammarSettingsPage() {
     timeMode === 'per_question'
       ? `문제당 ${perQuestionTime}초`
       : `전체 ${Math.floor(totalTime / 60)}분`;
-  const effectiveQuestionCount = questionCount === -1 ? (parseInt(customQuestionCount) || 0) : questionCount;
-  const totalTimeSeconds =
-    timeMode === 'per_question' ? perQuestionTime * effectiveQuestionCount : totalTime;
-  const totalMinutes = Math.floor(totalTimeSeconds / 60);
-  const totalSec = totalTimeSeconds % 60;
+  const previewTotalTimeSeconds =
+    timeMode === 'per_question' ? perQuestionTime * effCount : totalTime;
+  const totalMinutes = Math.floor(previewTotalTimeSeconds / 60);
+  const totalSec = previewTotalTimeSeconds % 60;
   const estimatedTime = totalMinutes > 0
     ? `${totalMinutes}분${totalSec > 0 ? ` ${totalSec}초` : ''}`
     : `${totalSec}초`;
@@ -341,7 +382,7 @@ export function GrammarSettingsPage() {
                   <p className="text-xs text-text-secondary">천일문 GRAMMAR 기반 문법 시험 출제</p>
                 </div>
                 <div className="flex items-center justify-center gap-1.5 px-4 py-2.5">
-                  {PAGE_META.map((_, i) => {
+                  {pageTitles.map((_, i) => {
                     const isCompleted = i < step;
                     const isCurrent = i === step;
                     return (
@@ -355,7 +396,7 @@ export function GrammarSettingsPage() {
                         >
                           {isCompleted ? <Check className="w-3 h-3" /> : i + 1}
                         </div>
-                        {i < PAGE_META.length - 1 && (
+                        {i < pageTitles.length - 1 && (
                           <div
                             className="w-4 h-0.5 mx-1"
                             style={{ backgroundColor: i < step ? '#2D9CAE' : '#E8E8E6' }}
@@ -374,8 +415,8 @@ export function GrammarSettingsPage() {
                   className="flex items-center gap-2.5"
                   style={{ padding: '16px 28px', borderBottom: '1px solid #E8E8E6', backgroundColor: '#FAFAF9' }}
                 >
-                  <span style={{ color: '#2D9CAE' }}>{PAGE_META[step]?.icon}</span>
-                  <span className="text-[15px] font-bold text-text-primary">{PAGE_META[step]?.title}</span>
+                  <span style={{ color: '#2D9CAE' }}>{step === 99 ? <CheckCircle2 className="w-3.5 h-3.5" /> : pageTitles[step]?.icon}</span>
+                  <span className="text-[15px] font-bold text-text-primary">{step === 99 ? '완료' : pageTitles[step]?.title}</span>
                 </div>
 
                 {/* Page content */}
@@ -621,7 +662,7 @@ export function GrammarSettingsPage() {
                     </div>
                   )}
 
-                  {/* Step 2: Time & Question count — unified with word test design */}
+                  {/* Step 2: Time setting only */}
                   {step === 2 && (
                     <div className="space-y-4">
                       {/* Time mode */}
@@ -743,8 +784,12 @@ export function GrammarSettingsPage() {
                           </>
                         )}
                       </div>
+                    </div>
+                  )}
 
-                      {/* Question count */}
+                  {/* Step 3: Question count */}
+                  {step === 3 && (
+                    <div className="space-y-4">
                       <div>
                         <span className="text-[11px] font-semibold text-text-secondary mb-1.5 block">문제 수</span>
                         <div className="flex flex-wrap gap-2">
@@ -778,7 +823,6 @@ export function GrammarSettingsPage() {
                         )}
                         {/* Time summary */}
                         {(() => {
-                          const effCount = questionCount === -1 ? (parseInt(customQuestionCount) || 0) : questionCount;
                           if (effCount <= 0) return null;
                           const summary = timeMode === 'per_question'
                             ? `${effCount}문제 x ${perQuestionTime}초 = 총 ${Math.floor(effCount * perQuestionTime / 60)}분 ${(effCount * perQuestionTime) % 60}초`
@@ -810,8 +854,8 @@ export function GrammarSettingsPage() {
                     </div>
                   )}
 
-                  {/* Step 3: Question types — grouped by 객관식/서술형 */}
-                  {step === 3 && (
+                  {/* Step 4: Question types — grouped by 객관식/서술형 */}
+                  {step === 4 && (
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] font-semibold text-text-secondary">
@@ -941,8 +985,170 @@ export function GrammarSettingsPage() {
                     </div>
                   )}
 
-                  {/* Step 4: Results */}
-                  {step === 4 && (
+                  {/* Step 5: Type order (drag reorder) — only when 2+ types */}
+                  {step === 5 && totalPages === 7 && (
+                    <div className="space-y-3">
+                      <div className="text-[11px] text-text-secondary">
+                        드래그하여 출제 순서를 변경하세요. 위에 있을수록 먼저 출제됩니다.
+                      </div>
+                      <div className="space-y-1.5">
+                        {orderedSelectedTypes.map((t, idx) => (
+                          <div
+                            key={t}
+                            draggable
+                            onDragStart={() => setDragIdx(idx)}
+                            onDragOver={(e) => { e.preventDefault(); setOverIdx(idx); }}
+                            onDrop={() => {
+                              if (dragIdx === null || dragIdx === idx) { setDragIdx(null); setOverIdx(null); return; }
+                              const arr = [...orderedSelectedTypes];
+                              const [moved] = arr.splice(dragIdx, 1);
+                              arr.splice(idx, 0, moved);
+                              // Rebuild full typeOrder: keep unselected types at end
+                              const unselected = typeOrder.filter(x => !selectedTypes.has(x));
+                              setTypeOrder([...arr, ...unselected]);
+                              setDragIdx(null);
+                              setOverIdx(null);
+                            }}
+                            onDragEnd={() => { setDragIdx(null); setOverIdx(null); }}
+                            className="flex items-center gap-3 rounded-lg cursor-grab active:cursor-grabbing transition-all"
+                            style={{
+                              padding: '10px 14px',
+                              backgroundColor: dragIdx === idx ? '#F0FDFA' : overIdx === idx && dragIdx !== idx ? '#EBF8FA' : '#F8F8F6',
+                              border: overIdx === idx && dragIdx !== idx ? '2px solid #2D9CAE' : dragIdx === idx ? '2px dashed #2D9CAE' : '1px solid #E8E8E6',
+                              opacity: dragIdx === idx ? 0.6 : 1,
+                            }}
+                          >
+                            <GripVertical className="w-4 h-4 shrink-0" style={{ color: '#B0AFAD' }} />
+                            <span
+                              className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0"
+                              style={{ backgroundColor: '#2D9CAE', color: 'white' }}
+                            >
+                              {idx + 1}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-[12px] font-bold" style={{ color: '#3D3D3C' }}>
+                                {GRAMMAR_TYPE_LABELS[t]}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 6: Distribution — only when 2+ types */}
+                  {step === 6 && totalPages === 7 && (
+                    <div className="space-y-3">
+                      {/* Mode toggle */}
+                      <div
+                        className="flex gap-1 p-1 rounded-lg"
+                        style={{ backgroundColor: '#F0F0EE' }}
+                      >
+                        <button
+                          className="flex-1 py-1.5 rounded-md text-[12px] font-semibold text-center transition-all"
+                          style={{
+                            backgroundColor: distributionMode === 'equal' ? '#FFFFFF' : 'transparent',
+                            color: distributionMode === 'equal' ? '#2D9CAE' : '#9C9B99',
+                            boxShadow: distributionMode === 'equal' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                          }}
+                          onClick={() => setDistributionMode('equal')}
+                        >
+                          균등 배분
+                        </button>
+                        <button
+                          className="flex-1 py-1.5 rounded-md text-[12px] font-semibold text-center transition-all"
+                          style={{
+                            backgroundColor: distributionMode === 'manual' ? '#FFFFFF' : 'transparent',
+                            color: distributionMode === 'manual' ? '#2D9CAE' : '#9C9B99',
+                            boxShadow: distributionMode === 'manual' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                          }}
+                          onClick={() => {
+                            const equalDist = computeGrammarEqualDist(orderedSelectedTypes, effCount);
+                            const prefilled: Record<string, number> = {};
+                            orderedSelectedTypes.forEach(t => {
+                              prefilled[t] = manualCounts[t] !== undefined ? manualCounts[t] : (equalDist[t] ?? 0);
+                            });
+                            setManualCounts(prefilled);
+                            setDistributionMode('manual');
+                          }}
+                        >
+                          직접 지정
+                        </button>
+                      </div>
+
+                      {/* Distribution table */}
+                      <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #E8E8E6' }}>
+                        {orderedSelectedTypes.map((t, idx) => {
+                          const equalDist = computeGrammarEqualDist(orderedSelectedTypes, effCount);
+                          return (
+                            <div
+                              key={t}
+                              className="flex items-center justify-between"
+                              style={{
+                                padding: '10px 14px',
+                                backgroundColor: '#F8F8F6',
+                                borderBottom: idx < orderedSelectedTypes.length - 1 ? '1px solid #EEEEEC' : undefined,
+                              }}
+                            >
+                              <span className="text-[12px]" style={{ color: '#6D6C6A' }}>{GRAMMAR_TYPE_LABELS[t]}</span>
+                              {distributionMode === 'equal' ? (
+                                <span className="text-[12px] font-semibold" style={{ color: '#3D3D3C' }}>{equalDist[t] ?? 0}개</span>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={effCount}
+                                    value={manualCounts[t] ?? ''}
+                                    onChange={(e) => setManualCounts(prev => ({ ...prev, [t]: parseInt(e.target.value) || 0 }))}
+                                    className="w-14 px-2 py-1 rounded-lg text-[12px] text-center focus:outline-none focus:ring-2 focus:ring-[#2D9CAE]/30"
+                                    style={{ backgroundColor: '#FFFFFF', border: '1px solid #E8E8E6' }}
+                                  />
+                                  <span className="text-[11px] text-text-tertiary">개</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {distributionMode === 'manual' && (() => {
+                          const manualSum = orderedSelectedTypes.reduce((s, t) => s + (manualCounts[t] ?? 0), 0);
+                          return (
+                            <div
+                              className="flex items-center justify-between"
+                              style={{ padding: '10px 14px', borderTop: '1px solid #E8E8E6', backgroundColor: '#FFFFFF' }}
+                            >
+                              <span className="text-[12px] font-semibold text-text-secondary">합계</span>
+                              <span
+                                className="text-[12px] font-bold"
+                                style={{ color: manualSum === effCount ? '#5A8F6B' : '#EF4444' }}
+                              >
+                                {manualSum} / {effCount} {manualSum === effCount ? '✓' : ''}
+                              </span>
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {distributionMode === 'manual' && (() => {
+                        const manualSum = orderedSelectedTypes.reduce((s, t) => s + (manualCounts[t] ?? 0), 0);
+                        if (manualSum === effCount) return null;
+                        return (
+                          <div
+                            className="flex items-center gap-2 rounded-lg"
+                            style={{ backgroundColor: '#FEF2F2', padding: '8px 12px' }}
+                          >
+                            <Info className="w-3.5 h-3.5 shrink-0" style={{ color: '#DC2626' }} />
+                            <span className="text-[11px] font-medium" style={{ color: '#DC2626' }}>
+                              합계가 문제 수({effCount})와 일치해야 합니다
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {/* Completion view */}
+                  {step === 99 && (
                     <div className="space-y-4">
                       <div className="flex items-center gap-2" style={{ color: '#2D9CAE' }}>
                         <CheckCircle2 className="w-6 h-6" />
@@ -999,14 +1205,14 @@ export function GrammarSettingsPage() {
                 </div>
 
                 {/* Navigation */}
-                {step < 4 && (
+                {step < totalPages && step !== 99 && (
                   <div
                     className="flex items-center justify-between"
                     style={{ padding: '14px 28px', borderTop: '1px solid #E8E8E6', backgroundColor: '#FAFAF9' }}
                   >
                     {step > 0 ? (
                       <button
-                        onClick={() => setStep(Math.max(0, step - 1) as Step)}
+                        onClick={() => setStep(Math.max(0, step - 1))}
                         className="flex items-center gap-1 px-4 py-2 rounded-lg text-[13px] font-semibold transition-all"
                         style={{ backgroundColor: '#F8F8F6', border: '1px solid #E8E8E6', color: '#6D6C6A' }}
                       >
@@ -1017,9 +1223,9 @@ export function GrammarSettingsPage() {
                       <div />
                     )}
 
-                    {step < 3 ? (
+                    {step < totalPages - 1 ? (
                       <button
-                        onClick={() => setStep((step + 1) as Step)}
+                        onClick={() => setStep(step + 1)}
                         disabled={!canProceed()}
                         className="flex items-center gap-1 px-4 py-2 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{ background: 'linear-gradient(135deg, #2D9CAE, #3DBDC8)' }}
@@ -1090,7 +1296,7 @@ export function GrammarSettingsPage() {
                       )}
                     </div>
                     <PreviewRow label="챕터" value={selectedChapterCount > 0 ? `${selectedChapterCount}개 선택` : '전체'} isEmpty={false} />
-                    <PreviewRow label="문제 수" value={`${questionCount === -1 ? (parseInt(customQuestionCount) || 0) : questionCount}문제`} />
+                    <PreviewRow label="문제 수" value={`${effCount}문제`} />
                     <PreviewRow label="시간 설정" value={timeSummary} />
                     <PreviewRow label="예상 소요 시간" value={estimatedTime} />
                     <div>

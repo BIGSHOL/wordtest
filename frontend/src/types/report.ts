@@ -97,3 +97,42 @@ export interface MasteryReport {
   student_school?: string | null;
   test_type?: string | null;
 }
+
+// --- Grammar Report ---
+
+export interface GrammarTypeStats {
+  question_type: string;
+  label: string;
+  total: number;
+  correct: number;
+  accuracy_pct: number;
+  avg_time_sec: number | null;
+}
+
+export interface GrammarAnswerDetail {
+  question_order: number;
+  question_type: string;
+  question_data: Record<string, unknown> | null;
+  selected_answer: string | null;
+  correct_answer: string;
+  is_correct: boolean;
+  time_taken_seconds: number | null;
+}
+
+export interface GrammarReport {
+  session: {
+    id: string;
+    student_id: string;
+    student_name?: string | null;
+    student_grade?: string | null;
+    config_name?: string | null;
+    total_questions: number;
+    correct_count: number;
+    score?: number | null;
+    started_at?: string | null;
+    completed_at?: string | null;
+  };
+  type_stats: GrammarTypeStats[];
+  answers: GrammarAnswerDetail[];
+  total_time_seconds: number | null;
+}
