@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.core.security import create_access_token
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, CurrentTeacher
 from app.models.grammar_book import GrammarBook
 from app.models.grammar_chapter import GrammarChapter
 from app.models.grammar_question import GrammarQuestion
@@ -121,11 +121,9 @@ async def list_questions(
 async def create_config(
     body: CreateGrammarConfigRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentTeacher = Depends(),
 ):
     """Create a grammar test configuration."""
-    if current_user.role != "teacher":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teachers only")
 
     config = await grammar_service.create_config(
         db,
@@ -147,11 +145,9 @@ async def create_config(
 @router.get("/configs")
 async def list_configs(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentTeacher = Depends(),
 ):
     """List grammar configs for the current teacher."""
-    if current_user.role != "teacher":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teachers only")
     configs = await grammar_service.list_configs(db, current_user.id)
     config_ids = [c.id for c in configs]
     counts = await grammar_service.get_config_assignment_counts(db, config_ids)
@@ -168,11 +164,9 @@ async def list_configs(
 async def delete_config(
     config_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentTeacher = Depends(),
 ):
     """Soft-delete a grammar config."""
-    if current_user.role != "teacher":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teachers only")
     ok = await grammar_service.delete_config(db, config_id, current_user.id)
     if not ok:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Config not found")
@@ -187,11 +181,9 @@ async def assign_grammar(
     config_id: str,
     body: AssignGrammarRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentTeacher = Depends(),
 ):
     """Assign grammar test to students."""
-    if current_user.role != "teacher":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teachers only")
 
     try:
         assignments = await grammar_service.assign_students(
@@ -207,11 +199,9 @@ async def assign_grammar(
 @router.get("/assignments")
 async def list_grammar_assignments(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentTeacher = Depends(),
 ):
     """List grammar test assignments for the current teacher."""
-    if current_user.role != "teacher":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teachers only")
     assignments = await grammar_service.list_assignments(db, current_user.id)
     return assignments
 
@@ -220,11 +210,9 @@ async def list_grammar_assignments(
 async def delete_grammar_assignment(
     assignment_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentTeacher = Depends(),
 ):
     """Delete a grammar assignment (teacher only, must be pending)."""
-    if current_user.role != "teacher":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teachers only")
     from app.services.test_assignment import delete_assignment
     ok = await delete_assignment(db, assignment_id, current_user.id)
     if not ok:
@@ -236,11 +224,9 @@ async def delete_grammar_assignment(
 async def reset_grammar_assignment(
     assignment_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: CurrentTeacher = Depends(),
 ):
     """Reset a grammar assignment back to pending (teacher only)."""
-    if current_user.role != "teacher":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teachers only")
     from app.services.test_assignment import reset_assignment
     ok = await reset_assignment(db, assignment_id, current_user.id)
     if not ok:
