@@ -299,8 +299,16 @@ export function GrammarTestPage() {
 
         {/* Question area */}
         <div className="flex-1 flex flex-col justify-center items-center gap-5 px-5 py-6 md:px-8">
-          {/* Type label */}
-          <div className="w-full md:w-[640px] flex justify-end">
+          {/* Question header — number badge + type label */}
+          <div className="w-full md:w-[640px] flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-8 h-8 rounded-full bg-accent-indigo text-white flex items-center justify-center text-sm font-bold">
+                {currentIndex + 1}
+              </span>
+              <span className="text-xs text-text-tertiary">
+                / {totalQuestions}
+              </span>
+            </div>
             <span className="text-xs px-3 py-1 rounded-full bg-accent-indigo/10 text-accent-indigo font-medium">
               {GRAMMAR_TYPE_LABELS[currentQuestion.question_type] || currentQuestion.question_type}
             </span>

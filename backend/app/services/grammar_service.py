@@ -327,6 +327,32 @@ async def assign_students(
 
 # ── Question Selection ──────────────────────────────────────────────────
 
+def _has_enough_choices(q, min_choices: int = 4) -> bool:
+    """Check if a question has at least min_choices options."""
+    data = q.question_data if isinstance(q.question_data, dict) else json.loads(q.question_data)
+    qtype = q.question_type
+
+    # Free-form types — no choices needed
+    if qtype in ("grammar_transform", "grammar_order", "grammar_translate"):
+        return True
+
+    if qtype == "grammar_blank":
+        return len(data.get("choices", [])) >= min_choices
+    if qtype == "grammar_pair":
+        return len(data.get("paired_choices", [])) >= min_choices
+    if qtype in ("grammar_error", "grammar_usage"):
+        return len(data.get("sentences", [])) >= min_choices
+    if qtype == "grammar_common":
+        choices = data.get("choices", [])
+        if choices and len(choices) > 0:
+            return len(choices) >= min_choices
+        # sentences-as-choices variant
+        all_s = data.get("sentences", []) + data.get("different_sentences", [])
+        return len(all_s) >= min_choices
+
+    return True
+
+
 async def _select_questions(
     db: AsyncSession,
     config: GrammarConfig,
@@ -356,7 +382,8 @@ async def _select_questions(
         query = query.where(GrammarQuestion.question_type.in_(allowed_types))
 
     result = await db.execute(query.order_by(func.random()))
-    all_questions = list(result.scalars().all())
+    # Filter out questions with fewer than 4 choices
+    all_questions = [q for q in result.scalars().all() if _has_enough_choices(q)]
 
     if not all_questions:
         raise ValueError("No questions available for the selected criteria")
