@@ -190,3 +190,11 @@ class GrammarQuestionBrowse(BaseModel):
     question_data: dict
     source: str
     difficulty: int
+    is_active: bool = True
+
+
+class GrammarQuestionUpdate(BaseModel):
+    question_type: Optional[str] = None
+    question_data: Optional[dict] = None
+    difficulty: Optional[int] = None
+    is_active: Optional[bool] = None

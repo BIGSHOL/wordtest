@@ -7,6 +7,7 @@ import type {
   GrammarAssignment,
   GrammarAssignmentItem,
   GrammarQuestionBrowse,
+  GrammarQuestionUpdateRequest,
   StartGrammarResponse,
   GrammarAnswerResult,
   GrammarCompleteResult,
@@ -29,6 +30,7 @@ export const grammarTestService = {
     book_id?: string;
     chapter_id?: string;
     question_type?: string;
+    is_active?: boolean;
     skip?: number;
     limit?: number;
   }): Promise<{ questions: GrammarQuestionBrowse[]; total: number }> {
@@ -36,6 +38,11 @@ export const grammarTestService = {
       '/api/v1/grammar/questions',
       { params },
     );
+    return res.data;
+  },
+
+  async updateQuestion(questionId: string, data: GrammarQuestionUpdateRequest): Promise<GrammarQuestionBrowse> {
+    const res = await api.patch<GrammarQuestionBrowse>(`/api/v1/grammar/questions/${questionId}`, data);
     return res.data;
   },
 

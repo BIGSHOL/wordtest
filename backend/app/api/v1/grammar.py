@@ -21,6 +21,7 @@ from app.schemas.grammar import (
     GrammarChapterResponse,
     GrammarChapterWithStats,
     GrammarQuestionBrowse,
+    GrammarQuestionUpdate,
     StartGrammarRequest,
     GrammarAnswerRequest,
     GrammarBatchSubmitRequest,
@@ -86,6 +87,7 @@ async def list_questions(
     book_id: Optional[str] = Query(None),
     chapter_id: Optional[str] = Query(None),
     question_type: Optional[str] = Query(None),
+    is_active: Optional[bool] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
 ):
@@ -102,6 +104,9 @@ async def list_questions(
     if question_type:
         query = query.where(GrammarQuestion.question_type == question_type)
         count_query = count_query.where(GrammarQuestion.question_type == question_type)
+    if is_active is not None:
+        query = query.where(GrammarQuestion.is_active == is_active)
+        count_query = count_query.where(GrammarQuestion.is_active == is_active)
 
     total = (await db.execute(count_query)).scalar() or 0
     result = await db.execute(
@@ -113,6 +118,30 @@ async def list_questions(
         "questions": [GrammarQuestionBrowse.model_validate(q) for q in questions],
         "total": total,
     }
+
+
+@router.patch("/questions/{question_id}", response_model=GrammarQuestionBrowse)
+async def update_question(
+    question_id: str,
+    body: GrammarQuestionUpdate,
+    current_user: CurrentTeacher,
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a grammar question (teacher only). Only provided fields are updated."""
+    result = await db.execute(
+        select(GrammarQuestion).where(GrammarQuestion.id == question_id)
+    )
+    question = result.scalar_one_or_none()
+    if not question:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Question not found")
+
+    update_data = body.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(question, field, value)
+
+    await db.flush()
+    await db.commit()
+    return GrammarQuestionBrowse.model_validate(question)
 
 
 # ── Config CRUD ─────────────────────────────────────────────────────────

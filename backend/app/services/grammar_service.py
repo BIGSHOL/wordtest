@@ -374,8 +374,8 @@ async def _select_questions(
         type_counts = json.loads(config.question_type_counts)
     allowed_types = config.question_types.split(",") if config.question_types else None
 
-    # Fetch available questions
-    query = select(GrammarQuestion)
+    # Fetch available questions (only active)
+    query = select(GrammarQuestion).where(GrammarQuestion.is_active == True)
     if filters:
         query = query.where(and_(*filters))
     if allowed_types:

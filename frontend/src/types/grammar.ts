@@ -22,6 +22,14 @@ export interface GrammarQuestionBrowse {
   question_data: Record<string, any>;
   source: string;
   difficulty: number;
+  is_active: boolean;
+}
+
+export interface GrammarQuestionUpdateRequest {
+  question_type?: string;
+  question_data?: Record<string, any>;
+  difficulty?: number;
+  is_active?: boolean;
 }
 
 export interface GrammarConfig {

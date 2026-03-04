@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, Integer, Text, ForeignKey, Index
+from sqlalchemy import Boolean, String, Integer, Text, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -28,6 +28,7 @@ class GrammarQuestion(Base):
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="pdf")
     difficulty: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     point_refs: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true", default=True)
     created_at: Mapped[datetime] = mapped_column(
         TZDateTime(), default=now_kst, nullable=False
     )
