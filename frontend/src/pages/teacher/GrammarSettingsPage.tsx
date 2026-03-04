@@ -14,7 +14,7 @@ import { BadgeOverflow } from '../../components/common/BadgeOverflow';
 import type { BadgeDef } from '../../components/common/BadgeOverflow';
 import {
   BookOpen, Users, Check, ChevronRight, ChevronLeft,
-  Clock, Send, Loader2, Trash2, Copy, CheckCircle2,
+  Clock, Loader2, Trash2, Copy, CheckCircle2,
   ListChecks, Search, Info, Plus, X, RotateCcw,
   ArrowUpDown, SplitSquareHorizontal, GripVertical,
 } from 'lucide-react';
