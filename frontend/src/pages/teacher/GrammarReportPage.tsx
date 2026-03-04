@@ -326,7 +326,7 @@ export function GrammarReportPage() {
                         </p>
 
                         {/* Options if available */}
-                        {answer.question_data?.options && Array.isArray(answer.question_data.options) && (
+                        {answer.question_data != null && Array.isArray(answer.question_data.options) && (
                           <div className="flex flex-wrap gap-2">
                             {(answer.question_data.options as string[]).map((opt, i) => {
                               const isSelected = String(opt) === answer.selected_answer;
