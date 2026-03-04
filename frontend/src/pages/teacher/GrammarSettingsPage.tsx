@@ -386,7 +386,7 @@ export function GrammarSettingsPage() {
         {activeTab === 'create' && (
           <div className="flex gap-6 items-start">
             {/* Left: Wizard panel */}
-            <div className="w-[880px] shrink-0">
+            <div className="flex-1 min-w-0">
               {/* Header + Step indicator */}
               <div className="flex items-center justify-between mb-5">
                 <div className="space-y-1">
@@ -1235,7 +1235,7 @@ export function GrammarSettingsPage() {
                       <div />
                     )}
 
-                    {step < totalPages - 1 ? (
+                    {step < totalPages - 1 && (
                       <button
                         onClick={() => setStep(step + 1)}
                         disabled={!canProceed()}
@@ -1245,16 +1245,6 @@ export function GrammarSettingsPage() {
                         다음
                         <ChevronRight className="w-4 h-4" />
                       </button>
-                    ) : (
-                      <button
-                        onClick={handleCreateConfig}
-                        disabled={!canProceed() || isSubmitting}
-                        className="flex items-center gap-2 px-5 py-2 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                        style={{ background: 'linear-gradient(135deg, #2D9CAE, #3DBDC8)' }}
-                      >
-                        {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                        {selectedStudents.size > 0 ? '출제하기' : '테스트 생성하기'}
-                      </button>
                     )}
                   </div>
                 )}
@@ -1262,20 +1252,20 @@ export function GrammarSettingsPage() {
             </div>
 
             {/* Right: Preview panel */}
-            <div className="flex-1 min-w-0 sticky top-4">
+            <div className="w-[280px] shrink-0 sticky top-4">
               <div
                 className="rounded-2xl overflow-hidden flex flex-col"
                 style={{ border: '1px solid #E8E8E6', backgroundColor: '#FAFAF9' }}
               >
                 <div
                   className="flex items-center gap-2.5 shrink-0"
-                  style={{ padding: '16px 28px', borderBottom: '1px solid #E8E8E6' }}
+                  style={{ padding: '16px 20px', borderBottom: '1px solid #E8E8E6' }}
                 >
                   <Info className="w-4 h-4" style={{ color: '#2D9CAE' }} />
                   <span className="text-[15px] font-bold text-text-primary">설정 미리보기</span>
                 </div>
 
-                <div className="flex-1 overflow-y-auto" style={{ padding: '24px 28px' }}>
+                <div className="flex-1 overflow-y-auto" style={{ padding: '24px 20px' }}>
                   <div className="space-y-4">
                     <div>
                       <div className="text-[11px] font-semibold text-text-secondary mb-1.5">테스트 이름</div>
@@ -1334,7 +1324,7 @@ export function GrammarSettingsPage() {
 
                 <div
                   className="shrink-0 space-y-3"
-                  style={{ padding: '16px 28px', borderTop: '1px solid #E8E8E6', backgroundColor: '#FFFFFF' }}
+                  style={{ padding: '16px 20px', borderTop: '1px solid #E8E8E6', backgroundColor: '#FFFFFF' }}
                 >
                   <button
                     onClick={handleCreateConfig}
