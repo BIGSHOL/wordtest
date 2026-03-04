@@ -122,7 +122,7 @@ async def list_level_test_assignments(
         .join(TestConfig, TestAssignment.test_config_id == TestConfig.id)
         .join(User, TestAssignment.student_id == User.id)
         .where(
-            TestConfig.name.like("레벨테스트%"),
+            TestConfig.name.like("%레벨테스트%"),
         )
         .order_by(TestAssignment.assigned_at.desc())
     )
@@ -187,7 +187,7 @@ async def delete_level_test_assignment(
         .join(TestConfig, TestAssignment.test_config_id == TestConfig.id)
         .where(
             TestAssignment.id == assignment_id,
-            TestConfig.name.like("레벨테스트%"),
+            TestConfig.name.like("%레벨테스트%"),
         )
     )
     assignment = result.scalar_one_or_none()
