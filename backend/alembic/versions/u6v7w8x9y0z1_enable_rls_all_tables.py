@@ -33,6 +33,7 @@ TABLES = [
     "grammar_configs",
     "grammar_sessions",
     "grammar_answers",
+    "alembic_version",
 ]
 
 
