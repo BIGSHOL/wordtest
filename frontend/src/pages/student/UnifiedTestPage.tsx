@@ -617,10 +617,13 @@ export function UnifiedTestPage() {
 
         {/* Content */}
         <div className="flex-1 flex flex-col justify-center items-center gap-5 px-5 py-6 md:px-8">
-          <div className="w-full md:w-[640px]">
-            <p className="font-display text-sm font-semibold" style={{ color: '#9C9B99' }}>
-              문제 {currentQuestionIndex + 1} / {totalQ}
-            </p>
+          <div className="w-full md:w-[640px] flex items-center gap-2">
+            <span className="w-8 h-8 rounded-full bg-accent-indigo text-white flex items-center justify-center text-sm font-bold">
+              {currentQuestionIndex + 1}
+            </span>
+            <span className="text-xs text-text-tertiary">
+              / {totalQ}
+            </span>
           </div>
 
           <div className="w-full md:w-[640px]">

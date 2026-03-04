@@ -15,7 +15,8 @@ import { RadarChart } from '../../components/report/RadarChart';
 import { LevelChartTable } from '../../components/report/LevelChartTable';
 import { MetricDetailSection } from '../../components/report/MetricDetailSection';
 import { logger } from '../../utils/logger';
-import api from '../../services/api';
+import { useAuthStore } from '../../stores/auth';
+import { statsService } from '../../services/stats';
 
 const RANK_ICON_MAP: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
   shield: Shield, sword: Sword, award: Award, crown: Crown, gem: Gem,
@@ -83,18 +84,19 @@ function CollapsibleSection({
 
 export function StudentReportPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const { user } = useAuthStore();
   const [report, setReport] = useState<MasteryReport | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId || !user?.id) return;
     setIsLoading(true);
-    api
-      .get<MasteryReport>(`/api/v1/mastery/session/${sessionId}/report`)
-      .then((res) => setReport(res.data))
+    statsService
+      .getMasteryReport(user.id, sessionId)
+      .then((data) => setReport(data))
       .catch((err) => logger.error('Failed to load report:', err))
       .finally(() => setIsLoading(false));
-  }, [sessionId]);
+  }, [sessionId, user?.id]);
 
   const level = report?.session.determined_level || 1;
   const levelName = LEVEL_NAMES[level] || '';

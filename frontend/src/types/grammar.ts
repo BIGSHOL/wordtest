@@ -49,6 +49,12 @@ export interface GrammarAssignmentItem {
   student_grade: string | null;
   test_code: string;
   config_name: string | null;
+  question_count: number | null;
+  time_limit_seconds: number | null;
+  per_question_seconds: number | null;
+  time_mode: string | null;
+  question_types: string | null;
+  grammar_session_id: string | null;
   status: string;
   assigned_at: string | null;
   completed_at: string | null;

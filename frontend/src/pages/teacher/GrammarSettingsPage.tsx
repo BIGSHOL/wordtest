@@ -15,7 +15,7 @@ import type { BadgeDef } from '../../components/common/BadgeOverflow';
 import {
   BookOpen, Users, Check, ChevronRight, ChevronLeft,
   Clock, Send, Loader2, Trash2, Copy, CheckCircle2,
-  ListChecks, Search, Info, Plus, X,
+  ListChecks, Search, Info, Plus, X, RotateCcw,
 } from 'lucide-react';
 
 const ALL_QUESTION_TYPES: GrammarQuestionType[] = [
@@ -1151,7 +1151,21 @@ export function GrammarSettingsPage() {
 
         {/* ══ Tab: 출제 현황 ══ */}
         {activeTab === 'status' && (
-          <GrammarAssignmentTable assignments={assignments} />
+          <GrammarAssignmentTable
+            assignments={assignments}
+            onDelete={async (id) => {
+              try {
+                await grammarTestService.deleteAssignment(id);
+                await refreshData();
+              } catch (e) { logger.error('Failed to delete assignment:', e); }
+            }}
+            onReset={async (id) => {
+              try {
+                await grammarTestService.resetAssignment(id);
+                await refreshData();
+              } catch (e) { logger.error('Failed to reset assignment:', e); }
+            }}
+          />
         )}
 
         {/* Assign modal */}
@@ -1388,92 +1402,217 @@ function GrammarConfigList({
   );
 }
 
-function GrammarAssignmentTable({ assignments }: { assignments: GrammarAssignmentItem[] }) {
+const GRAMMAR_TYPE_BADGES: Record<string, { label: string; bg: string; color: string }> = {
+  grammar_blank:     { label: '빈칸',   bg: '#DBEAFE', color: '#2563EB' },
+  grammar_error:     { label: '오류',   bg: '#FEE2E2', color: '#DC2626' },
+  grammar_common:    { label: '공통',   bg: '#EDE9FE', color: '#7C3AED' },
+  grammar_usage:     { label: '쓰임',   bg: '#D1FAE5', color: '#059669' },
+  grammar_transform: { label: '전환',   bg: '#FEF3C7', color: '#D97706' },
+  grammar_order:     { label: '배열',   bg: '#FFEDD5', color: '#EA580C' },
+  grammar_translate: { label: '영작',   bg: '#E0E7FF', color: '#4F46E5' },
+  grammar_pair:      { label: '짝짓기', bg: '#FCE7F3', color: '#DB2777' },
+};
+
+function formatTimeDisplay(item: GrammarAssignmentItem): string {
+  if (item.time_mode === 'per_question' && item.per_question_seconds) {
+    return `${item.per_question_seconds}초/문제`;
+  }
+  if (item.time_limit_seconds) {
+    const mins = Math.floor(item.time_limit_seconds / 60);
+    return `${mins}분`;
+  }
+  return '-';
+}
+
+function GrammarAssignmentTable({
+  assignments,
+  onDelete,
+  onReset,
+}: {
+  assignments: GrammarAssignmentItem[];
+  onDelete: (id: string) => void;
+  onReset: (id: string) => void;
+}) {
   const [page, setPage] = useState(0);
-  const PAGE_SIZE = 10;
-  const totalPages = Math.max(1, Math.ceil(assignments.length / PAGE_SIZE));
-  const startIdx = page * PAGE_SIZE;
-  const endIdx = Math.min(startIdx + PAGE_SIZE, assignments.length);
-  const pageData = assignments.slice(startIdx, endIdx);
+  const [searchQuery, setSearchQuery] = useState('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const PAGE_SIZE = 10;
 
   const handleCopy = async (code: string) => {
     await navigator.clipboard.writeText(code);
     setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2000);
+    setTimeout(() => setCopiedCode(null), 1500);
   };
 
+  useEffect(() => setPage(0), [assignments.length, searchQuery]);
+
+  const filtered = searchQuery.trim()
+    ? assignments.filter(item => {
+        const term = searchQuery.toLowerCase();
+        return (
+          item.student_name.toLowerCase().includes(term) ||
+          item.test_code.toLowerCase().includes(term) ||
+          (item.student_school && item.student_school.toLowerCase().includes(term))
+        );
+      })
+    : assignments;
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const startIdx = page * PAGE_SIZE;
+  const endIdx = Math.min(startIdx + PAGE_SIZE, filtered.length);
+  const pageData = filtered.slice(startIdx, endIdx);
+
   return (
-    <div className="bg-white rounded-2xl overflow-hidden" style={{ border: '1px solid #E8E8E6' }}>
+    <div className="bg-white border border-border-subtle rounded-2xl overflow-hidden">
+      {/* Header */}
       <div className="flex items-center justify-between" style={{ padding: '20px 28px' }}>
         <div className="space-y-1">
           <h2 className="text-base font-bold text-text-primary font-display">출제 현황</h2>
-          <p className="text-xs text-text-secondary">학생별 문법 테스트 배정 현황을 확인합니다.</p>
+          <p className="text-xs text-text-secondary">
+            현재 출제된 테스트 목록입니다. 출제된 학생만 테스트에 접속할 수 있습니다.
+          </p>
         </div>
-        <span
-          className="text-[11px] font-semibold rounded-full"
-          style={{ backgroundColor: '#EBF8FA', color: '#2D9CAE', padding: '4px 12px' }}
-        >
-          {assignments.length}건
-        </span>
+        <div className="flex items-center gap-3">
+          <div
+            className="flex items-center gap-2 h-9 rounded-lg"
+            style={{ backgroundColor: '#F8F8F6', border: '1px solid #E8E8E6', padding: '0 12px', width: 200 }}
+          >
+            <Search className="w-3.5 h-3.5 text-text-tertiary shrink-0" />
+            <input
+              type="text"
+              placeholder="이름, 학교, 코드 검색..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1 bg-transparent text-[12px] text-text-primary placeholder:text-text-tertiary focus:outline-none"
+            />
+          </div>
+          <span
+            className="text-[11px] font-semibold rounded-full shrink-0"
+            style={{ backgroundColor: '#EBF8FA', color: '#2D9CAE', padding: '4px 12px' }}
+          >
+            {filtered.length}명 출제됨
+          </span>
+        </div>
       </div>
 
-      {assignments.length === 0 ? (
-        <div className="p-8 text-center text-sm text-text-tertiary">배정된 문법 테스트가 없습니다.</div>
+      {filtered.length === 0 ? (
+        <div className="p-8 text-center text-sm text-text-tertiary">
+          {searchQuery ? '검색 결과가 없습니다' : '아직 출제된 테스트가 없습니다.'}
+        </div>
       ) : (
         <>
           <div className="overflow-x-auto">
-            <table className="w-full" style={{ minWidth: 700 }}>
+            <table className="w-full" style={{ minWidth: 920 }}>
               <thead>
                 <tr style={{ backgroundColor: '#F8F8F6', height: 40, borderTop: '1px solid #E8E8E6', borderBottom: '1px solid #E8E8E6' }}>
                   <th className="text-[11px] font-semibold text-text-secondary text-left pl-6 pr-2 whitespace-nowrap">학생</th>
-                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">학교</th>
-                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">테스트</th>
-                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">코드</th>
+                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">학교/학년</th>
+                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">테스트코드</th>
+                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">문제수</th>
+                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">시간</th>
+                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">유형</th>
+                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">출제일</th>
                   <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">상태</th>
-                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">배정일</th>
-                  <th className="text-[11px] font-semibold text-text-secondary text-left pl-2 pr-6 whitespace-nowrap">완료일</th>
+                  <th className="text-[11px] font-semibold text-text-secondary text-left pl-2 pr-6 whitespace-nowrap">관리</th>
                 </tr>
               </thead>
               <tbody>
                 {pageData.map((a) => {
                   const st = STATUS_LABELS[a.status] ?? { label: a.status, bg: '#F0F0EE', color: '#6D6C6A' };
+                  const schoolGrade = [a.student_school, a.student_grade].filter(Boolean).join(' ') || '-';
                   return (
                     <tr key={a.id} style={{ borderBottom: '1px solid #E8E8E6', height: 48 }}>
-                      <td className="text-xs font-semibold text-text-primary pl-6 pr-2 whitespace-nowrap">{a.student_name}</td>
-                      <td className="text-[11px] text-text-secondary px-2 whitespace-nowrap">
-                        {[a.student_school, a.student_grade].filter(Boolean).join(' ') || '-'}
+                      <td className="text-xs font-semibold text-text-primary pl-6 pr-2 whitespace-nowrap">
+                        {a.student_name}
                       </td>
-                      <td className="text-xs text-text-secondary px-2 whitespace-nowrap max-w-[150px] truncate">
-                        {a.config_name ?? '-'}
+                      <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
+                        {schoolGrade}
                       </td>
                       <td className="px-2 whitespace-nowrap">
-                        <div className="flex items-center gap-1">
-                          <code className="text-[12px] font-mono font-bold tracking-wider" style={{ color: '#2D9CAE' }}>
+                        <button
+                          onClick={() => handleCopy(a.test_code)}
+                          className="flex items-center gap-1.5 group"
+                          title="클릭하여 복사"
+                        >
+                          <span className="text-xs font-bold" style={{ color: '#4F46E5', letterSpacing: 1 }}>
                             {a.test_code}
-                          </code>
-                          <button
-                            onClick={() => handleCopy(a.test_code)}
-                            className="p-0.5 rounded hover:bg-gray-100 transition-colors"
-                          >
-                            {copiedCode === a.test_code ? (
-                              <Check className="w-3 h-3" style={{ color: '#2D9CAE' }} />
-                            ) : (
-                              <Copy className="w-3 h-3 text-text-tertiary" />
-                            )}
-                          </button>
+                          </span>
+                          {copiedCode === a.test_code ? (
+                            <Check className="w-3 h-3" style={{ color: '#2D9CAE' }} />
+                          ) : (
+                            <Copy className="w-3 h-3 text-text-tertiary opacity-0 group-hover:opacity-100 transition-opacity" />
+                          )}
+                        </button>
+                      </td>
+                      <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
+                        {a.question_count ? `${a.question_count}문제` : '-'}
+                      </td>
+                      <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
+                        {formatTimeDisplay(a)}
+                      </td>
+                      <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
+                        <div className="flex items-center gap-1">
+                          {a.question_types ? (() => {
+                            const types = a.question_types!.split(',').map(t => t.trim());
+                            const maxShow = 2;
+                            const visible = types.slice(0, maxShow);
+                            const remaining = types.length - maxShow;
+                            return (
+                              <>
+                                {visible.map((qtype) => {
+                                  const badge = GRAMMAR_TYPE_BADGES[qtype];
+                                  if (badge) {
+                                    return (
+                                      <span
+                                        key={qtype}
+                                        className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
+                                        style={{ backgroundColor: badge.bg, color: badge.color }}
+                                      >
+                                        {badge.label}
+                                      </span>
+                                    );
+                                  }
+                                  return <span key={qtype} className="text-[9px]">{qtype}</span>;
+                                })}
+                                {remaining > 0 && (
+                                  <span
+                                    className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
+                                    style={{ backgroundColor: '#F0F0EE', color: '#6D6C6A' }}
+                                    title={types.slice(maxShow).map(t => GRAMMAR_TYPE_BADGES[t]?.label ?? t).join(', ')}
+                                  >
+                                    +{remaining}
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })() : '-'}
                         </div>
+                      </td>
+                      <td className="text-[11px] text-text-tertiary px-2 whitespace-nowrap">
+                        {formatDate(a.assigned_at)}
                       </td>
                       <td className="px-2 whitespace-nowrap">
                         <span
-                          className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                          style={{ backgroundColor: st.bg, color: st.color }}
+                          className="text-[10px] font-semibold rounded-full"
+                          style={{ backgroundColor: st.bg, color: st.color, padding: '3px 8px' }}
                         >
                           {st.label}
                         </span>
                       </td>
-                      <td className="text-[11px] text-text-tertiary px-2 whitespace-nowrap">{formatDate(a.assigned_at)}</td>
-                      <td className="text-[11px] text-text-tertiary pl-2 pr-6 whitespace-nowrap">{formatDate(a.completed_at)}</td>
+                      <td className="pl-2 pr-6">
+                        <div className="flex items-center gap-2">
+                          {a.status === 'pending' && (
+                            <button onClick={() => onDelete(a.id)} className="hover:opacity-70 transition-opacity" title="삭제">
+                              <Trash2 className="w-3.5 h-3.5" style={{ color: '#EF4444' }} />
+                            </button>
+                          )}
+                          {a.status !== 'pending' && (
+                            <button onClick={() => onReset(a.id)} className="hover:opacity-70 transition-opacity" title="초기화">
+                              <RotateCcw className="w-3.5 h-3.5" style={{ color: '#F59E0B' }} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -1481,12 +1620,13 @@ function GrammarAssignmentTable({ assignments }: { assignments: GrammarAssignmen
             </table>
           </div>
 
+          {/* Pagination */}
           <div
             className="flex items-center justify-between"
             style={{ padding: '12px 28px', borderTop: '1px solid #E8E8E6', backgroundColor: '#FAFAF9' }}
           >
             <span className="text-[11px] text-text-tertiary">
-              {startIdx + 1}-{endIdx} / {assignments.length}
+              {startIdx + 1}-{endIdx} / {filtered.length}
             </span>
             <div className="flex items-center gap-2">
               <button

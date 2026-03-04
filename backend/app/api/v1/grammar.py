@@ -216,6 +216,38 @@ async def list_grammar_assignments(
     return assignments
 
 
+@router.delete("/assignments/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_grammar_assignment(
+    assignment_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete a grammar assignment (teacher only, must be pending)."""
+    if current_user.role != "teacher":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teachers only")
+    from app.services.test_assignment import delete_assignment
+    ok = await delete_assignment(db, assignment_id, current_user.id)
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+    return None
+
+
+@router.patch("/assignments/{assignment_id}/reset", status_code=status.HTTP_204_NO_CONTENT)
+async def reset_grammar_assignment(
+    assignment_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Reset a grammar assignment back to pending (teacher only)."""
+    if current_user.role != "teacher":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Teachers only")
+    from app.services.test_assignment import reset_assignment
+    ok = await reset_assignment(db, assignment_id, current_user.id)
+    if not ok:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Assignment not found")
+    return None
+
+
 # ── Student Session ─────────────────────────────────────────────────────
 
 @router.post("/start-by-code", status_code=status.HTTP_201_CREATED)

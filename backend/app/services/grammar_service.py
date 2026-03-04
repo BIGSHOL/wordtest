@@ -888,6 +888,7 @@ async def complete_session(
 async def list_assignments(db: AsyncSession, teacher_id: str) -> list[dict]:
     """List grammar assignments for a teacher with student info."""
     from app.models.grammar_config import GrammarConfig
+    from app.models.grammar_session import GrammarSession
 
     result = await db.execute(
         select(
@@ -896,9 +897,16 @@ async def list_assignments(db: AsyncSession, teacher_id: str) -> list[dict]:
             User.school_name.label("student_school"),
             User.grade.label("student_grade"),
             GrammarConfig.name.label("config_name"),
+            GrammarConfig.question_count.label("question_count"),
+            GrammarConfig.time_limit_seconds.label("time_limit_seconds"),
+            GrammarConfig.per_question_seconds.label("per_question_seconds"),
+            GrammarConfig.time_mode.label("time_mode"),
+            GrammarConfig.question_types.label("question_types"),
+            GrammarSession.id.label("grammar_session_id"),
         )
         .join(User, TestAssignment.student_id == User.id)
         .outerjoin(GrammarConfig, TestAssignment.grammar_config_id == GrammarConfig.id)
+        .outerjoin(GrammarSession, GrammarSession.assignment_id == TestAssignment.id)
         .where(
             and_(
                 TestAssignment.teacher_id == teacher_id,
@@ -917,6 +925,12 @@ async def list_assignments(db: AsyncSession, teacher_id: str) -> list[dict]:
             "student_grade": row.student_grade,
             "test_code": row.TestAssignment.test_code,
             "config_name": row.config_name,
+            "question_count": row.question_count,
+            "time_limit_seconds": row.time_limit_seconds,
+            "per_question_seconds": row.per_question_seconds,
+            "time_mode": row.time_mode,
+            "question_types": row.question_types,
+            "grammar_session_id": row.grammar_session_id,
             "status": row.TestAssignment.status,
             "assigned_at": row.TestAssignment.assigned_at.isoformat() if row.TestAssignment.assigned_at else None,
             "completed_at": row.TestAssignment.completed_at.isoformat() if row.TestAssignment.completed_at else None,

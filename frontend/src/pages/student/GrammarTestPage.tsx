@@ -2,7 +2,7 @@
  * Student grammar test page.
  * Renders 8 grammar question types with navigation and submission.
  */
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGrammarTestStore } from '../../stores/grammarTestStore';
 import { GRAMMAR_TYPE_LABELS } from '../../types/grammar';
@@ -10,8 +10,10 @@ import type { GrammarQuestion } from '../../types/grammar';
 import { useTimer } from '../../hooks/useTimer';
 import { TotalTimerDisplay } from '../../components/test/TotalTimerDisplay';
 import { TimerBar } from '../../components/test/TimerBar';
+import { QuestionNavigator } from '../../components/test/QuestionNavigator';
+import { SubmitConfirmDialog } from '../../components/test/SubmitConfirmDialog';
 import {
-  ChevronLeft, ChevronRight, Send, Loader2,
+  ChevronLeft, ChevronRight, ArrowLeft, Loader2,
   CheckCircle2, XCircle, GraduationCap, BookOpen,
 } from 'lucide-react';
 
@@ -159,11 +161,9 @@ export function GrammarTestPage() {
             <div className="space-y-2">
               {[
                 `총 ${totalQuestions}문제`,
-                timeMode === 'per_question'
-                  ? `문제당 ${perQuestionSeconds || 30}초`
-                  : `총 ${Math.floor(timeLimitSeconds / 60)}분`,
                 '빈칸, 오류탐지, 문장전환 등 다양한 유형',
                 '모든 문제를 풀고 제출 버튼을 누르세요',
+                '이전/다음 문제로 자유롭게 이동 가능',
               ].map((text, i) => (
                 <div key={i} className="flex items-start gap-2.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-text-tertiary mt-1.5 shrink-0" />
@@ -272,29 +272,44 @@ export function GrammarTestPage() {
 
   return (
     <div className="min-h-screen bg-bg-cream flex flex-col">
-      {/* Top bar */}
-      <div className="bg-bg-surface border-b border-border-subtle px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <GraduationCap className="w-5 h-5 text-accent-indigo" />
-          <span className="text-sm font-semibold text-text-primary">
-            문법 테스트
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          {!isPerQuestion && (
-            <TotalTimerDisplay secondsLeft={timer.secondsLeft} totalSeconds={timeLimitSeconds} />
-          )}
-          <span className="text-sm text-text-secondary">
-            {answeredCount}/{totalQuestions} 답변
-          </span>
-          <button
-            onClick={handleSubmit}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-accent-indigo text-white text-sm font-semibold hover:bg-accent-indigo/90 transition-colors"
-          >
-            <Send className="w-4 h-4" />
-            제출
-          </button>
-        </div>
+      {/* Header — unified style */}
+      <div
+        className="flex items-center justify-between h-14 px-4 shrink-0"
+        style={{ borderBottom: '1px solid #E8E8E6', background: '#FFFFFF' }}
+      >
+        <button
+          onClick={() => navigate('/test/start', { replace: true })}
+          className="flex items-center gap-1.5 h-10 px-3 rounded-xl transition-colors"
+          style={{ color: '#6D6C6A' }}
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span className="font-display text-sm font-medium">나가기</span>
+        </button>
+
+        {!isPerQuestion && timeLimitSeconds > 0 && (
+          <TotalTimerDisplay secondsLeft={timer.secondsLeft} totalSeconds={timeLimitSeconds} />
+        )}
+
+        <button
+          onClick={handleSubmit}
+          className="h-10 px-4 rounded-xl font-display text-sm font-bold text-white transition-opacity active:opacity-80"
+          style={{
+            background: 'linear-gradient(90deg, #4F46E5, #7C3AED)',
+            boxShadow: '0 2px 8px #4F46E530',
+          }}
+        >
+          제출하기
+        </button>
+      </div>
+
+      {/* QuestionNavigator */}
+      <div style={{ borderBottom: '1px solid #E8E8E6', background: '#FFFFFF' }}>
+        <QuestionNavigator
+          totalQuestions={totalQuestions}
+          currentIndex={currentIndex}
+          answeredIndexes={answeredIndexes}
+          onNavigate={goToQuestion}
+        />
       </div>
 
       {/* Per-question timer bar */}
@@ -309,73 +324,71 @@ export function GrammarTestPage() {
       )}
 
       {/* Question area */}
-      <div className="flex-1 flex flex-col items-center py-6 px-4">
-        <div className="w-full max-w-2xl">
-          {/* Question header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-full bg-accent-indigo text-white flex items-center justify-center text-sm font-bold">
-                {currentIndex + 1}
-              </span>
-              <span className="text-xs text-text-tertiary">
-                / {totalQuestions}
-              </span>
-            </div>
-            <span className="text-xs px-3 py-1 rounded-full bg-accent-indigo/10 text-accent-indigo font-medium">
-              {GRAMMAR_TYPE_LABELS[currentQuestion.question_type] || currentQuestion.question_type}
+      <div className="flex-1 flex flex-col justify-center items-center gap-5 px-5 py-6 md:px-8">
+        {/* Question header — number badge + type label */}
+        <div className="w-full md:w-[640px] flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-8 h-8 rounded-full bg-accent-indigo text-white flex items-center justify-center text-sm font-bold">
+              {currentIndex + 1}
+            </span>
+            <span className="text-xs text-text-tertiary">
+              / {totalQuestions}
             </span>
           </div>
+          <span className="text-xs px-3 py-1 rounded-full bg-accent-indigo/10 text-accent-indigo font-medium">
+            {GRAMMAR_TYPE_LABELS[currentQuestion.question_type] || currentQuestion.question_type}
+          </span>
+        </div>
 
-          {/* Card */}
-          <div className="bg-bg-surface rounded-2xl border border-border-subtle p-6 mb-6">
+        {/* Card */}
+        <div className="w-full md:w-[640px]">
+          <div className="bg-bg-surface rounded-2xl border border-border-subtle p-6">
             {renderCard(
               currentQuestion,
               answers[currentQuestion.id],
               (answer) => setAnswer(currentQuestion.id, answer),
             )}
           </div>
+        </div>
 
-          {/* Navigation */}
-          <div className="flex items-center justify-between">
-            <button
-              onClick={goPrev}
-              disabled={currentIndex === 0}
-              className="flex items-center gap-1 px-4 py-2.5 rounded-xl text-sm font-medium text-text-secondary hover:text-text-primary disabled:opacity-30 transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              이전
-            </button>
+        {/* Navigation — prev/next only */}
+        <div className="w-full md:w-[640px] flex items-center justify-between pt-2">
+          <button
+            onClick={goPrev}
+            disabled={currentIndex === 0}
+            className="flex items-center gap-1 h-10 px-4 rounded-xl font-display text-sm font-semibold transition-all"
+            style={{
+              background: currentIndex === 0 ? '#F0EFED' : '#EDECEA',
+              color: currentIndex === 0 ? '#C5C4C2' : '#3D3D3C',
+            }}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            이전
+          </button>
 
-            {/* Question dots */}
-            <div className="flex gap-1.5 flex-wrap justify-center max-w-[300px]">
-              {questions.map((q, i) => (
-                <button
-                  key={q.id}
-                  onClick={() => goToQuestion(i)}
-                  className={`w-6 h-6 rounded-full text-[10px] font-bold transition-colors ${
-                    i === currentIndex
-                      ? 'bg-accent-indigo text-white'
-                      : answers[q.id]
-                        ? 'bg-teal/20 text-teal'
-                        : 'bg-gray-200 text-text-tertiary'
-                  }`}
-                >
-                  {i + 1}
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={goNext}
-              disabled={currentIndex === questions.length - 1}
-              className="flex items-center gap-1 px-4 py-2.5 rounded-xl text-sm font-medium text-text-secondary hover:text-text-primary disabled:opacity-30 transition-colors"
-            >
-              다음
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+          <button
+            onClick={goNext}
+            disabled={currentIndex === questions.length - 1}
+            className="flex items-center gap-1 h-10 px-4 rounded-xl font-display text-sm font-semibold transition-all"
+            style={{
+              background: currentIndex === questions.length - 1 ? '#F0EFED' : '#EEF2FF',
+              color: currentIndex === questions.length - 1 ? '#C5C4C2' : '#4F46E5',
+            }}
+          >
+            다음
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
       </div>
+
+      {/* Submit confirmation dialog */}
+      <SubmitConfirmDialog
+        isOpen={showSubmitDialog}
+        totalQuestions={totalQuestions}
+        answeredCount={answeredCount}
+        onConfirm={handleSubmitConfirm}
+        onCancel={() => setShowSubmitDialog(false)}
+      />
     </div>
   );
 }

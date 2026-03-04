@@ -81,6 +81,14 @@ export const grammarTestService = {
     return res.data;
   },
 
+  async deleteAssignment(assignmentId: string): Promise<void> {
+    await api.delete(`/api/v1/grammar/assignments/${assignmentId}`);
+  },
+
+  async resetAssignment(assignmentId: string): Promise<void> {
+    await api.patch(`/api/v1/grammar/assignments/${assignmentId}/reset`);
+  },
+
   // ── Student Session ───────────────────────────────────────
   async startByCode(
     testCode: string,
