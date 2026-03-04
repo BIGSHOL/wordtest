@@ -116,6 +116,39 @@ export function GrammarTestPage() {
     }
   }, [currentIndex, isPerQuestion, perQuestionTimer]);
 
+  // Per-question mode: auto-advance 1s after answer selection
+  const autoAdvanceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
+
+  useEffect(() => {
+    if (!isPerQuestion || phase !== 'testing' || !currentAnswer) return;
+
+    // Clear any existing auto-advance timer
+    if (autoAdvanceRef.current) clearTimeout(autoAdvanceRef.current);
+
+    autoAdvanceRef.current = setTimeout(() => {
+      const { currentIndex: idx, questions: qs } = store;
+      if (idx < qs.length - 1) {
+        store.goNext();
+      } else {
+        // Last question — auto-submit
+        handleTimeout();
+      }
+    }, 1000);
+
+    return () => {
+      if (autoAdvanceRef.current) clearTimeout(autoAdvanceRef.current);
+    };
+  }, [currentAnswer, isPerQuestion, phase, store, handleTimeout]);
+
+  // Clear auto-advance timer on question change
+  useEffect(() => {
+    if (autoAdvanceRef.current) {
+      clearTimeout(autoAdvanceRef.current);
+      autoAdvanceRef.current = null;
+    }
+  }, [currentIndex]);
+
   // Redirect if no session
   useEffect(() => {
     if (phase === 'idle') {
@@ -235,9 +268,63 @@ export function GrammarTestPage() {
   // Testing phase
   if (phase !== 'testing' || !currentQuestion) return null;
 
+  // ── PER-QUESTION MODE ──────────────────────────────────────────────
+  if (isPerQuestion) {
+    return (
+      <div className="min-h-screen bg-bg-cream flex flex-col">
+        {/* Header — simple: exit + counter only (no submit button) */}
+        <div
+          className="flex items-center justify-between h-14 px-5"
+          style={{ borderBottom: '1px solid #E8E8E6', background: '#FFFFFF' }}
+        >
+          <button
+            onClick={() => navigate('/test/start', { replace: true })}
+            className="w-10 h-10 rounded-full flex items-center justify-center"
+          >
+            <ArrowLeft className="w-[22px] h-[22px] text-text-primary" />
+          </button>
+          <span className="font-display text-[15px] font-semibold text-text-secondary">
+            {currentIndex + 1} / {totalQuestions}
+          </span>
+        </div>
+
+        {/* Per-question timer bar */}
+        <div className="px-5 pt-3 md:px-8">
+          <TimerBar
+            secondsLeft={perQuestionTimer.secondsLeft}
+            fraction={perQuestionTimer.fraction}
+            urgency={perQuestionTimer.urgency}
+          />
+        </div>
+
+        {/* Question area */}
+        <div className="flex-1 flex flex-col justify-center items-center gap-5 px-5 py-6 md:px-8">
+          {/* Type label */}
+          <div className="w-full md:w-[640px] flex justify-end">
+            <span className="text-xs px-3 py-1 rounded-full bg-accent-indigo/10 text-accent-indigo font-medium">
+              {GRAMMAR_TYPE_LABELS[currentQuestion.question_type] || currentQuestion.question_type}
+            </span>
+          </div>
+
+          {/* Card */}
+          <div className="w-full md:w-[640px]">
+            <div className="bg-bg-surface rounded-2xl border border-border-subtle p-6">
+              {renderCard(
+                currentQuestion,
+                answers[currentQuestion.id],
+                (answer) => setAnswer(currentQuestion.id, answer),
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── TOTAL (EXAM) MODE ──────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-bg-cream flex flex-col">
-      {/* Header — unified style */}
+      {/* Header — full: exit + total timer + submit */}
       <div
         className="flex items-center justify-between h-14 px-4 shrink-0"
         style={{ borderBottom: '1px solid #E8E8E6', background: '#FFFFFF' }}
@@ -251,7 +338,7 @@ export function GrammarTestPage() {
           <span className="font-display text-sm font-medium">나가기</span>
         </button>
 
-        {!isPerQuestion && timeLimitSeconds > 0 && (
+        {timeLimitSeconds > 0 && (
           <TotalTimerDisplay secondsLeft={timer.secondsLeft} totalSeconds={timeLimitSeconds} />
         )}
 
@@ -276,17 +363,6 @@ export function GrammarTestPage() {
           onNavigate={goToQuestion}
         />
       </div>
-
-      {/* Per-question timer bar */}
-      {isPerQuestion && (
-        <div className="px-4 py-2 bg-bg-surface border-b border-border-subtle">
-          <TimerBar
-            secondsLeft={perQuestionTimer.secondsLeft}
-            fraction={perQuestionTimer.fraction}
-            urgency={perQuestionTimer.urgency}
-          />
-        </div>
-      )}
 
       {/* Question area */}
       <div className="flex-1 flex flex-col justify-center items-center gap-5 px-5 py-6 md:px-8">

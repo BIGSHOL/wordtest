@@ -1,20 +1,39 @@
 /** grammar_usage: 밑줄 친 부분의 쓰임이 다른 것 */
+import { renderLines, cleanPrompt } from './grammarUtils';
+
 interface Props {
   data: {
     prompt: string;
     sentences: string[];
     underlined_word?: string;
+    choices?: string[];
   };
   selected: string | undefined;
   onSelect: (answer: string) => void;
 }
 
 export function GrammarUsageCard({ data, selected, onSelect }: Props) {
+  const prompt = cleanPrompt(data.prompt);
+
   return (
     <div className="space-y-5">
       <div className="text-sm font-semibold text-accent-indigo">
-        {data.prompt}
+        {prompt}
       </div>
+
+      {/* 보기 (reference choices like ⓐ ~할 수 있다) */}
+      {data.choices && data.choices.length > 0 && (
+        <div className="bg-gray-50 rounded-xl border border-border-subtle px-5 py-4">
+          <div className="text-xs font-bold text-text-tertiary mb-2">&lt;보기&gt;</div>
+          <div className="space-y-1">
+            {data.choices.map((choice, i) => (
+              <p key={i} className="text-[15px] leading-relaxed text-text-primary">
+                {choice}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="space-y-2">
         {data.sentences.map((sentence, i) => (
@@ -32,7 +51,7 @@ export function GrammarUsageCard({ data, selected, onSelect }: Props) {
             }`}>
               {String.fromCharCode(0x2460 + i)}
             </span>
-            <span className="text-[15px] leading-relaxed">{sentence}</span>
+            <span className="text-[15px] leading-relaxed">{renderLines(sentence)}</span>
           </button>
         ))}
       </div>

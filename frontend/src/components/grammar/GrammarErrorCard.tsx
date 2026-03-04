@@ -1,4 +1,6 @@
 /** grammar_error: 오류/올바른 문장 탐지 (복수 선택 지원) */
+import { renderLines, cleanPrompt } from './grammarUtils';
+
 interface Props {
   data: {
     prompt: string;
@@ -31,7 +33,7 @@ export function GrammarErrorCard({ data, selected, onSelect }: Props) {
   return (
     <div className="space-y-5">
       <div className="text-sm font-semibold text-accent-indigo">
-        {data.prompt}
+        {cleanPrompt(data.prompt)}
         {isMulti && (
           <span className="text-xs text-text-tertiary ml-2">({data.select_count}개 선택)</span>
         )}
@@ -53,7 +55,7 @@ export function GrammarErrorCard({ data, selected, onSelect }: Props) {
             }`}>
               {String.fromCharCode(0x2460 + i)}
             </span>
-            <span className="text-[15px] leading-relaxed">{sentence}</span>
+            <span className="text-[15px] leading-relaxed">{renderLines(sentence)}</span>
           </button>
         ))}
       </div>

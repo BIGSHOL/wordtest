@@ -26,8 +26,8 @@ export function MetricDetailSection({ details }: Props) {
 
       {details.map((detail) => {
         const myBarW = Math.max(5, (detail.my_score / 10) * 100);
-        const avgScore = 5.0; // fixed 50% for all areas
-        const avgBarW = 50;
+        const avgScore = detail.avg_score ?? 5.0;
+        const avgBarW = Math.max(5, (avgScore / 10) * 100);
         const icon = SKILL_ICONS[detail.key] || '';
 
         return (

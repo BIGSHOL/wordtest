@@ -1,8 +1,11 @@
 /** grammar_pair: (A)(B) 짝짓기 */
+import { cleanPrompt } from './grammarUtils';
+
 interface Props {
   data: {
     stem: string;
     paired_choices: string[][];
+    prompt?: string;
   };
   selected: string | undefined;
   onSelect: (answer: string) => void;
@@ -12,25 +15,30 @@ export function GrammarPairCard({ data, selected, onSelect }: Props) {
   return (
     <div className="space-y-5">
       <div className="text-sm font-semibold text-accent-indigo">
-        (A), (B)에 들어갈 말이 바르게 짝지어진 것을 고르세요.
+        {cleanPrompt(data.prompt || '(A), (B)에 들어갈 말이 바르게 짝지어진 것을 고르세요.')}
       </div>
 
-      {/* Stem with (A), (B) highlighted */}
+      {/* Stem with (A), (B) highlighted + \n line breaks */}
       <div className="bg-white rounded-xl border border-border-subtle p-5">
         <p className="text-[17px] leading-relaxed text-text-primary font-medium">
-          {data.stem.split(/(\(A\)|\(B\))/).map((part, i) => {
-            if (part === '(A)' || part === '(B)') {
-              return (
-                <span
-                  key={i}
-                  className="inline-block px-2 py-0.5 mx-1 rounded bg-accent-indigo/10 text-accent-indigo font-bold text-sm"
-                >
-                  {part}
-                </span>
-              );
-            }
-            return <span key={i}>{part}</span>;
-          })}
+          {data.stem.split('\n').map((line, lineIdx) => (
+            <span key={lineIdx}>
+              {lineIdx > 0 && <br />}
+              {line.split(/(\(A\)|\(B\))/).map((part, i) => {
+                if (part === '(A)' || part === '(B)') {
+                  return (
+                    <span
+                      key={i}
+                      className="inline-block px-2 py-0.5 mx-1 rounded bg-accent-indigo/10 text-accent-indigo font-bold text-sm"
+                    >
+                      {part}
+                    </span>
+                  );
+                }
+                return <span key={i}>{part}</span>;
+              })}
+            </span>
+          ))}
         </p>
       </div>
 

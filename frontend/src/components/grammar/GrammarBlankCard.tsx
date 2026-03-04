@@ -1,10 +1,13 @@
 /** grammar_blank: 빈칸 5지선다 */
+import { renderStem, cleanPrompt } from './grammarUtils';
+
 interface Props {
   data: {
     stem: string;
     choices: string[];
     sentence_ko?: string;
     grammar_point?: string;
+    prompt?: string;
   };
   selected: string | undefined;
   onSelect: (answer: string) => void;
@@ -13,29 +16,19 @@ interface Props {
 export function GrammarBlankCard({ data, selected, onSelect }: Props) {
   return (
     <div className="space-y-5">
-      {/* Prompt */}
       <div className="text-sm font-semibold text-accent-indigo">
-        다음 빈칸에 들어갈 알맞은 말을 고르세요.
+        {cleanPrompt(data.prompt || '다음 빈칸에 들어갈 알맞은 말을 고르세요.')}
       </div>
 
-      {/* Stem */}
       <div className="bg-white rounded-xl border border-border-subtle p-5">
         <p className="text-[17px] leading-relaxed text-text-primary font-medium">
-          {data.stem.split('___').map((part, i, arr) => (
-            <span key={i}>
-              {part}
-              {i < arr.length - 1 && (
-                <span className="inline-block w-20 border-b-2 border-accent-indigo mx-1" />
-              )}
-            </span>
-          ))}
+          {renderStem(data.stem)}
         </p>
         {data.sentence_ko && (
           <p className="text-sm text-text-tertiary mt-2">{data.sentence_ko}</p>
         )}
       </div>
 
-      {/* Choices */}
       <div className="space-y-2">
         {data.choices.map((choice, i) => (
           <button
@@ -56,10 +49,6 @@ export function GrammarBlankCard({ data, selected, onSelect }: Props) {
           </button>
         ))}
       </div>
-
-      {data.grammar_point && (
-        <p className="text-xs text-text-tertiary">{data.grammar_point}</p>
-      )}
     </div>
   );
 }
