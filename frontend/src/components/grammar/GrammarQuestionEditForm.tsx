@@ -60,7 +60,7 @@ export function GrammarQuestionEditForm({ question, onSave, onCancel }: Props) {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className={labelCls}>문제 유형</label>
-          <select value={qType} onChange={(e) => setQType(e.target.value)} className={inputCls}>
+          <select value={qType} onChange={(e) => setQType(e.target.value as GrammarQuestionType)} className={inputCls}>
             {ALL_TYPES.map((t) => (
               <option key={t} value={t}>{GRAMMAR_TYPE_LABELS[t]}</option>
             ))}
