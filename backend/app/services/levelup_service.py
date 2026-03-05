@@ -169,12 +169,21 @@ async def start_session(
         for level, words in words_by_level.items()
     }
 
+    # Build type sequence from question_type_counts (preserves type order)
+    type_sequence: list[str] | None = None
+    if question_type_counts:
+        type_sequence = []
+        for qtype in question_types:
+            count = question_type_counts.get(qtype, 0)
+            type_sequence.extend([qtype] * count)
+
     await db.commit()
 
     return {
         "session_id": session.id,
         "assignment_id": assignment.id,
         "questions": initial_questions,
+        "type_sequence": type_sequence,
         "total_words": len(compatible),
         "question_count": config.question_count,
         "student_name": student.name or "학생",
@@ -476,11 +485,12 @@ async def submit_batch_and_complete(
 def _get_lesson_xp(book: int, num_levels: int = 15) -> int:
     """XP needed to level up at a given book level.
 
+    Base formula from MASTERY_SYSTEM.md: 5 + book * 5
     Scales inversely with the number of available levels so that
-    small ranges (e.g. 2-3 books) require more answers per level-up.
+    small ranges (e.g. 7 books) require more answers per level-up.
     """
     import math
-    return (4 + book) * max(1, math.ceil(15 / num_levels)) * 4
+    return (5 + book * 5) * max(1, math.ceil(15 / num_levels))
 
 
 def _compute_xp_change(
@@ -490,14 +500,32 @@ def _compute_xp_change(
     combo: int,
     consecutive_wrong: int,
 ) -> int:
-    """Compute XP change for a single answer (no speed bonus in exam mode)."""
+    """Compute XP change per MASTERY_SYSTEM.md design.
+
+    Correct: +7 (current level) or +3 (lower level) + combo bonus.
+    Wrong: -5 (first), -8 (2nd consecutive), -12 (3rd+ consecutive).
+    Note: speed bonus is applied only on the frontend (real-time timer).
+    """
     if is_correct:
-        base = max(4, current_book) if question_level < current_book else 8 + current_book * 2
-        combo_bonus = min(combo // 5 + 1, 5) if combo >= 3 else 0
+        base = 3 if question_level < current_book else 7
+        combo_bonus = 0
+        if combo >= 20:
+            combo_bonus = 5
+        elif combo >= 15:
+            combo_bonus = 4
+        elif combo >= 10:
+            combo_bonus = 3
+        elif combo >= 5:
+            combo_bonus = 2
+        elif combo >= 3:
+            combo_bonus = 1
         return base + combo_bonus
     else:
-        # Wrong answer: 0 points (no penalty, no level down)
-        return 0
+        if consecutive_wrong >= 3:
+            return -12
+        if consecutive_wrong >= 2:
+            return -8
+        return -5
 
 
 def _simulate_xp_progression(
@@ -508,7 +536,7 @@ def _simulate_xp_progression(
     """Simulate XP-based level progression from batch results.
 
     Level-up requires: XP >= threshold AND 5+ consecutive correct in current book.
-    Wrong answers give 0 XP (no penalty, no level down).
+    Wrong answers apply escalating penalties (-5/-8/-12). XP floor is 0.
     """
     if not available_levels:
         return starting_level
@@ -539,7 +567,7 @@ def _simulate_xp_progression(
             combo=combo,
             consecutive_wrong=consecutive_wrong,
         )
-        xp += xp_change
+        xp = max(0, xp + xp_change)
 
         lesson_xp = _get_lesson_xp(current_book, len(available_levels))
 
@@ -550,7 +578,6 @@ def _simulate_xp_progression(
                 current_book = next_levels[0]
                 xp = 0
                 book_streak = 0
-        # No level down — wrong answers give 0 XP
 
     return current_book
 
@@ -596,26 +623,41 @@ def _generate_multi_level_pool(
         return []
 
     if question_type_counts:
-        # Exam mode: use ALL available levels with weighted distribution
-        total_needed = sum(question_type_counts.values())
-        pool_size = max(total_needed, total_needed * 2)
-
-        combined_words = _weighted_word_selection(
-            words_by_level, all_active, pool_size,
-            grade_difficulty_bias=grade_difficulty_bias,
-        )
-        random.shuffle(combined_words)
-
-        # Pass full mastery list so Pass 2 (all_words search) can find records
+        # Exam mode: generate PER-LEVEL pools so frontend can do adaptive
+        # replacement on level-up.  Each level gets questions for all types.
         all_masteries = list(mastery_map.values())
-        return generate_questions_for_words(
-            words=combined_words,
-            all_words=all_words,
-            question_types=question_types,
-            timer_seconds=timer_seconds,
-            masteries=all_masteries,
-            question_type_counts=question_type_counts,
-        )
+        per_level_questions: list[dict] = []
+
+        # Per-level budget: enough to cover the full type counts per level
+        # (some levels may have fewer words — that's fine, frontend has fallback)
+        per_level_budget = sum(question_type_counts.values())
+
+        for level in all_active:
+            level_words = list(words_by_level.get(level, []))
+            if not level_words:
+                continue
+            # Sort by difficulty, apply grade bias
+            level_words.sort(key=_word_difficulty_score, reverse=True)
+            n = len(level_words)
+            if n > per_level_budget:
+                start_idx = int((n - per_level_budget) * (1.0 - grade_difficulty_bias))
+                start_idx = max(0, min(start_idx, n - per_level_budget))
+                selected = level_words[start_idx : start_idx + per_level_budget]
+            else:
+                selected = level_words
+            random.shuffle(selected)
+
+            level_questions = generate_questions_for_words(
+                words=selected,
+                all_words=all_words,
+                question_types=question_types,
+                timer_seconds=timer_seconds,
+                masteries=all_masteries,
+                question_type_counts=question_type_counts,
+            )
+            per_level_questions.extend(level_questions)
+
+        return per_level_questions
 
     # Adaptive mode: cap to max_levels from start, current-level-heavy distribution
     active_levels = all_active[:max_levels]

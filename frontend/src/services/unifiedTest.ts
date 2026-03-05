@@ -45,6 +45,7 @@ export interface StartLevelupResponse {
   session_id: string;
   assignment_id: string;
   questions: UnifiedQuestion[];
+  type_sequence: string[] | null;
   total_words: number;
   question_count: number;
   student_name: string;

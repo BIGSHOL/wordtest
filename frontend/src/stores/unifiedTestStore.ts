@@ -23,9 +23,9 @@ import {
 
 // ── XP (per-question mode, levelup engine) ──────────────────────────────────
 
-function getLessonXp(book: number, _numLevels: number = 15): number {
-  // Fixed: removed numLevels scaling that made narrow ranges nearly impossible
-  return (4 + book) * 4;
+function getLessonXp(book: number, numLevels: number = 15): number {
+  // MASTERY_SYSTEM.md: 5 + book * 5, scaled by available levels
+  return (5 + book * 5) * Math.max(1, Math.ceil(15 / numLevels));
 }
 
 export interface XpBreakdown {
@@ -40,49 +40,80 @@ function computeXpChange(params: {
   questionLevel: number;
   currentBook: number;
   timeTaken: number;
+  timerLimit: number;
   combo: number;
   consecutiveWrong: number;
 }): XpBreakdown {
-  const { isCorrect, questionLevel, currentBook, combo } = params;
+  const { isCorrect, questionLevel, currentBook, timeTaken, timerLimit, combo, consecutiveWrong } = params;
   if (isCorrect) {
-    const base = questionLevel < currentBook
-      ? Math.max(4, currentBook)
-      : 8 + currentBook * 2;
-    const comboBonus = combo >= 3 ? Math.min(Math.floor(combo / 5) + 1, 5) : 0;
-    return { base, speed: 0, combo: comboBonus, total: base + comboBonus };
+    // MASTERY_SYSTEM.md: +7 current level, +3 lower level
+    const base = questionLevel < currentBook ? 3 : 7;
+    // Speed bonus: answer in ≤50% of timer → +5
+    const speed = (timerLimit > 0 && timeTaken <= timerLimit * 0.5) ? 5 : 0;
+    // Combo bonus: 3-4→+1, 5-9→+2, 10-14→+3, 15-19→+4, 20+→+5
+    let comboBonus = 0;
+    if (combo >= 20) comboBonus = 5;
+    else if (combo >= 15) comboBonus = 4;
+    else if (combo >= 10) comboBonus = 3;
+    else if (combo >= 5) comboBonus = 2;
+    else if (combo >= 3) comboBonus = 1;
+    return { base, speed, combo: comboBonus, total: base + speed + comboBonus };
   } else {
-    // Wrong answer: 0 points (no penalty, no level down)
-    return { base: 0, speed: 0, combo: 0, total: 0 };
+    // Escalating penalties: -5, -8, -12
+    let penalty = -5;
+    if (consecutiveWrong >= 3) penalty = -12;
+    else if (consecutiveWrong >= 2) penalty = -8;
+    return { base: penalty, speed: 0, combo: 0, total: penalty };
   }
 }
 
-/** Track ongoing prefetches to avoid duplicate requests */
-const _prefetchingLevels = new Set<number>();
-
-/** On level-up, replace remaining questions with same-type from new level pool */
-function _replaceRemainingWithLevel(
-  flatQuestions: UnifiedQuestion[],
-  fromIndex: number,
+/** Build flatQuestions from typeSequence using questions from a specific level pool.
+ *  Preserves already-answered questions (indices < fromIndex).
+ *  For remaining slots, picks questions matching the type from the target level.
+ */
+function _buildFlatFromTypeSequence(
+  typeSequence: string[],
+  targetLevel: number,
   levelPools: Record<number, UnifiedQuestion[]>,
-  newLevel: number,
+  existing?: UnifiedQuestion[],
+  fromIndex: number = 0,
 ): UnifiedQuestion[] {
-  const pool = levelPools[newLevel] ?? [];
+  const pool = levelPools[targetLevel] ?? [];
   const poolByType: Record<string, UnifiedQuestion[]> = {};
   for (const q of pool) {
     const t = q.question_type;
     if (!poolByType[t]) poolByType[t] = [];
     poolByType[t].push(q);
   }
+
+  // Track used word_mastery_ids to avoid duplicates
+  const usedIds = new Set<string>();
+  const result: UnifiedQuestion[] = existing ? [...existing] : [];
+
+  // Mark already-used questions
+  for (let i = 0; i < fromIndex && i < result.length; i++) {
+    if (result[i]) usedIds.add(result[i].word_mastery_id);
+  }
+
   const typeUsed: Record<string, number> = {};
-  const result = [...flatQuestions];
-  for (let i = fromIndex; i < result.length; i++) {
-    const expectedType = result[i].question_type;
-    const idx = typeUsed[expectedType] ?? 0;
-    if (poolByType[expectedType] && idx < poolByType[expectedType].length) {
-      result[i] = poolByType[expectedType][idx];
-      typeUsed[expectedType] = idx + 1;
+  for (let i = fromIndex; i < typeSequence.length; i++) {
+    const expectedType = typeSequence[i];
+    const candidates = poolByType[expectedType] ?? [];
+    let placed = false;
+    const startIdx = typeUsed[expectedType] ?? 0;
+    for (let j = startIdx; j < candidates.length; j++) {
+      if (!usedIds.has(candidates[j].word_mastery_id)) {
+        result[i] = candidates[j];
+        usedIds.add(candidates[j].word_mastery_id);
+        typeUsed[expectedType] = j + 1;
+        placed = true;
+        break;
+      }
     }
-    // If no replacement available, keep original question
+    // Fallback: keep existing question if available, or pick any from pool
+    if (!placed && existing && existing[i]) {
+      result[i] = existing[i];
+    }
   }
   return result;
 }
@@ -148,6 +179,7 @@ export interface UnifiedTestStore {
   localTypedAnswers: Record<number, string>;
 
   // Level-Up specific
+  typeSequence: string[];  // Fixed type order for exam mode adaptive
   levelPools: Record<number, UnifiedQuestion[]>;
   poolIndex: Record<number, number>;
   currentBook: number;
@@ -242,6 +274,7 @@ const initialState = {
   localAnswers: {} as Record<number, string>,
   localTypedAnswers: {} as Record<number, string>,
 
+  typeSequence: [] as string[],
   levelPools: {} as Record<number, UnifiedQuestion[]>,
   poolIndex: {} as Record<number, number>,
   currentBook: 1,
@@ -307,8 +340,16 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
         pools[level].push(q);
       }
 
-      // Keep backend's type-grouped order for all modes
-      const flat: UnifiedQuestion[] = [...response.questions];
+      // Type sequence from backend (exam mode adaptive)
+      const typeSeq: string[] = response.type_sequence ?? [];
+
+      // Build flatQuestions from typeSequence + starting level pool
+      let flat: UnifiedQuestion[];
+      if (typeSeq.length > 0) {
+        flat = _buildFlatFromTypeSequence(typeSeq, response.current_level, pools);
+      } else {
+        flat = [...response.questions];
+      }
 
       set({
         engineType: 'levelup',
@@ -323,6 +364,7 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
         currentBook: response.current_level,
         availableLevels: response.available_levels,
         levelInfo: response.level_info,
+        typeSequence: typeSeq,
         levelPools: pools,
         poolIndex: indexes,
         flatQuestions: flat,
@@ -552,29 +594,29 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
           questionLevel: question.word.level,
           currentBook: state.currentBook,
           timeTaken,
+          timerLimit: question.timer_seconds,
           combo: newCombo,
           consecutiveWrong: newConsecutiveWrong,
         });
-        newXp = state.xp + xpChange.total;
+        newXp = Math.max(0, state.xp + xpChange.total);
         const lessonXp = getLessonXp(state.currentBook, state.availableLevels.length);
 
-        // Level up: XP threshold met AND at least 3 consecutive correct
-        if (newXp >= lessonXp && newBookStreak >= 3) {
+        // Level up: XP threshold met AND at least 5 consecutive correct
+        if (newXp >= lessonXp && newBookStreak >= 5) {
           const nextLevels = state.availableLevels.filter(l => l > state.currentBook);
           if (nextLevels.length > 0) {
             newBook = nextLevels[0]; newXp = 0; levelChanged = 'up';
             newBookStreak = 0;
-            _prefetchLevel(state.sessionId!, newBook);
           }
         }
       }
 
-      // On level-up: replace remaining questions with new-level, preserving type order
+      // On level-up: rebuild remaining questions from new level pool (sync)
       let newFlatQuestions = state.flatQuestions;
-      if (levelChanged === 'up') {
-        newFlatQuestions = _replaceRemainingWithLevel(
+      if (levelChanged === 'up' && state.typeSequence.length > 0) {
+        newFlatQuestions = _buildFlatFromTypeSequence(
+          state.typeSequence, newBook, state.levelPools,
           state.flatQuestions, state.currentQuestionIndex + 1,
-          state.levelPools, newBook,
         );
       }
 
