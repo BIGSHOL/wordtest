@@ -4,7 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
-from app.schemas.student import CreateStudentRequest, UpdateStudentRequest, BatchDeleteRequest
+from app.schemas.student import (
+    CreateStudentRequest,
+    UpdateStudentRequest,
+    BatchDeleteRequest,
+    BatchCreateRequest,
+    BatchCreateResult,
+)
 from app.schemas.user import UserResponse
 from app.core.deps import CurrentTeacher
 from app.models.user import User
@@ -190,6 +196,64 @@ async def update_student_endpoint(
         grade=student_in.grade,
     )
     return updated
+
+
+@router.post("/batch", response_model=BatchCreateResult)
+async def batch_create_students(
+    batch_in: BatchCreateRequest,
+    teacher: CurrentTeacher,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Batch create students from xlsx upload."""
+    # Get all existing usernames to check duplicates
+    existing = await db.execute(select(User.username).where(User.username.isnot(None)))
+    existing_usernames = {r[0] for r in existing.all()}
+
+    # Get existing student names to check name duplicates
+    existing_names = await db.execute(
+        select(User.name).where(User.role == "student")
+    )
+    existing_name_set = {r[0] for r in existing_names.all()}
+
+    created = 0
+    skipped: list[str] = []
+    errors: list[str] = []
+    seen: set[str] = set()
+
+    for item in batch_in.students:
+        # Skip batch-internal duplicate usernames
+        if item.username in seen:
+            skipped.append(item.username)
+            continue
+        seen.add(item.username)
+
+        # Skip already-existing username
+        if item.username in existing_usernames:
+            skipped.append(item.username)
+            continue
+
+        # Skip already-existing student name
+        if item.name in existing_name_set:
+            skipped.append(f"{item.username} (이름 '{item.name}' 중복)")
+            continue
+
+        try:
+            await create_student(
+                db,
+                username=item.username,
+                password=item.password,
+                name=item.name,
+                teacher_id=teacher.id,
+                school_name=item.school_name,
+                grade=item.grade,
+            )
+            existing_usernames.add(item.username)
+            existing_name_set.add(item.name)
+            created += 1
+        except Exception as e:
+            errors.append(f"{item.name}: {str(e)}")
+
+    return BatchCreateResult(created=created, skipped_duplicates=skipped, errors=errors)
 
 
 @router.post("/batch-delete", status_code=status.HTTP_200_OK)

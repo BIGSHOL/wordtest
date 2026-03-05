@@ -8,7 +8,8 @@ import { useNavigate } from 'react-router-dom';
 import type { User } from '../../types/auth';
 import { studentService } from '../../services/student';
 import { getLevelRank } from '../../types/rank';
-import { Search, UserPlus, Pencil, Trash2, FileText, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, UserPlus, Pencil, Trash2, FileText, X, ChevronLeft, ChevronRight, Upload, FileSpreadsheet, AlertCircle } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 // Helper function moved outside component to prevent recreation on every render
 function formatDate(dateString: string) {
@@ -34,6 +35,16 @@ const EMPTY_NEW_STUDENT = {
   phone_number: '',
 };
 
+interface XlsxRow {
+  name: string;
+  username: string;
+  password: string;
+  school_name: string;
+  grade: string;
+  isDuplicate: boolean;
+  duplicateReason?: string;
+}
+
 export function StudentManagePage() {
   const navigate = useNavigate();
   const [students, setStudents] = useState<User[]>([]);
@@ -47,6 +58,12 @@ export function StudentManagePage() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const [showXlsxModal, setShowXlsxModal] = useState(false);
+  const [xlsxRows, setXlsxRows] = useState<XlsxRow[]>([]);
+  const [xlsxSelected, setXlsxSelected] = useState<Set<number>>(new Set());
+  const [xlsxUploading, setXlsxUploading] = useState(false);
+  const [xlsxResult, setXlsxResult] = useState<{ created: number; skipped_duplicates: string[]; errors: string[] } | null>(null);
 
   const [newStudent, setNewStudent] = useState(EMPTY_NEW_STUDENT);
   const [editData, setEditData] = useState({
@@ -206,6 +223,119 @@ export function StudentManagePage() {
     }
   };
 
+  const handleXlsxFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const data = new Uint8Array(e.target?.result as ArrayBuffer);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { header: 1 });
+
+      // Skip header row, parse columns
+      // Expected columns: 이름, 성별(skip), 출결번호(password), 학교, 학년
+      const existingUsernames = new Set(students.map(s => s.username));
+      const existingNames = new Set(students.map(s => s.name));
+      const seenInBatch = new Set<string>();
+
+      const rows: XlsxRow[] = [];
+      for (let i = 1; i < json.length; i++) {
+        const row = json[i] as unknown as unknown[];
+        if (!row || !row[0]) continue;
+
+        const name = String(row[0] || '').trim();
+        if (!name) continue;
+
+        // Password from attendance number (col 2), default "0000"
+        const attNo = row[2];
+        let password = '0000';
+        if (attNo != null && String(attNo).trim()) {
+          password = String(typeof attNo === 'number' ? Math.floor(attNo) : attNo).trim();
+        }
+
+        const school = String(row[3] || '').trim();
+        const grade = String(row[4] || '').trim();
+        const username = name; // Use name as username (same as import script)
+
+        let isDuplicate = false;
+        let duplicateReason: string | undefined;
+
+        if (seenInBatch.has(username)) {
+          isDuplicate = true;
+          duplicateReason = '파일 내 중복';
+        } else if (existingUsernames.has(username)) {
+          isDuplicate = true;
+          duplicateReason = '이미 등록됨';
+        } else if (existingNames.has(name)) {
+          isDuplicate = true;
+          duplicateReason = '동명 학생 존재';
+        }
+        seenInBatch.add(username);
+
+        rows.push({ name, username, password, school_name: school, grade, isDuplicate, duplicateReason });
+      }
+
+      setXlsxRows(rows);
+      // Auto-select all non-duplicate rows
+      const selected = new Set<number>();
+      rows.forEach((r, i) => { if (!r.isDuplicate) selected.add(i); });
+      setXlsxSelected(selected);
+      setXlsxResult(null);
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleXlsxSubmit = async () => {
+    const toCreate = xlsxRows.filter((_, i) => xlsxSelected.has(i));
+    if (toCreate.length === 0) return;
+
+    setXlsxUploading(true);
+    try {
+      const result = await studentService.batchCreate(
+        toCreate.map(r => ({
+          username: r.username,
+          password: r.password,
+          name: r.name,
+          school_name: r.school_name || undefined,
+          grade: r.grade || undefined,
+        }))
+      );
+      setXlsxResult(result);
+      if (result.created > 0) {
+        await loadStudents();
+      }
+    } catch {
+      setXlsxResult({ created: 0, skipped_duplicates: [], errors: ['업로드에 실패했습니다.'] });
+    } finally {
+      setXlsxUploading(false);
+    }
+  };
+
+  const toggleXlsxRow = (idx: number) => {
+    setXlsxSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+  };
+
+  const toggleXlsxAll = () => {
+    const nonDupIndices = xlsxRows.map((r, i) => ({ r, i })).filter(x => !x.r.isDuplicate).map(x => x.i);
+    const allSelected = nonDupIndices.every(i => xlsxSelected.has(i));
+    if (allSelected) {
+      setXlsxSelected(new Set());
+    } else {
+      setXlsxSelected(new Set(nonDupIndices));
+    }
+  };
+
+  const handleCloseXlsx = () => {
+    setShowXlsxModal(false);
+    setXlsxRows([]);
+    setXlsxSelected(new Set());
+    setXlsxResult(null);
+  };
+
   return (
     <TeacherLayout>
       <div className="space-y-6">
@@ -239,6 +369,15 @@ export function StudentManagePage() {
                 className="w-full pl-9 pr-3 py-2 border border-border-subtle rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
               />
             </div>
+            {/* Excel Upload Button */}
+            <button
+              onClick={() => setShowXlsxModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90 border"
+              style={{ borderColor: '#2D9CAE', color: '#2D9CAE' }}
+            >
+              <Upload className="w-4 h-4" />
+              엑셀 업로드
+            </button>
             {/* Add Student Button */}
             <button
               onClick={() => setShowAddModal(true)}
@@ -835,6 +974,203 @@ export function StudentManagePage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Xlsx Upload Modal */}
+        {showXlsxModal && (
+          <div
+            className="fixed inset-0 flex items-center justify-center z-50"
+            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) handleCloseXlsx(); }}
+          >
+            <div
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col"
+              style={{ border: '1px solid #E8E8E6' }}
+            >
+              {/* Header */}
+              <div
+                className="flex items-center justify-between px-6 py-4 shrink-0"
+                style={{ borderBottom: '1px solid #E8E8E6', backgroundColor: '#FAFAF9' }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#2D9CAE' }} />
+                  <h2 className="text-[16px] font-bold text-text-primary flex items-center gap-2">
+                    <FileSpreadsheet className="w-5 h-5" style={{ color: '#2D9CAE' }} />
+                    엑셀 학생 업로드
+                  </h2>
+                </div>
+                <button
+                  onClick={handleCloseXlsx}
+                  className="p-1.5 rounded-lg text-text-tertiary hover:bg-bg-muted transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-auto px-6 py-5">
+                {xlsxResult ? (
+                  /* Result view */
+                  <div className="space-y-4">
+                    <div className="px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: '#DCFCE7', color: '#16A34A' }}>
+                      {xlsxResult.created}명 등록 완료
+                    </div>
+                    {xlsxResult.skipped_duplicates.length > 0 && (
+                      <div className="px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: '#FEF3C7', color: '#D97706' }}>
+                        <p className="font-semibold mb-1">중복 스킵: {xlsxResult.skipped_duplicates.length}명</p>
+                        {xlsxResult.skipped_duplicates.map((s, i) => <div key={i} className="text-xs">• {s}</div>)}
+                      </div>
+                    )}
+                    {xlsxResult.errors.length > 0 && (
+                      <div className="px-4 py-3 rounded-lg text-sm" style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}>
+                        <p className="font-semibold mb-1">오류: {xlsxResult.errors.length}건</p>
+                        {xlsxResult.errors.map((s, i) => <div key={i} className="text-xs">• {s}</div>)}
+                      </div>
+                    )}
+                  </div>
+                ) : xlsxRows.length === 0 ? (
+                  /* File upload zone */
+                  <div className="text-center py-12">
+                    <FileSpreadsheet className="w-12 h-12 mx-auto mb-4 text-text-tertiary" />
+                    <p className="text-sm text-text-secondary mb-2">
+                      엑셀 파일(.xlsx)을 선택하세요
+                    </p>
+                    <p className="text-xs text-text-tertiary mb-6">
+                      컬럼 순서: 이름, 성별(무시), 출결번호(비밀번호), 학교, 학년
+                    </p>
+                    <label
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white cursor-pointer transition-all hover:opacity-90"
+                      style={{ background: 'linear-gradient(135deg, #2D9CAE 0%, #3DBDC8 100%)' }}
+                    >
+                      <Upload className="w-4 h-4" />
+                      파일 선택
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleXlsxFile(file);
+                        }}
+                      />
+                    </label>
+                  </div>
+                ) : (
+                  /* Preview table */
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-text-secondary">
+                        총 <span className="font-bold text-text-primary">{xlsxRows.length}</span>명 중{' '}
+                        <span className="font-bold" style={{ color: '#2D9CAE' }}>{xlsxSelected.size}</span>명 선택
+                      </p>
+                      <div className="flex items-center gap-2">
+                        {xlsxRows.some(r => r.isDuplicate) && (
+                          <span className="text-xs px-2 py-1 rounded-full" style={{ backgroundColor: '#FEF3C7', color: '#D97706' }}>
+                            중복 {xlsxRows.filter(r => r.isDuplicate).length}명 자동 제외
+                          </span>
+                        )}
+                        <button
+                          onClick={() => { setXlsxRows([]); setXlsxSelected(new Set()); }}
+                          className="text-xs text-text-tertiary hover:text-text-secondary"
+                        >
+                          다시 선택
+                        </button>
+                      </div>
+                    </div>
+                    <div className="border border-border-subtle rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr style={{ backgroundColor: '#F8F8F6', height: '40px' }}>
+                            <th className="px-3 text-center" style={{ width: '40px' }}>
+                              <input
+                                type="checkbox"
+                                checked={
+                                  xlsxRows.filter(r => !r.isDuplicate).length > 0 &&
+                                  xlsxRows.filter(r => !r.isDuplicate).every((_, idx) => {
+                                    const realIdx = xlsxRows.findIndex((row, ri) => !row.isDuplicate && xlsxRows.slice(0, ri + 1).filter(r2 => !r2.isDuplicate).length === idx + 1);
+                                    return xlsxSelected.has(realIdx);
+                                  })
+                                }
+                                onChange={toggleXlsxAll}
+                                className="w-4 h-4 accent-[#2D9CAE]"
+                              />
+                            </th>
+                            <th className="px-3 text-left text-xs font-semibold text-text-tertiary">이름</th>
+                            <th className="px-3 text-left text-xs font-semibold text-text-tertiary">아이디</th>
+                            <th className="px-3 text-left text-xs font-semibold text-text-tertiary">비밀번호</th>
+                            <th className="px-3 text-left text-xs font-semibold text-text-tertiary">학교</th>
+                            <th className="px-3 text-left text-xs font-semibold text-text-tertiary">학년</th>
+                            <th className="px-3 text-left text-xs font-semibold text-text-tertiary">상태</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {xlsxRows.map((row, i) => (
+                            <tr
+                              key={i}
+                              className={`border-t border-border-subtle ${row.isDuplicate ? 'opacity-50 bg-amber-50' : xlsxSelected.has(i) ? 'bg-teal-50/30' : ''}`}
+                              style={{ height: '40px' }}
+                            >
+                              <td className="px-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={xlsxSelected.has(i)}
+                                  onChange={() => toggleXlsxRow(i)}
+                                  disabled={row.isDuplicate}
+                                  className="w-4 h-4 accent-[#2D9CAE] disabled:opacity-30"
+                                />
+                              </td>
+                              <td className="px-3 font-medium text-text-primary">{row.name}</td>
+                              <td className="px-3 text-text-secondary">{row.username}</td>
+                              <td className="px-3 text-text-tertiary">{row.password}</td>
+                              <td className="px-3 text-text-secondary">{row.school_name || '-'}</td>
+                              <td className="px-3 text-text-secondary">{row.grade || '-'}</td>
+                              <td className="px-3">
+                                {row.isDuplicate ? (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
+                                    style={{ backgroundColor: '#FEF3C7', color: '#D97706' }}
+                                  >
+                                    <AlertCircle className="w-3 h-3" />
+                                    {row.duplicateReason}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs" style={{ color: '#16A34A' }}>신규</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div
+                className="flex items-center justify-end gap-3 px-6 py-4 shrink-0"
+                style={{ borderTop: '1px solid #E8E8E6', backgroundColor: '#FAFAF9' }}
+              >
+                <button
+                  onClick={handleCloseXlsx}
+                  className="px-5 py-2.5 rounded-lg text-[13px] font-semibold text-text-secondary transition-colors hover:bg-bg-muted"
+                  style={{ border: '1px solid #E8E8E6' }}
+                >
+                  {xlsxResult ? '닫기' : '취소'}
+                </button>
+                {xlsxRows.length > 0 && !xlsxResult && (
+                  <button
+                    onClick={handleXlsxSubmit}
+                    disabled={xlsxSelected.size === 0 || xlsxUploading}
+                    className="px-5 py-2.5 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ background: 'linear-gradient(135deg, #2D9CAE 0%, #3DBDC8 100%)' }}
+                  >
+                    {xlsxUploading ? '등록 중...' : `${xlsxSelected.size}명 등록하기`}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}

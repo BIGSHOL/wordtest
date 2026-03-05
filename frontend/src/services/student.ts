@@ -45,6 +45,11 @@ export const studentService = {
   async deleteStudentsBatch(ids: string[]): Promise<void> {
     await api.post('/api/v1/students/batch-delete', { student_ids: ids });
   },
+
+  async batchCreate(students: { username: string; password: string; name: string; school_name?: string; grade?: string }[]): Promise<{ created: number; skipped_duplicates: string[]; errors: string[] }> {
+    const response = await api.post<{ created: number; skipped_duplicates: string[]; errors: string[] }>('/api/v1/students/batch', { students });
+    return response.data;
+  },
 };
 
 export default studentService;

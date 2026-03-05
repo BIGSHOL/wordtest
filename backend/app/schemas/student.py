@@ -23,3 +23,21 @@ class UpdateStudentRequest(BaseModel):
 
 class BatchDeleteRequest(BaseModel):
     student_ids: list[str]
+
+
+class BatchStudentItem(BaseModel):
+    username: str
+    password: str
+    name: str
+    school_name: Optional[str] = None
+    grade: Optional[str] = None
+
+
+class BatchCreateRequest(BaseModel):
+    students: list[BatchStudentItem]
+
+
+class BatchCreateResult(BaseModel):
+    created: int
+    skipped_duplicates: list[str]  # list of usernames that were skipped
+    errors: list[str]  # list of error messages
