@@ -30,6 +30,7 @@ class RegisterRequest(BaseModel):
     username: str
     password: str
     name: str
+    invite_code: str | None = None
 
     @field_validator("name")
     @classmethod

@@ -96,6 +96,24 @@ export const authService = {
     this.removeRefreshToken();
   },
 
+  /**
+   * Validate an invite code.
+   */
+  async validateInviteCode(code: string): Promise<{ valid: boolean; inviter_name: string }> {
+    const response = await api.get<{ valid: boolean; inviter_name: string }>(
+      `/api/v1/auth/invite-code/validate?code=${encodeURIComponent(code)}`
+    );
+    return response.data;
+  },
+
+  /**
+   * Regenerate invite code.
+   */
+  async regenerateInviteCode(): Promise<{ invite_code: string }> {
+    const response = await api.post<{ invite_code: string }>('/api/v1/auth/invite-code/regenerate');
+    return response.data;
+  },
+
   getToken(): string | null {
     return localStorage.getItem(TOKEN_KEY);
   },

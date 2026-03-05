@@ -16,6 +16,8 @@ class UserResponse(BaseModel):
     school_name: Optional[str] = None
     grade: Optional[str] = None
     phone_number: Optional[str] = None
+    invite_code: Optional[str] = None
+    invited_by: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

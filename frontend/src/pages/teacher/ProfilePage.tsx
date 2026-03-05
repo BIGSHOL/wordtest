@@ -6,7 +6,7 @@ import { useAuthStore } from '../../stores/auth';
 import { TeacherLayout } from '../../components/layout/TeacherLayout';
 import authService from '../../services/auth';
 import { getErrorMessage } from '../../utils/error';
-import { KeyRound, User as UserIcon, X } from 'lucide-react';
+import { KeyRound, User as UserIcon, X, Ticket, Copy, Check, RefreshCw } from 'lucide-react';
 
 export function ProfilePage() {
   const { user, fetchUser } = useAuthStore();
@@ -23,10 +23,36 @@ export function ProfilePage() {
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   useEffect(() => {
     if (user) setEditName(user.name || '');
   }, [user]);
+
+  const handleCopyInviteCode = async () => {
+    if (!user?.invite_code) return;
+    try {
+      await navigator.clipboard.writeText(user.invite_code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // fallback
+    }
+  };
+
+  const handleRegenerateInviteCode = async () => {
+    setIsRegenerating(true);
+    try {
+      await authService.regenerateInviteCode();
+      await fetchUser();
+      setMessage({ type: 'success', text: '초대 코드가 새로 생성되었습니다.' });
+    } catch (error: unknown) {
+      setMessage({ type: 'error', text: getErrorMessage(error, '초대 코드 재생성에 실패했습니다.') });
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
 
   const handleUpdateName = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,6 +198,47 @@ export function ProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* Invite Code Card */}
+        {user.role !== 'student' && user.invite_code && (
+          <div className="bg-surface border border-border-subtle rounded-xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-border-subtle flex items-center gap-2">
+              <Ticket className="w-5 h-5 text-teal" />
+              <h2 className="text-lg font-semibold text-text-primary">친구 초대</h2>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-sm text-text-secondary">
+                아래 초대 코드를 친구에게 공유하세요. 친구가 회원가입 시 이 코드를 입력하면 됩니다.
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 flex items-center justify-center px-4 py-3 bg-bg-muted rounded-lg border border-border-subtle">
+                  <span className="text-xl font-mono font-bold tracking-[0.3em] text-text-primary">
+                    {user.invite_code}
+                  </span>
+                </div>
+                <button
+                  onClick={handleCopyInviteCode}
+                  className="flex items-center gap-1.5 px-4 py-3 rounded-lg text-sm font-medium text-white transition-all hover:opacity-90"
+                  style={{ background: copied ? '#22c55e' : 'linear-gradient(135deg, #2D9CAE 0%, #3DBDC8 100%)' }}
+                >
+                  {copied ? (
+                    <><Check className="w-4 h-4" /> 복사됨</>
+                  ) : (
+                    <><Copy className="w-4 h-4" /> 복사</>
+                  )}
+                </button>
+              </div>
+              <button
+                onClick={handleRegenerateInviteCode}
+                disabled={isRegenerating}
+                className="flex items-center gap-1.5 text-xs text-text-tertiary hover:text-teal transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRegenerating ? 'animate-spin' : ''}`} />
+                코드 재생성
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Password Change Card */}
         <div className="bg-surface border border-border-subtle rounded-xl overflow-hidden">

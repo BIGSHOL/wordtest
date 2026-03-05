@@ -36,12 +36,26 @@ async def authenticate_user(db: AsyncSession, login_id: str, password: str) -> U
     return user
 
 
+async def get_user_by_invite_code(db: AsyncSession, code: str) -> User | None:
+    result = await db.execute(
+        select(User).where(User.invite_code == code.upper())
+    )
+    return result.scalar_one_or_none()
+
+
 async def create_user(db: AsyncSession, user_in: RegisterRequest) -> User:
+    invited_by = None
+    if user_in.invite_code:
+        inviter = await get_user_by_invite_code(db, user_in.invite_code)
+        if inviter:
+            invited_by = inviter.id
+
     user = User(
         username=user_in.username,
         password_hash=await get_password_hash_async(user_in.password),
         name=user_in.name,
         role="teacher",
+        invited_by=invited_by,
     )
     db.add(user)
     await db.commit()

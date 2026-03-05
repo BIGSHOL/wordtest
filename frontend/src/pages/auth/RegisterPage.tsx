@@ -1,13 +1,15 @@
 /**
  * Registration page — matches Pencil design (PC: CZuUD, Mobile: TkBFC).
  */
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../../stores/auth';
-import { GraduationCap, Brain, TrendingUp, Users, EyeOff, Eye } from 'lucide-react';
+import { GraduationCap, Brain, TrendingUp, Users, EyeOff, Eye, Ticket, CheckCircle } from 'lucide-react';
+import authService from '../../services/auth';
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { register, isLoading, error, clearError } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -17,9 +19,29 @@ export function RegisterPage() {
     password: '',
     confirmPassword: '',
     name: '',
+    inviteCode: searchParams.get('invite') || '',
   });
 
   const [validationError, setValidationError] = useState('');
+  const [inviterName, setInviterName] = useState('');
+
+  // Validate invite code when it changes
+  useEffect(() => {
+    const code = formData.inviteCode.trim();
+    if (code.length < 8) {
+      setInviterName('');
+      return;
+    }
+
+    let cancelled = false;
+    authService.validateInviteCode(code).then((res) => {
+      if (!cancelled) setInviterName(res.inviter_name);
+    }).catch(() => {
+      if (!cancelled) setInviterName('');
+    });
+
+    return () => { cancelled = true; };
+  }, [formData.inviteCode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,6 +63,7 @@ export function RegisterPage() {
         username: formData.username,
         password: formData.password,
         name: formData.name,
+        invite_code: formData.inviteCode.trim() || undefined,
       });
       navigate('/dashboard', { replace: true });
     } catch {
@@ -262,6 +285,47 @@ export function RegisterPage() {
                     {showConfirmPassword ? <Eye className="w-[18px] h-[18px]" /> : <EyeOff className="w-[18px] h-[18px]" />}
                   </button>
                 </div>
+              </div>
+
+              {/* Invite Code (optional) */}
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="inviteCode"
+                  className="text-[13px] font-medium text-[#1A1918]"
+                  style={{ fontFamily: 'Outfit, sans-serif' }}
+                >
+                  초대 코드 <span className="text-[#9C9B99] font-normal">(선택)</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#9C9B99]">
+                    <Ticket className="w-[18px] h-[18px]" />
+                  </div>
+                  <input
+                    id="inviteCode"
+                    name="inviteCode"
+                    type="text"
+                    maxLength={8}
+                    value={formData.inviteCode}
+                    onChange={handleChange}
+                    className={`w-full h-12 pl-10 pr-3.5 rounded-lg border bg-white text-sm text-[#1A1918] placeholder-[#9C9B99] focus:outline-none transition-colors uppercase tracking-wider ${
+                      inviterName
+                        ? 'border-green-400 focus:border-green-500 focus:ring-1 focus:ring-green-500'
+                        : 'border-[#E5E4E1] focus:border-[#2D9CAE] focus:ring-1 focus:ring-[#2D9CAE]'
+                    }`}
+                    placeholder="친구에게 받은 코드 입력"
+                    style={{ fontFamily: 'Outfit, sans-serif' }}
+                  />
+                  {inviterName && (
+                    <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-green-500">
+                      <CheckCircle className="w-[18px] h-[18px]" />
+                    </div>
+                  )}
+                </div>
+                {inviterName && (
+                  <p className="text-xs text-green-600" style={{ fontFamily: 'Outfit, sans-serif' }}>
+                    {inviterName} 선생님의 초대
+                  </p>
+                )}
               </div>
             </div>
 

@@ -13,6 +13,8 @@ export interface User {
   school_name: string | null;
   grade: string | null;
   phone_number: string | null;
+  invite_code: string | null;
+  invited_by: string | null;
   created_at: string;
   updated_at: string;
   latest_level?: number | null;
@@ -31,6 +33,7 @@ export interface RegisterRequest {
   username: string;
   password: string;
   name: string;
+  invite_code?: string;
 }
 
 export interface AuthResponse {
