@@ -58,6 +58,7 @@ export function WordDatabasePage() {
   const [formData, setFormData] = useState<WordFormData>(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
   const [bookOptions, setBookOptions] = useState<string[]>([]);
+  const [seriesTab, setSeriesTab] = useState<string>('');
   const [lessonOptions, setLessonOptions] = useState<LessonInfo[]>([]);
   const [posFilter, setPosFilter] = useState<string>('');
   const [posOptions, setPosOptions] = useState<string[]>([]);
@@ -243,6 +244,20 @@ export function WordDatabasePage() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [areaPopoverWordId]);
+
+  // ── Series tab grouping ──
+  const SERIES = [
+    { key: 'all', label: '전체' },
+    { key: 'power', label: 'POWER VOCA', match: (b: string) => b.startsWith('Power Voca') && !b.includes('실전') },
+    { key: 'power-real', label: 'POWER VOCA 실전', match: (b: string) => b.includes('실전') },
+    { key: 'neungyul', label: '능률 VOCA', match: (b: string) => b.startsWith('능률') },
+  ] as const;
+
+  const seriesBooks = bookOptions.filter((b) => {
+    if (!seriesTab || seriesTab === 'all') return true;
+    const series = SERIES.find((s) => s.key === seriesTab);
+    return series && 'match' in series ? series.match(b) : true;
+  });
 
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
@@ -436,78 +451,100 @@ export function WordDatabasePage() {
 
         {/* Word Table */}
         <div className="bg-surface border border-border-subtle rounded-xl overflow-hidden">
-          {/* Row 1: Book Filter */}
-          <div className="flex items-center justify-between px-5 py-3 border-b border-border-subtle">
-            <div className="flex items-center gap-3">
-              <BookOpen className="w-4 h-4 text-text-tertiary shrink-0" />
-              <span className="text-[13px] font-semibold text-text-secondary whitespace-nowrap">교재</span>
-              <div className="relative">
-                <select
-                  value={bookFilter}
-                  onChange={(e) => {
-                    setBookFilter(e.target.value);
+          {/* Row 1: Series Tabs */}
+          <div className="flex items-center justify-between px-5 py-2 border-b border-border-subtle">
+            <div className="flex items-center gap-1">
+              <BookOpen className="w-4 h-4 text-text-tertiary shrink-0 mr-2" />
+              {SERIES.map((s) => (
+                <button
+                  key={s.key}
+                  onClick={() => {
+                    setSeriesTab(s.key);
+                    setBookFilter('');
                     setLessonFilter('');
                     setPage(0);
                   }}
-                  className="appearance-none pl-3 pr-8 py-1.5 rounded-lg border border-border-subtle bg-white text-sm text-text-primary focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal cursor-pointer"
-                  style={{ minWidth: 180 }}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    (seriesTab || 'all') === s.key
+                      ? 'bg-teal text-white shadow-sm'
+                      : 'text-text-secondary hover:bg-bg-muted'
+                  }`}
                 >
-                  <option value="">전체 교재</option>
-                  {bookOptions.map((book) => (
-                    <option key={book} value={book}>{book}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary pointer-events-none" />
-              </div>
-              {posOptions.length > 0 && (
-                <>
-                  <div className="w-px h-5 bg-border-subtle" />
-                  <span className="text-[13px] font-semibold text-text-secondary whitespace-nowrap">품사</span>
-                  <div className="relative">
-                    <select
-                      value={posFilter}
-                      onChange={(e) => {
-                        setPosFilter(e.target.value);
-                        setPage(0);
-                      }}
-                      className="appearance-none pl-3 pr-8 py-1.5 rounded-lg border border-border-subtle bg-white text-sm text-text-primary focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal cursor-pointer"
-                      style={{ minWidth: 100 }}
-                    >
-                      <option value="">전체</option>
-                      {posOptions.map((pos) => (
-                        <option key={pos} value={pos}>{pos}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary pointer-events-none" />
-                  </div>
-                </>
-              )}
-              <div className="w-px h-5 bg-border-subtle" />
-              <button
-                onClick={() => {
-                  setEmojiFilter(prev => prev === true ? null : true);
-                  setPage(0);
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  emojiFilter === true
-                    ? 'bg-amber-100 text-amber-700 border border-amber-300'
-                    : 'bg-white text-text-secondary border border-border-subtle hover:bg-bg-muted'
-                }`}
-                title="이모지 포함 단어만 보기"
-              >
-                <span>😀</span>
-                <span>이모지</span>
-              </button>
+                  {s.label}
+                </button>
+              ))}
             </div>
             <span
               className="text-[11px] font-semibold rounded-full shrink-0"
               style={{ backgroundColor: '#EBF8FA', color: '#2D9CAE', padding: '4px 12px' }}
             >
-              총 {filteredTotal.toLocaleString()}개 단어
+              {filteredTotal.toLocaleString()}개 단어
             </span>
           </div>
 
-          {/* Row 2: Lesson Filter (only when book selected) */}
+          {/* Row 2: Book + POS + Emoji filter */}
+          <div className="flex items-center gap-3 px-5 py-2.5 border-b border-border-subtle bg-[#FAFAF8]">
+            <span className="text-[11px] font-semibold text-text-tertiary whitespace-nowrap">교재</span>
+            <div className="relative">
+              <select
+                value={bookFilter}
+                onChange={(e) => {
+                  setBookFilter(e.target.value);
+                  setLessonFilter('');
+                  setPage(0);
+                }}
+                className="appearance-none pl-3 pr-8 py-1.5 rounded-lg border border-border-subtle bg-white text-sm text-text-primary focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal cursor-pointer"
+                style={{ minWidth: 200 }}
+              >
+                <option value="">전체</option>
+                {seriesBooks.map((book) => (
+                  <option key={book} value={book}>{book}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary pointer-events-none" />
+            </div>
+            {posOptions.length > 0 && (
+              <>
+                <div className="w-px h-5 bg-border-subtle" />
+                <span className="text-[11px] font-semibold text-text-tertiary whitespace-nowrap">품사</span>
+                <div className="relative">
+                  <select
+                    value={posFilter}
+                    onChange={(e) => {
+                      setPosFilter(e.target.value);
+                      setPage(0);
+                    }}
+                    className="appearance-none pl-3 pr-8 py-1.5 rounded-lg border border-border-subtle bg-white text-sm text-text-primary focus:outline-none focus:border-teal focus:ring-1 focus:ring-teal cursor-pointer"
+                    style={{ minWidth: 100 }}
+                  >
+                    <option value="">전체</option>
+                    {posOptions.map((pos) => (
+                      <option key={pos} value={pos}>{pos}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-tertiary pointer-events-none" />
+                </div>
+              </>
+            )}
+            <div className="w-px h-5 bg-border-subtle" />
+            <button
+              onClick={() => {
+                setEmojiFilter(prev => prev === true ? null : true);
+                setPage(0);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                emojiFilter === true
+                  ? 'bg-amber-100 text-amber-700 border border-amber-300'
+                  : 'bg-white text-text-secondary border border-border-subtle hover:bg-bg-muted'
+              }`}
+              title="이모지 포함 단어만 보기"
+            >
+              <span>😀</span>
+              <span>이모지</span>
+            </button>
+          </div>
+
+          {/* Row 3: Lesson Filter (only when book selected) */}
           {bookFilter && lessonOptions.length > 0 && (
             <div className="flex items-center gap-1.5 px-5 py-2.5 border-b border-border-subtle bg-[#FAFAF8] overflow-x-auto">
               <span className="text-[11px] font-semibold text-text-tertiary whitespace-nowrap mr-1">레슨</span>
