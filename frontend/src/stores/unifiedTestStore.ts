@@ -59,6 +59,34 @@ function computeXpChange(params: {
 /** Track ongoing prefetches to avoid duplicate requests */
 const _prefetchingLevels = new Set<number>();
 
+/** On level-up, replace remaining questions with same-type from new level pool */
+function _replaceRemainingWithLevel(
+  flatQuestions: UnifiedQuestion[],
+  fromIndex: number,
+  levelPools: Record<number, UnifiedQuestion[]>,
+  newLevel: number,
+): UnifiedQuestion[] {
+  const pool = levelPools[newLevel] ?? [];
+  const poolByType: Record<string, UnifiedQuestion[]> = {};
+  for (const q of pool) {
+    const t = q.question_type;
+    if (!poolByType[t]) poolByType[t] = [];
+    poolByType[t].push(q);
+  }
+  const typeUsed: Record<string, number> = {};
+  const result = [...flatQuestions];
+  for (let i = fromIndex; i < result.length; i++) {
+    const expectedType = result[i].question_type;
+    const idx = typeUsed[expectedType] ?? 0;
+    if (poolByType[expectedType] && idx < poolByType[expectedType].length) {
+      result[i] = poolByType[expectedType][idx];
+      typeUsed[expectedType] = idx + 1;
+    }
+    // If no replacement available, keep original question
+  }
+  return result;
+}
+
 /** Exam mode: track when each question was first shown (Date.now()) */
 const _questionFirstShown: Record<number, number> = {};
 /** Exam mode: recorded time in seconds for each question (first answer moment) */
@@ -279,16 +307,8 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
         pools[level].push(q);
       }
 
-      // Per-question adaptive: start with first question from current level pool
-      // Total/exam mode: use all questions as-is
-      const startLevel = response.current_level;
-      let flat: UnifiedQuestion[];
-      if (tm === 'per_question' && pools[startLevel]?.length > 0) {
-        flat = [pools[startLevel][0]];
-        indexes[startLevel] = 1; // first question already consumed
-      } else {
-        flat = [...response.questions];
-      }
+      // Keep backend's type-grouped order for all modes
+      const flat: UnifiedQuestion[] = [...response.questions];
 
       set({
         engineType: 'levelup',
@@ -547,13 +567,21 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
             _prefetchLevel(state.sessionId!, newBook);
           }
         }
+      }
 
-        // No level down — wrong answers give 0 XP, stay at current level
+      // On level-up: replace remaining questions with new-level, preserving type order
+      let newFlatQuestions = state.flatQuestions;
+      if (levelChanged === 'up') {
+        newFlatQuestions = _replaceRemainingWithLevel(
+          state.flatQuestions, state.currentQuestionIndex + 1,
+          state.levelPools, newBook,
+        );
       }
 
       set({
         answerResult: result,
         feedbackQuestion: question,
+        flatQuestions: newFlatQuestions,
         isSubmitting: false,
         combo: newCombo,
         bestCombo: newBestCombo,
@@ -583,49 +611,14 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
       return;
     }
 
-    // Adaptive per-question: serve next question from current level's pool
-    if (state.engineType === 'levelup') {
-      const book = state.currentBook;
-      const pool = state.levelPools[book] ?? [];
-      const idx = state.poolIndex[book] ?? 0;
-
-      if (idx < pool.length) {
-        // Serve from current level pool — append to flatQuestions for history
-        const nextQ = pool[idx];
-        const newFlat = [...state.flatQuestions, nextQ];
-        set({
-          flatQuestions: newFlat,
-          currentQuestionIndex: newFlat.length - 1,
-          poolIndex: { ...state.poolIndex, [book]: idx + 1 },
-          selectedAnswer: null,
-          typedAnswer: '',
-          answerResult: null,
-          feedbackQuestion: null,
-          levelChanged: null,
-        });
-      } else {
-        // Pool exhausted — prefetch and advance linearly as fallback
-        _prefetchLevel(state.sessionId!, book);
-        set({
-          currentQuestionIndex: state.currentQuestionIndex + 1,
-          selectedAnswer: null,
-          typedAnswer: '',
-          answerResult: null,
-          feedbackQuestion: null,
-          levelChanged: null,
-        });
-      }
-    } else {
-      // Legacy / non-adaptive: linear advance
-      set({
-        currentQuestionIndex: state.currentQuestionIndex + 1,
-        selectedAnswer: null,
-        typedAnswer: '',
-        answerResult: null,
-        feedbackQuestion: null,
-        levelChanged: null,
-      });
-    }
+    set({
+      currentQuestionIndex: state.currentQuestionIndex + 1,
+      selectedAnswer: null,
+      typedAnswer: '',
+      answerResult: null,
+      feedbackQuestion: null,
+      levelChanged: null,
+    });
   },
 
   complete: async () => {
