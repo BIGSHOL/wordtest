@@ -123,6 +123,7 @@ async def list_level_test_assignments(
         .join(User, TestAssignment.student_id == User.id)
         .where(
             TestConfig.name.like("%레벨테스트%"),
+            ~User.name.like("[DUMMY]%"),
         )
         .order_by(TestAssignment.assigned_at.desc())
     )

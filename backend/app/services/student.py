@@ -44,9 +44,12 @@ async def list_students_by_teacher(db: AsyncSession, teacher_id: str) -> list[Us
 
 
 async def list_all_students(db: AsyncSession) -> list[User]:
-    """Return all students regardless of teacher."""
+    """Return all students regardless of teacher (excluding [DUMMY])."""
     result = await db.execute(
-        select(User).where(User.role == "student").order_by(User.name)
+        select(User).where(
+            User.role == "student",
+            ~User.name.like("[DUMMY]%"),
+        ).order_by(User.name)
     )
     return list(result.scalars().all())
 

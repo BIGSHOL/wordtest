@@ -127,7 +127,7 @@ export function LevelTestPage() {
 
   // Filtered & paginated (create tab)
   const filtered = useMemo(() => {
-    const base = students.filter((s) => !s.name.startsWith('[DUMMY]'));
+    const base = students;
     if (!searchQuery.trim()) return base;
     const q = searchQuery.trim().toLowerCase();
     return base.filter(

@@ -52,6 +52,15 @@ from app.services import report_engine
 router = APIRouter(prefix="/stats", tags=["stats"])
 
 
+def _real_student_ids_subq():
+    """Student IDs excluding [DUMMY] students (for visible data only)."""
+    return (
+        select(User.id)
+        .where(User.role == "student", ~User.name.like("[DUMMY]%"))
+        .scalar_subquery()
+    )
+
+
 @router.get("/all-results", response_model=AllResultsResponse)
 async def get_all_results(
     teacher: CurrentTeacher,
@@ -62,9 +71,7 @@ async def get_all_results(
     limit: int = Query(10, ge=1, le=100),
 ):
     """Get all test results with pagination (teacher only)."""
-    student_ids_subq = (
-        select(User.id).where(User.role == "student").scalar_subquery()
-    )
+    student_ids_subq = _real_student_ids_subq()
 
     results: list[RecentTest] = []
 
@@ -190,7 +197,9 @@ async def get_dashboard_stats(
     """Get aggregated dashboard statistics (teacher only)."""
 
     # Total students
-    students_query = select(func.count()).select_from(User).where(User.role == "student")
+    students_query = select(func.count()).select_from(User).where(
+        User.role == "student", ~User.name.like("[DUMMY]%")
+    )
     total_students_result = await db.execute(students_query)
     total_students = total_students_result.scalar() or 0
 
@@ -200,9 +209,7 @@ async def get_dashboard_stats(
     total_words = total_words_result.scalar() or 0
 
     # Subquery for student IDs (avoids loading all IDs into memory)
-    student_ids_subq = (
-        select(User.id).where(User.role == "student").scalar_subquery()
-    )
+    student_ids_subq = _real_student_ids_subq()
 
     # Compute period filter
     if period == "weekly":
@@ -560,9 +567,7 @@ async def get_word_stats(
     period: str = Query("all"),
 ):
     """Get per-word accuracy and response time stats (teacher only)."""
-    student_ids_subq = (
-        select(User.id).where(User.role == "student").scalar_subquery()
-    )
+    student_ids_subq = _real_student_ids_subq()
 
     # Compute period filter
     if period == "weekly":

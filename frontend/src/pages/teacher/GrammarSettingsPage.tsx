@@ -157,7 +157,7 @@ export function GrammarSettingsPage() {
   };
 
   const filteredStudents = useMemo(() => {
-    const base = students.filter((s) => !s.name.startsWith('[DUMMY]'));
+    const base = students;
     const term = studentSearch.toLowerCase();
     if (!term) return base;
     return base.filter(
@@ -1884,7 +1884,7 @@ function GrammarAssignModal({
   const alreadyAssigned = existingAssignmentStudentIds;
 
   const filtered = useMemo(() => {
-    const base = students.filter((s) => !s.name.startsWith('[DUMMY]'));
+    const base = students;
     const term = search.toLowerCase();
     if (!term) return base;
     return base.filter(

@@ -69,6 +69,7 @@ async def list_test_configs(
         select(TestConfig, count_subq.label("assignment_count"))
         .where(
             TestConfig.is_active == True,
+            ~TestConfig.name.like("[DUMMY]%"),
         )
         .order_by(TestConfig.created_at.desc())
     )
