@@ -492,7 +492,6 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
   },
 
   reset: () => {
-    _prefetchingLevels.clear();
     _resetExamTimers();
     set(initialState);
   },
@@ -695,27 +694,6 @@ export const useUnifiedTestStore = create<UnifiedTestStore>((set, get) => ({
     }
   },
 }));
-
-// ── Prefetch Helper (per-question levelup) ──────────────────────────────────
-
-async function _prefetchLevel(sessionId: string, level: number) {
-  if (_prefetchingLevels.has(level)) return;
-  _prefetchingLevels.add(level);
-  try {
-    const response = await unifiedTestService.fetchLevelQuestions(sessionId, level);
-    const state = useUnifiedTestStore.getState();
-    const existingPool = state.levelPools[level] ?? [];
-    const existingIds = new Set(existingPool.map(q => q.word_mastery_id));
-    const newQuestions = response.questions.filter(q => !existingIds.has(q.word_mastery_id));
-    if (newQuestions.length > 0) {
-      useUnifiedTestStore.setState({
-        levelPools: { ...state.levelPools, [level]: [...existingPool, ...newQuestions] },
-      });
-    }
-  } catch { /* silent */ } finally {
-    _prefetchingLevels.delete(level);
-  }
-}
 
 // ── Derived Selectors ───────────────────────────────────────────────────────
 
