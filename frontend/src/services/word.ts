@@ -72,6 +72,7 @@ export const wordService = {
   async listWords(params?: {
     level?: number;
     book_name?: string;
+    book_names?: string;
     lesson?: string;
     part_of_speech?: string;
     search?: string;

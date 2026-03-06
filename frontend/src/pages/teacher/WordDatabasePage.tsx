@@ -72,6 +72,7 @@ export function WordDatabasePage() {
         limit: number;
         search?: string;
         book_name?: string;
+        book_names?: string;
         lesson?: string;
         part_of_speech?: string;
         has_emoji?: boolean;
@@ -80,7 +81,11 @@ export function WordDatabasePage() {
         limit: ITEMS_PER_PAGE,
       };
       if (debouncedSearch) params.search = debouncedSearch;
-      if (bookFilter) params.book_name = bookFilter;
+      if (bookFilter) {
+        params.book_name = bookFilter;
+      } else if (seriesTab && seriesTab !== 'all' && seriesBooks.length > 0) {
+        params.book_names = seriesBooks.join(',');
+      }
       if (lessonFilter) params.lesson = lessonFilter;
       if (posFilter) params.part_of_speech = posFilter;
       if (emojiFilter !== null) params.has_emoji = emojiFilter;
@@ -107,7 +112,7 @@ export function WordDatabasePage() {
 
   useEffect(() => {
     fetchWords();
-  }, [page, debouncedSearch, bookFilter, lessonFilter, posFilter, emojiFilter]);
+  }, [page, debouncedSearch, bookFilter, seriesTab, lessonFilter, posFilter, emojiFilter]);
 
   // Load books and parts of speech on mount
   useEffect(() => {

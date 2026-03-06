@@ -29,6 +29,7 @@ async def list_words(
     current_user: CurrentUser,
     level: Optional[int] = Query(None),
     book_name: Optional[str] = Query(None),
+    book_names: Optional[str] = Query(None, description="Comma-separated book names"),
     lesson: Optional[str] = Query(None),
     part_of_speech: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
@@ -46,6 +47,10 @@ async def list_words(
         conditions.append(Word.level == level)
     if book_name:
         conditions.append(Word.book_name == book_name)
+    elif book_names:
+        names = [n.strip() for n in book_names.split(",") if n.strip()]
+        if names:
+            conditions.append(Word.book_name.in_(names))
     if lesson:
         conditions.append(Word.lesson == lesson)
     if part_of_speech:
