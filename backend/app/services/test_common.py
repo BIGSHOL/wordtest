@@ -734,12 +734,8 @@ def generate_questions_for_words(
         reserved_ids: set[str] = set()
         per_type = max(1, len(words) // len(question_types)) if question_types else 1
         for qt in restrictive:
-            compatible = [w for w in words if engines_map[qt].can_generate(w)]
-            # Also search all_words for more compatible words
-            pool_ids = {w.id for w in words}
-            extra = [w for w in all_words if w.id not in pool_ids and engines_map[qt].can_generate(w)]
-            combined = compatible + extra
-            for w in combined[:per_type]:
+            compatible = [w for w in words if engines_map[qt].can_generate(w) and w.id not in reserved_ids]
+            for w in compatible[:per_type]:
                 reserved[qt].append(w)
                 reserved_ids.add(w.id)
         # Build questions: restrictive types use reserved words, others use remaining

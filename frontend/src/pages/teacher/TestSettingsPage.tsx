@@ -19,6 +19,19 @@ import type { TestAssignmentItem, TestConfigItem, CreateTestConfigRequest } from
 import { logger } from '../../utils/logger';
 import { SKILL_TO_ENGINES } from '../../constants/engineLabels';
 
+/** Compute equal distribution counts for question types. */
+function computeEqualCounts(types: string[], total: number): Record<string, number> {
+  if (!types.length || total <= 0) return {};
+  const base = Math.floor(total / types.length);
+  let remainder = total - base * types.length;
+  const counts: Record<string, number> = {};
+  for (const t of types) {
+    counts[t] = base + (remainder > 0 ? 1 : 0);
+    if (remainder > 0) remainder--;
+  }
+  return counts;
+}
+
 type Tab = 'create' | 'configs' | 'status';
 
 const TAB_ITEMS: { key: Tab; label: string }[] = [
@@ -266,7 +279,7 @@ export function TestSettingsPage() {
         : undefined,
       question_type_counts: config.distributionMode === 'manual' && Object.keys(config.manualCounts).length > 0
         ? config.manualCounts
-        : undefined,
+        : computeEqualCounts(selectedTypes, effectiveCount),
     };
 
     setIsSubmitting(true);
@@ -338,6 +351,8 @@ export function TestSettingsPage() {
 
     if (config.distributionMode === 'manual') {
       requestData.question_type_counts = config.manualCounts;
+    } else {
+      requestData.question_type_counts = computeEqualCounts(questionTypes, questionCount);
     }
 
     setIsSubmitting(true);

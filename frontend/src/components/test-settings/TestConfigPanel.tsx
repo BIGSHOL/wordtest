@@ -349,6 +349,45 @@ function PageStudents({
   );
 }
 
+// ── Book series grouping for <optgroup> ────────────────────────────────────
+const BOOK_SERIES: { label: string; match: (b: string) => boolean }[] = [
+  { label: 'POWER VOCA 기본', match: (b) => /^Power Voca 5000-\d+$/.test(b) },
+  { label: 'POWER VOCA 수능기출', match: (b) => b.includes('수능') },
+  { label: '능률 VOCA', match: (b) => b.startsWith('능률') },
+];
+
+function groupBooksBySeries(books: string[]) {
+  const groups: { label: string; items: string[] }[] = [];
+  const used = new Set<string>();
+  for (const series of BOOK_SERIES) {
+    const items = books.filter((b) => series.match(b));
+    if (items.length > 0) {
+      groups.push({ label: series.label, items });
+      items.forEach((b) => used.add(b));
+    }
+  }
+  const rest = books.filter((b) => !used.has(b));
+  if (rest.length > 0) {
+    groups.push({ label: '기타', items: rest });
+  }
+  return groups;
+}
+
+function BookOptions({ books }: { books: string[] }) {
+  const groups = groupBooksBySeries(books);
+  return (
+    <>
+      {groups.map((g) => (
+        <optgroup key={g.label} label={g.label}>
+          {g.items.map((book) => (
+            <option key={book} value={book}>{book}</option>
+          ))}
+        </optgroup>
+      ))}
+    </>
+  );
+}
+
 function PageScope({
   config, update, books, lessonsStart, lessonsEnd, wordCount,
 }: {
@@ -429,9 +468,7 @@ function PageScope({
                 style={selectStyle}
               >
                 <option value="">교재 선택</option>
-                {books.map((book) => (
-                  <option key={book} value={book}>{book}</option>
-                ))}
+                <BookOptions books={books} />
               </select>
               {showCrossBook && config.bookStart && lessonsStart.length > 0 && (
                 <select
@@ -511,9 +548,7 @@ function PageScope({
                   style={selectStyle}
                 >
                   <option value="">교재 선택</option>
-                  {books.map((book) => (
-                    <option key={book} value={book}>{book}</option>
-                  ))}
+                  <BookOptions books={books} />
                 </select>
                 {config.bookEnd && lessonsEnd.length > 0 && (
                   <select
