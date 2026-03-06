@@ -64,6 +64,19 @@ export function WordDatabasePage() {
   const [posOptions, setPosOptions] = useState<string[]>([]);
   const [emojiFilter, setEmojiFilter] = useState<boolean | null>(null);
 
+  // ── Series tab grouping ──
+  const SERIES = [
+    { key: 'all', label: '전체' },
+    { key: 'power', label: 'POWER VOCA', match: (b: string) => b.startsWith('Power Voca') },
+    { key: 'neungyul', label: '능률 VOCA', match: (b: string) => b.startsWith('능률') },
+  ] as const;
+
+  const seriesBooks = bookOptions.filter((b) => {
+    if (!seriesTab || seriesTab === 'all') return true;
+    const series = SERIES.find((s) => s.key === seriesTab);
+    return series && 'match' in series ? series.match(b) : true;
+  });
+
   const fetchWords = async () => {
     try {
       setIsLoading(true);
@@ -249,20 +262,6 @@ export function WordDatabasePage() {
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [areaPopoverWordId]);
-
-  // ── Series tab grouping ──
-  const SERIES = [
-    { key: 'all', label: '전체' },
-    { key: 'power', label: 'POWER VOCA', match: (b: string) => b.startsWith('Power Voca') && !b.includes('실전') },
-    { key: 'power-real', label: 'POWER VOCA 실전', match: (b: string) => b.includes('실전') },
-    { key: 'neungyul', label: '능률 VOCA', match: (b: string) => b.startsWith('능률') },
-  ] as const;
-
-  const seriesBooks = bookOptions.filter((b) => {
-    if (!seriesTab || seriesTab === 'all') return true;
-    const series = SERIES.find((s) => s.key === seriesTab);
-    return series && 'match' in series ? series.match(b) : true;
-  });
 
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
