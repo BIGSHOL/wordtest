@@ -96,6 +96,7 @@ export interface MasteryReport {
   student_grade?: string | null;
   student_school?: string | null;
   test_type?: string | null;
+  book_series?: string;
 }
 
 // --- Grammar Report ---

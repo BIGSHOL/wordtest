@@ -908,6 +908,20 @@ async def get_mastery_report(
         for ans, word in answer_rows
     ]
 
+    # Detect book series from TestConfig
+    book_series = "power"
+    if session.assignment_id:
+        from app.models.test_assignment import TestAssignment
+        from app.models.test_config import TestConfig
+        config_result = await db.execute(
+            select(TestConfig.book_name)
+            .join(TestAssignment, TestAssignment.test_config_id == TestConfig.id)
+            .where(TestAssignment.id == session.assignment_id)
+        )
+        config_book = config_result.scalar_one_or_none()
+        if config_book and config_book.startswith("능률"):
+            book_series = "neungyul"
+
     metrics = await report_engine.assemble_report_metrics(
         db=db,
         student_id=student_id,
@@ -918,6 +932,7 @@ async def get_mastery_report(
         correct_count=correct_q,
         total_questions=total_q,
         answers=answer_dicts,
+        book_series=book_series,
     )
 
     total_word_count = await report_engine.get_total_word_count(db)
@@ -951,6 +966,7 @@ async def get_mastery_report(
         word_summaries=word_summaries,
         per_engine_stats=[EngineStats(**s) for s in metrics["per_engine_stats"]],
         diagnosis=EngineDiagnosis(**metrics["diagnosis"]),
+        book_series=metrics.get("book_series", "power"),
     )
 
 

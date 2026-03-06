@@ -93,6 +93,38 @@ RANK_TO_BOOK: dict[int, str] = {
     15: "POWER VOCA 수능 기출 5000-05",
 }
 
+# ── 능률 VOCA series mappings ─────────────────────────────────────────────
+
+NEUNGYUL_RANK_TO_BOOK: dict[int, str] = {
+    1: "능률 VOCA 중등 기본",
+    2: "능률 VOCA 중등 기본 파생어",
+    3: "능률 VOCA 중등 고난도",
+    4: "능률 VOCA 중등 고난도 파생어",
+}
+
+NEUNGYUL_RANK_TO_GRADE: dict[int, str] = {
+    1: "중1~중2",
+    2: "중1~중2",
+    3: "중2~중3",
+    4: "중2~중3",
+}
+
+_NEUNGYUL_VOCAB_LABEL: dict[int, str] = {
+    1: "중등 기초 어휘",
+    2: "중등 기초 파생어",
+    3: "중등 심화 어휘",
+    4: "중등 심화 파생어",
+}
+
+
+def get_neungyul_rank(level: int, accuracy_pct: int) -> int:
+    """Determine 능률 VOCA rank (1-4) from level and accuracy."""
+    if level <= 3:
+        return 2 if accuracy_pct >= 50 else 1
+    else:
+        return 4 if accuracy_pct >= 50 else 3
+
+
 # ── Skill area (능력영역) system ───────────────────────────────────────────
 # 6 testable areas: 5 core + comprehensive (sentence_type engine)
 
@@ -706,6 +738,7 @@ async def assemble_report_metrics(
     correct_count: int,
     total_questions: int,
     answers: list[dict],
+    book_series: str = "power",
 ) -> dict:
     """Consolidated report metric assembly used by all report endpoints.
 
@@ -744,10 +777,17 @@ async def assemble_report_metrics(
     engine_stats = calculate_per_engine_stats(answers)
     diagnosis = diagnose_strengths_weaknesses(engine_stats)
 
-    # Mappings
-    grade_level = RANK_TO_GRADE.get(rank, "미정")
-    vocab_desc = get_vocab_description(rank, score)
-    recommended_book = RANK_TO_BOOK.get(rank, "")
+    # Mappings (series-aware)
+    if book_series == "neungyul":
+        ng_rank = get_neungyul_rank(rank, score)
+        grade_level = NEUNGYUL_RANK_TO_GRADE.get(ng_rank, "중1~중3")
+        vocab_label = _NEUNGYUL_VOCAB_LABEL.get(ng_rank, "중등 어휘")
+        vocab_desc = f"{vocab_label} {score}% 이해"
+        recommended_book = NEUNGYUL_RANK_TO_BOOK.get(ng_rank, "")
+    else:
+        grade_level = RANK_TO_GRADE.get(rank, "미정")
+        vocab_desc = get_vocab_description(rank, score)
+        recommended_book = RANK_TO_BOOK.get(rank, "")
 
     # Legacy values for backward compat
     vocab_raw, _ = await calculate_vocab_size(
@@ -766,4 +806,5 @@ async def assemble_report_metrics(
         "per_engine_stats": engine_stats,
         "diagnosis": diagnosis,
         "vocab_raw": vocab_raw,
+        "book_series": book_series,
     }

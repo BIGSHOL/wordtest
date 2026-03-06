@@ -172,6 +172,7 @@ class MasteryReportResponse(BaseModel):
     test_type: Optional[str] = None
     per_engine_stats: list[EngineStats] = []
     diagnosis: Optional[EngineDiagnosis] = None
+    book_series: str = "power"
 
 
 class GrammarTypeStats(BaseModel):

@@ -15,6 +15,7 @@ import type { MasteryReport } from '../../types/report';
 import { getLevelRank } from '../../types/rank';
 import { RadarChart } from '../../components/report/RadarChart';
 import { LevelChartTable } from '../../components/report/LevelChartTable';
+import { NeungyulLevelChart } from '../../components/report/NeungyulLevelChart';
 import { MetricDetailSection } from '../../components/report/MetricDetailSection';
 import { logger } from '../../utils/logger';
 
@@ -81,6 +82,10 @@ export function MasteryReportPage() {
   const level = report?.session.determined_level || 1;
   const levelName = LEVEL_NAMES[level] || '';
   const isListening = report?.test_type === 'listening';
+  const isNeungyul = report?.book_series === 'neungyul';
+  const neungyulRank = level <= 3
+    ? ((report?.session.score ?? 0) >= 50 ? 2 : 1)
+    : ((report?.session.score ?? 0) >= 50 ? 4 : 3);
 
   const realWrong = report?.answers.filter((a) =>
     !a.is_correct &&
@@ -227,7 +232,26 @@ export function MasteryReportPage() {
                         <p className="text-[10px] text-[#7A7A7A]">추천 교재</p>
                         <p className="text-sm font-semibold text-[#CC0000]">{report.recommended_book}</p>
                       </div>
-                      {(() => {
+                      {isNeungyul ? (() => {
+                        const stepColors: Record<number, [string, string]> = {
+                          1: ['#2D9CAE', '#1A7A8A'], 2: ['#1A7A8A', '#0D5F6D'],
+                          3: ['#CC0000', '#991111'], 4: ['#991111', '#770000'],
+                        };
+                        const stepNames: Record<number, string> = { 1: '기초', 2: '기초 확장', 3: '심화', 4: '심화 확장' };
+                        const [c0, c1] = stepColors[neungyulRank] || stepColors[1];
+                        return (
+                          <div className="relative flex flex-col items-center gap-1">
+                            <div
+                              className="w-[68px] h-[68px] rounded-full flex flex-col items-center justify-center"
+                              style={{ background: `linear-gradient(160deg, ${c0}30, ${c1}20)`, border: `2.5px solid ${c1}` }}
+                            >
+                              <span className="text-[10px] font-bold" style={{ color: c1 }}>Step {neungyulRank}</span>
+                              <span className="text-[14px] font-bold leading-none mt-0.5" style={{ color: c1 }}>◆</span>
+                            </div>
+                            <span className="text-[9px] font-semibold" style={{ color: c1 }}>{stepNames[neungyulRank]}</span>
+                          </div>
+                        );
+                      })() : (() => {
                         const rank = getLevelRank(level);
                         const Icon = RANK_ICON_MAP[rank.icon] || Award;
                         const [c0, c1] = rank.colors;
@@ -326,7 +350,10 @@ export function MasteryReportPage() {
                 </div>
 
                 {/* Level Chart */}
-                <LevelChartTable currentRank={level} />
+                {isNeungyul
+                  ? <NeungyulLevelChart currentRank={neungyulRank} />
+                  : <LevelChartTable currentRank={level} />
+                }
 
                 {/* Metric Detail Section */}
                 <MetricDetailSection details={report.metric_details} />
