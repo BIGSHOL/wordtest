@@ -24,6 +24,8 @@ class RecentTest(BaseModel):
     duration_seconds: Optional[int] = None
     completed_at: Optional[str] = None
     test_type: str = "test"  # "test" | "mastery"
+    teacher_name: Optional[str] = None
+    config_name: Optional[str] = None
 
 
 class ScoreTrend(BaseModel):

@@ -24,6 +24,8 @@ class TestAssignmentResponse(BaseModel):
 
     id: str
     test_config_id: str
+    teacher_name: Optional[str] = None
+    config_name: Optional[str] = None
     student_id: str
     student_name: str
     student_school: Optional[str] = None

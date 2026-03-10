@@ -227,10 +227,12 @@ async def list_assignments_by_teacher(
     db: AsyncSession, teacher_id: str
 ) -> list[TestAssignmentResponse]:
     """List all assignments created by a teacher with enriched data."""
+    TeacherUser = User.__table__.alias("teacher_user")
     result = await db.execute(
-        select(TestAssignment, TestConfig, User)
+        select(TestAssignment, TestConfig, User, TeacherUser.c.name.label("teacher_name"))
         .join(TestConfig, TestAssignment.test_config_id == TestConfig.id)
         .join(User, TestAssignment.student_id == User.id)
+        .outerjoin(TeacherUser, TestAssignment.teacher_id == TeacherUser.c.id)
         .where(TestAssignment.teacher_id == teacher_id)
         .order_by(TestAssignment.assigned_at.desc())
     )
@@ -238,7 +240,7 @@ async def list_assignments_by_teacher(
     rows = result.all()
 
     # Batch-fetch learning_session_ids for mastery assignments
-    assignment_ids = [a.id for a, _, _ in rows]
+    assignment_ids = [row[0].id for row in rows]
     ls_result = await db.execute(
         select(LearningSession.assignment_id, LearningSession.id)
         .where(
@@ -254,7 +256,8 @@ async def list_assignments_by_teacher(
             ls_map[ls_assignment_id] = ls_id
 
     responses = []
-    for assignment, config, student in rows:
+    for row in rows:
+        assignment, config, student, teacher_name = row[0], row[1], row[2], row[3]
         is_cross = config.book_name_end and config.book_name_end != config.book_name
         lesson_range = _build_lesson_range(
             config.book_name, config.book_name_end,
@@ -266,6 +269,8 @@ async def list_assignments_by_teacher(
             TestAssignmentResponse(
                 id=assignment.id,
                 test_config_id=assignment.test_config_id,
+                teacher_name=teacher_name,
+                config_name=config.name,
                 student_id=assignment.student_id,
                 student_name=student.name,
                 student_school=student.school_name,

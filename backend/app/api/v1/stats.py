@@ -354,9 +354,18 @@ async def get_dashboard_stats(
     ]
 
     # Recent tests (last 10 completed)
+    # Alias for teacher user
+    TeacherUser = User.__table__.alias("teacher_user")
     recent_tests_query = (
-        select(TestSession, User.name, User.id, User.school_name, User.grade)
+        select(
+            TestSession, User.name, User.id, User.school_name, User.grade,
+            TeacherUser.c.name.label("teacher_name"),
+            TestConfig.name.label("config_name"),
+        )
         .join(User, TestSession.student_id == User.id)
+        .outerjoin(TestAssignment, TestAssignment.test_session_id == TestSession.id)
+        .outerjoin(TestConfig, TestAssignment.test_config_id == TestConfig.id)
+        .outerjoin(TeacherUser, TestAssignment.teacher_id == TeacherUser.c.id)
         .where(
             and_(
                 TestSession.student_id.in_(student_ids_subq),
@@ -391,13 +400,22 @@ async def get_dashboard_stats(
                 correct_count=session.correct_count,
                 duration_seconds=duration,
                 completed_at=str(session.completed_at) if session.completed_at else None,
+                teacher_name=row.teacher_name,
+                config_name=row.config_name,
             )
         )
 
     # Recent mastery sessions (completed)
     recent_mastery_query = (
-        select(LearningSession, User.name, User.id, User.school_name, User.grade)
+        select(
+            LearningSession, User.name, User.id, User.school_name, User.grade,
+            TeacherUser.c.name.label("teacher_name"),
+            TestConfig.name.label("config_name"),
+        )
         .join(User, LearningSession.student_id == User.id)
+        .outerjoin(TestAssignment, LearningSession.assignment_id == TestAssignment.id)
+        .outerjoin(TestConfig, TestAssignment.test_config_id == TestConfig.id)
+        .outerjoin(TeacherUser, TestAssignment.teacher_id == TeacherUser.c.id)
         .where(
             and_(
                 LearningSession.student_id.in_(student_ids_subq),
@@ -444,6 +462,8 @@ async def get_dashboard_stats(
                 duration_seconds=duration,
                 completed_at=str(ms.completed_at) if ms.completed_at else None,
                 test_type="mastery",
+                teacher_name=row.teacher_name,
+                config_name=row.config_name,
             )
         )
 

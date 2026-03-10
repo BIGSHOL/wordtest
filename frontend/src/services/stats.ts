@@ -26,6 +26,8 @@ export interface DashboardStats {
     duration_seconds: number | null;
     completed_at: string | null;
     test_type: 'mastery' | 'leveltest' | 'grammar';
+    teacher_name?: string | null;
+    config_name?: string | null;
   }[];
   weekly_test_count: number;
   today_test_count: number;

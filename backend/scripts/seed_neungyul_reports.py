@@ -46,13 +46,13 @@ SCENARIOS = [
 
 async def main():
     async with AsyncSessionLocal() as db:
-        # Get 3 students
+        # Get 3 real (non-dummy) students
         r = await db.execute(text(
-            "SELECT id FROM users WHERE role='student' ORDER BY username LIMIT 3"
+            "SELECT id FROM users WHERE role='student' AND name NOT LIKE '[DUMMY]%' ORDER BY username LIMIT 3"
         ))
         student_ids = [row[0] for row in r.fetchall()]
         if len(student_ids) < 3:
-            print(f"ERROR: Need 3 students, found {len(student_ids)}")
+            print(f"ERROR: Need 3 real students, found {len(student_ids)}")
             return
 
         # Get teacher

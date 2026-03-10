@@ -130,6 +130,8 @@ export function DashboardPage() {
                     <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">이름</th>
                     <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">학교</th>
                     <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">학년</th>
+                    <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">시험제목</th>
+                    <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">출제자</th>
                     <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">레벨</th>
                     <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">정답률</th>
                     <th className="px-3 py-3 text-left text-xs text-text-secondary font-semibold whitespace-nowrap">문제 수</th>
@@ -161,6 +163,12 @@ export function DashboardPage() {
                         </td>
                         <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">
                           {test.student_grade || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap max-w-[180px] truncate" title={test.config_name || ''}>
+                          {test.config_name || '-'}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-text-secondary whitespace-nowrap">
+                          {test.teacher_name || '-'}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           {rank ? (

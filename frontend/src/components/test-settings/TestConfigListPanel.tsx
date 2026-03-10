@@ -103,6 +103,7 @@ export function TestConfigListPanel({ configs, onAssign, onDelete }: Props) {
               <thead>
                 <tr style={{ backgroundColor: '#F8F8F6', height: 40, borderTop: '1px solid #E8E8E6', borderBottom: '1px solid #E8E8E6' }}>
                   <th className="text-[11px] font-semibold text-text-secondary text-left pl-6 pr-2 whitespace-nowrap">테스트 이름</th>
+                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">생성자</th>
                   <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">엔진</th>
                   <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">문제수</th>
                   <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">시간</th>
@@ -117,8 +118,11 @@ export function TestConfigListPanel({ configs, onAssign, onDelete }: Props) {
                   const engineStyle = TEST_ENGINE_BADGES[config.test_type] ?? { label: config.test_type, bg: '#F0F0EE', color: '#6D6C6A' };
                   return (
                     <tr key={config.id} style={{ borderBottom: '1px solid #E8E8E6', height: 48 }}>
-                      <td className="text-xs font-semibold text-text-primary pl-6 pr-2 whitespace-nowrap max-w-[200px] truncate">
+                      <td className="text-xs font-semibold text-text-primary pl-6 pr-2 whitespace-nowrap max-w-[240px] truncate" title={config.name}>
                         {config.name}
+                      </td>
+                      <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
+                        {config.teacher_name || '-'}
                       </td>
                       <td className="px-2 whitespace-nowrap">
                         <span

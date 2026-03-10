@@ -116,6 +116,8 @@ export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewRe
                 <tr style={{ backgroundColor: '#F8F8F6', height: 40, borderTop: '1px solid #E8E8E6', borderBottom: '1px solid #E8E8E6' }}>
                   <th className="text-[11px] font-semibold text-text-secondary text-left pl-6 pr-2 whitespace-nowrap">학생</th>
                   <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">학교/학년</th>
+                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">시험제목</th>
+                  <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">출제자</th>
                   <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">테스트코드</th>
                   <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">엔진</th>
                   <th className="text-[11px] font-semibold text-text-secondary text-left px-2 whitespace-nowrap">문제수</th>
@@ -138,6 +140,12 @@ export function AssignmentStatusTable({ assignments, onDelete, onReset, onViewRe
                       </td>
                       <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
                         {schoolGrade}
+                      </td>
+                      <td className="text-xs text-text-secondary px-2 whitespace-nowrap max-w-[160px] truncate" title={item.config_name || ''}>
+                        {item.config_name || '-'}
+                      </td>
+                      <td className="text-xs text-text-secondary px-2 whitespace-nowrap">
+                        {item.teacher_name || '-'}
                       </td>
                       <td className="px-2 whitespace-nowrap">
                         <button

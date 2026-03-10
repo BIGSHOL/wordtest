@@ -25,11 +25,12 @@ from app.services.test_assignment import (
 router = APIRouter(prefix="/test-configs", tags=["test-configs"])
 
 
-def _config_to_response(config: TestConfig, assignment_count: int = 0) -> TestConfigResponse:
+def _config_to_response(config: TestConfig, assignment_count: int = 0, teacher_name: str | None = None) -> TestConfigResponse:
     """Convert a TestConfig ORM object to a TestConfigResponse."""
     return TestConfigResponse(
         id=config.id,
         teacher_id=config.teacher_id,
+        teacher_name=teacher_name,
         name=config.name,
         test_code=config.test_code,
         test_type=config.test_type,
@@ -66,7 +67,8 @@ async def list_test_configs(
     )
 
     query = (
-        select(TestConfig, count_subq.label("assignment_count"))
+        select(TestConfig, count_subq.label("assignment_count"), User.name.label("teacher_name"))
+        .outerjoin(User, TestConfig.teacher_id == User.id)
         .where(
             TestConfig.is_active == True,
             ~TestConfig.name.like("[DUMMY]%"),
@@ -76,8 +78,8 @@ async def list_test_configs(
     result = await db.execute(query)
     rows = result.all()
     return [
-        _config_to_response(config, assignment_count)
-        for config, assignment_count in rows
+        _config_to_response(config, assignment_count, teacher_name)
+        for config, assignment_count, teacher_name in rows
     ]
 
 

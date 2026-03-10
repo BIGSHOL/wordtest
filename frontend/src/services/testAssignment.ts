@@ -21,6 +21,8 @@ export interface AssignTestRequest {
 export interface TestAssignmentItem {
   id: string;
   test_config_id: string;
+  teacher_name?: string | null;
+  config_name?: string | null;
   student_id: string;
   student_name: string;
   student_school: string | null;
@@ -44,6 +46,7 @@ export interface TestAssignmentItem {
 export interface TestConfigItem {
   id: string;
   teacher_id: string;
+  teacher_name?: string | null;
   name: string;
   test_type: string;
   question_count: number;
