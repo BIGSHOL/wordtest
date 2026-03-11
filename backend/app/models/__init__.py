@@ -19,6 +19,7 @@ from app.models.grammar_question import GrammarQuestion
 from app.models.grammar_config import GrammarConfig
 from app.models.grammar_session import GrammarSession
 from app.models.grammar_answer import GrammarAnswer
+from app.models.error_log import ErrorLog
 
 __all__ = [
     "User", "Word", "WordExample", "TestSession", "TestAnswer", "AuthToken",
@@ -26,4 +27,5 @@ __all__ = [
     "WordMastery", "LearningSession", "LearningAnswer",
     "GrammarBook", "GrammarChapter", "GrammarPoint", "GrammarSentence",
     "GrammarQuestion", "GrammarConfig", "GrammarSession", "GrammarAnswer",
+    "ErrorLog",
 ]

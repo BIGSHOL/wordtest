@@ -17,6 +17,8 @@ import {
   PanelLeftOpen,
   FlaskConical,
   History,
+  Bug,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface TeacherLayoutProps {
@@ -38,6 +40,8 @@ const baseNavItems = [
 
 const masterNavItems = [
   { to: '/teachers', icon: UserCog, label: '선생님 관리' },
+  { to: '/users', icon: ShieldCheck, label: '사용자 관리' },
+  { to: '/error-logs', icon: Bug, label: '에러 로그' },
 ];
 
 function getSidebarCollapsed(): boolean {

@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from sqlalchemy import text
 
-from app.api.v1 import auth, users, students, words, stats, test_configs, test_assignments, tts, levelup, legacy_test, teachers, grammar, level_test, master_stats
+from app.api.v1 import auth, users, students, words, stats, test_configs, test_assignments, tts, levelup, legacy_test, teachers, grammar, level_test, master_stats, error_logs, user_management
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 from app.utils.load_words import classify_expression
@@ -42,6 +42,17 @@ async def lifespan(app: FastAPI):
                     logger.info("Auto-classified %d multi-word expressions", count)
     except Exception as e:
         logger.warning("Startup word fix skipped: %s", e)
+
+    # Auto-cleanup old error logs (>30 days)
+    try:
+        from app.services.error_log_service import cleanup_old_logs
+        async with AsyncSessionLocal() as db:
+            deleted = await cleanup_old_logs(db, days=30)
+            if deleted > 0:
+                logger.info("Cleaned up %d old error logs (>30 days)", deleted)
+    except Exception as e:
+        logger.warning("Error log cleanup skipped: %s", e)
+
     yield
 
 
@@ -62,6 +73,9 @@ app.add_middleware(
 
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
+from app.middleware.error_logging import ErrorLoggingMiddleware
+app.add_middleware(ErrorLoggingMiddleware)
+
 # Include routers
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(users.router, prefix="/api/v1")
@@ -77,6 +91,8 @@ app.include_router(teachers.router, prefix="/api/v1")
 app.include_router(grammar.router, prefix="/api/v1")
 app.include_router(level_test.router, prefix="/api/v1")
 app.include_router(master_stats.router, prefix="/api/v1")
+app.include_router(error_logs.router, prefix="/api/v1")
+app.include_router(user_management.router, prefix="/api/v1")
 
 
 @app.get("/health")

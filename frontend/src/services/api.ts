@@ -2,6 +2,7 @@
  * API client with authentication interceptor and token refresh.
  */
 import axios from 'axios';
+import { reportClientError } from './errorLog';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
@@ -93,6 +94,23 @@ api.interceptors.response.use(
       } finally {
         isRefreshing = false;
       }
+    }
+
+    // Report 5xx and network errors to error log
+    if (error.response?.status >= 500 || !error.response) {
+      reportClientError({
+        level: 'error',
+        message: error.response
+          ? `API ${error.response.status}: ${error.config?.method?.toUpperCase()} ${error.config?.url}`
+          : `Network error: ${error.message}`,
+        detail: JSON.stringify({
+          status: error.response?.status,
+          data: error.response?.data,
+          url: error.config?.url,
+          method: error.config?.method,
+        }),
+        endpoint: error.config?.url,
+      });
     }
 
     return Promise.reject(error);

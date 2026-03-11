@@ -1,6 +1,6 @@
 """Dependencies for authentication."""
 from typing import Annotated
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +14,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
 async def get_current_user(
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     token: Annotated[str, Depends(oauth2_scheme)],
 ) -> User:
@@ -36,6 +37,10 @@ async def get_current_user(
 
     if user is None:
         raise credentials_exception
+
+    # Set user info on request state for error logging middleware
+    request.state.user_id = user.id
+    request.state.username = user.username or user.name
 
     return user
 

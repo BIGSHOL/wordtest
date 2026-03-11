@@ -35,3 +35,11 @@ frontend/test-results/
 
 # Claude
 .claude/settings.local.json
+
+# Data files (large PDFs)
+data/
+landing/
+nul
+
+# Script outputs
+backend/scripts/*.json
