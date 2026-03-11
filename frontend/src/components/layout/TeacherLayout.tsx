@@ -16,6 +16,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   FlaskConical,
+  History,
 } from 'lucide-react';
 
 interface TeacherLayoutProps {
@@ -32,6 +33,7 @@ const baseNavItems = [
   { to: '/test-results', icon: ClipboardList, label: '테스트 결과' },
   { to: '/statistics', icon: TrendingUp, label: '통계' },
   { to: '/analysis', icon: BarChart3, label: '분석' },
+  { to: '/updates', icon: History, label: '업데이트' },
 ];
 
 const masterNavItems = [

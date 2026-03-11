@@ -43,6 +43,7 @@ const GrammarSettingsPage = lazyRetry(() => import('./pages/teacher/GrammarSetti
 const LevelTestPage = lazyRetry(() => import('./pages/teacher/LevelTestPage'));
 const GrammarTestPage = lazyRetry(() => import('./pages/student/GrammarTestPage'));
 const GrammarReportPage = lazyRetry(() => import('./pages/teacher/GrammarReportPage'));
+const UpdateLogPage = lazyRetry(() => import('./pages/common/UpdateLogPage'));
 
 function PageLoader() {
   return (
@@ -201,6 +202,16 @@ function App() {
             path="/grammar-test"
             element={<GrammarTestPage />}
           />
+          {/* Update log (all roles) */}
+          <Route
+            path="/updates"
+            element={
+              <RouteGuard>
+                <UpdateLogPage />
+              </RouteGuard>
+            }
+          />
+
           {/* Default redirect */}
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
