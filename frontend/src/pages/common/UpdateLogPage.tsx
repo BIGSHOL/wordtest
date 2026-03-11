@@ -2,8 +2,8 @@
  * Update log page — displays version history organized by audience tabs.
  * Accessible to all authenticated roles.
  */
-import { useState } from 'react';
 import { History, ChevronRight } from 'lucide-react';
+import { useAuthStore } from '../../stores/auth';
 
 type AudienceTab = 'teacher' | 'student' | 'admin' | 'external';
 
@@ -19,12 +19,18 @@ const TAG_STYLE: Record<string, { label: string; bg: string; color: string }> = 
   improve: { label: '개선', bg: '#F0FDF4', color: '#16A34A' },
 };
 
-const TABS: { key: AudienceTab; label: string; desc: string }[] = [
-  { key: 'teacher', label: '선생님', desc: '교사용 기능 업데이트' },
-  { key: 'student', label: '학생', desc: '학생용 기능 업데이트' },
-  { key: 'admin', label: '어드민', desc: '시스템 관리 업데이트' },
-  { key: 'external', label: '외부', desc: '외부 공개 변경사항' },
-];
+const ROLE_TAB_MAP: Record<string, AudienceTab> = {
+  teacher: 'teacher',
+  student: 'student',
+  master: 'admin',
+};
+
+const ROLE_LABEL: Record<AudienceTab, string> = {
+  teacher: '선생님',
+  student: '학생',
+  admin: '어드민',
+  external: '외부',
+};
 
 // ────────────────────────────────────────────────
 //  UPDATE DATA (커밋 기반 정리)
@@ -264,40 +270,23 @@ function formatDate(dateStr: string): string {
 }
 
 export default function UpdateLogPage() {
-  const [activeTab, setActiveTab] = useState<AudienceTab>('teacher');
-
-  const entries = UPDATES[activeTab];
+  const { user } = useAuthStore();
+  const tab: AudienceTab = ROLE_TAB_MAP[user?.role ?? ''] ?? 'external';
+  const entries = UPDATES[tab];
+  const label = ROLE_LABEL[tab];
 
   return (
     <div className="min-h-screen bg-[#F8F8F6]">
       <div className="max-w-[860px] mx-auto py-10 px-6">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-2">
+        <div className="flex items-center gap-3 mb-8">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #2D9CAE, #3DBDC8)' }}>
             <History className="w-5 h-5 text-white" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-[#0D0D0D]">업데이트 내역</h1>
-            <p className="text-xs text-[#7A7A7A]">WordTest 플랫폼 변경사항</p>
+            <p className="text-xs text-[#7A7A7A]">{label}용 WordTest 변경사항</p>
           </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex gap-2 mt-6 mb-8">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className="px-4 py-2 rounded-lg text-sm font-semibold transition-all"
-              style={{
-                backgroundColor: activeTab === tab.key ? '#2D9CAE' : '#FFFFFF',
-                color: activeTab === tab.key ? '#FFFFFF' : '#6D6C6A',
-                border: activeTab === tab.key ? 'none' : '1px solid #E8E8E6',
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
         </div>
 
         {/* Timeline */}
